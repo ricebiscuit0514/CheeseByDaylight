@@ -1,0 +1,451 @@
+@import url('https://fonts.googleapis.com/css2?family=Aldrich&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@font-face {
+  font-family: 'Godo';
+  src: url('//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoM.woff2') format('woff2');
+  font-weight: 400; /* 고도M */
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Godo';
+  src: url('//cdn.jsdelivr.net/korean-webfonts/1/corps/godo/Godo/GodoB.woff2') format('woff2');
+  font-weight: 700; /* 고도B */
+  font-display: swap;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-aldrich: '', sans-serif;
+  --font-godo: 'Godo', sans-serif;
+  --font-display: 'Aldrich', sans-serif;
+  --font-body: 'Godo', sans-serif;
+  --color-dbd-orange: var(--dbd-orange);
+  --color-dbd-blue: var(--dbd-blue);
+  --color-dbd-red: var(--dbd-red);
+  --color-dbd-yellow: var(--dbd-yellow);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  color-scheme: dark;
+  --dbd-orange: oklch(0.72 0.19 45);
+  --dbd-blue: oklch(0.72 0.15 235);
+  --dbd-red: oklch(0.6 0.24 27);
+  --dbd-yellow: oklch(0.82 0.17 85);
+  --background: oklch(0.02 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Premium asymmetric-horror combat system */
+.trial-arena { background-color: var(--background); background-image: url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/lullaby-of-the-dark-key-art-CeQDd8I2BZWkoEGg7f74CgaTWer5pO.png"); background-position: center; background-size: cover; background-attachment: fixed; }
+.trial-arena::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in oklch, var(--background), transparent 18%), color-mix(in oklch, var(--background), transparent 34%) 42%, color-mix(in oklch, var(--background), transparent 8%)), linear-gradient(to right, color-mix(in oklch, var(--background), transparent 22%), transparent 34% 66%, color-mix(in oklch, var(--background), transparent 22%)); }
+.arena-fog { position: absolute; inset: 22% -15% 0; opacity: .28; background: radial-gradient(ellipse at center, color-mix(in oklch, var(--muted-foreground), transparent 91%), transparent 65%); filter: blur(32px); }
+.arena-scratches { position: absolute; inset: 0; opacity: .11; pointer-events: none; background: repeating-linear-gradient(112deg, transparent 0 42px, color-mix(in oklch, var(--foreground), transparent 90%) 43px, transparent 44px 76px); mask-image: linear-gradient(to bottom, transparent, black 25%, black 80%, transparent); }
+.arena-axis { position: absolute; inset-block: 0; left: 50%; width: 1px; opacity: .35; background: linear-gradient(to bottom, transparent 4%, color-mix(in oklch, var(--dbd-red), transparent 55%) 25%, color-mix(in oklch, var(--foreground), transparent 76%) 55%, transparent 96%); transform: rotate(1.5deg); }
+
+.versus-stage {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) auto minmax(9rem, 1fr);
+  align-items: center;
+  width: min(100%, 58rem);
+  gap: 1rem;
+}
+
+.score-sanctum {
+  --team: var(--dbd-orange);
+  isolation: isolate;
+  position: relative;
+  min-height: 13rem;
+  overflow: visible;
+  color: color-mix(in oklch, var(--foreground), var(--team) 18%);
+}
+.score-sanctum-right { --team: var(--dbd-blue); }
+.score-energy {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  opacity: .72;
+  background: radial-gradient(ellipse at 72% 50%, color-mix(in oklch, var(--team), transparent 64%), transparent 66%);
+  mask-image: linear-gradient(to left, black 22%, transparent 100%);
+}
+.score-sanctum-right .score-energy {
+  background: radial-gradient(ellipse at 28% 50%, color-mix(in oklch, var(--team), transparent 64%), transparent 66%);
+  mask-image: linear-gradient(to right, black 22%, transparent 100%);
+}
+.score-sanctum.is-lit .score-energy { opacity: 1; filter: saturate(1.15); }
+.score-scratch { position: absolute; inset: 12% 4%; z-index: -1; opacity: .2; background: repeating-linear-gradient(104deg, transparent 0 18px, color-mix(in oklch, var(--foreground), transparent 80%) 19px, transparent 20px 32px); mask-image: linear-gradient(to left, black, transparent); }
+.score-sanctum-right .score-scratch { transform: scaleX(-1); }
+.score-caption { position: absolute; top: 1.8rem; right: 1.25rem; color: color-mix(in oklch, var(--team), var(--foreground) 25%); font-size: .65rem; font-weight: 900; letter-spacing: .26em; }
+.score-sanctum-right .score-caption { right: auto; left: 1.25rem; }
+.score-value-wrap { display: flex; align-items: flex-end; justify-content: flex-end; height: 100%; padding-right: 3rem; font-family: var(--font-aldrich); font-style: italic; font-weight: 700; line-height: .75; text-shadow: 0 4px 0 color-mix(in oklch, var(--background), transparent 5%), 0 0 32px color-mix(in oklch, var(--team), transparent 75%); }
+.score-sanctum-right .score-value-wrap { justify-content: flex-start; padding-right: 0; padding-left: 1.5rem; }
+.score-whole { font-size: clamp(8rem, 15vw, 13rem); letter-spacing: -.08em; }
+.score-half { margin-left: .1em; margin-bottom: 0; font-size: clamp(3rem, 7vw, 6rem); color: inherit; }
+.score-half.is-hidden { visibility: hidden; }
+/* particle-field: 숫자 전체 높이를 덮는 overlay — streak들의 기준 좌표계 */
+.score-particle-field { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+/* streak: 팀 방향 모서리 기준, top%로 수직 분산 */
+.score-streak { position: absolute; border-radius: 2px; background: var(--team); transform-origin: left center; }
+.score-color-wake { position: absolute; top: 15%; right: 2%; bottom: 12%; width: 70%; z-index: -1; transform-origin: right center; background: radial-gradient(ellipse at right, color-mix(in oklch, var(--team), transparent 40%), color-mix(in oklch, var(--team), transparent 70%) 42%, transparent 72%); filter: blur(18px); pointer-events: none; }
+.score-sanctum-right .score-color-wake { right: auto; left: 4%; transform-origin: left center; }
+.score-sanctum.is-lit .score-streak { filter: saturate(1.25); }
+
+.versus-sigil { position: relative; display: flex; min-height: 12rem; width: 5rem; flex-direction: column; align-items: center; justify-content: center; color: color-mix(in oklch, var(--foreground), transparent 20%); }
+.versus-line { display: none; }
+.versus-line::after { display: none; }
+.versus-label { position: relative; font-family: var(--font-aldrich); font-size: 3rem; font-style: italic; font-weight: 700; letter-spacing: -.08em; text-shadow: 2px 2px 0 var(--background); margin-left: -0.8rem; }
+.versus-sub { position: relative; margin-top: .35rem; white-space: nowrap; color: var(--muted-foreground); font-size: .55rem; font-weight: 900; letter-spacing: .22em; }
+
+.plate-motion-shell { position: relative; width: 100%; transform-origin: center; }
+.player-plate { --team: var(--dbd-orange); position: relative; display: flex; min-height: 4.2rem; width: 100%; align-items: center; gap: .65rem; overflow: hidden; border: 1px solid color-mix(in oklch, var(--foreground), transparent 86%); border-left: 3px solid color-mix(in oklch, var(--team), transparent 32%); padding: .65rem .8rem; background: linear-gradient(104deg, color-mix(in oklch, var(--team), transparent 91%), color-mix(in oklch, var(--background), transparent 7%) 38%, color-mix(in oklch, var(--card), transparent 22%)); clip-path: polygon(0 0, calc(100% - .7rem) 0, 100% .7rem, 100% 100%, .55rem 100%, 0 calc(100% - .55rem)); backdrop-filter: blur(10px); }
+.player-plate-ada { --team: var(--dbd-blue); border-left: 1px solid color-mix(in oklch, var(--foreground), transparent 86%); border-right: 3px solid color-mix(in oklch, var(--team), transparent 32%); clip-path: polygon(.7rem 0, 100% 0, 100% calc(100% - .55rem), calc(100% - .55rem) 100%, 0 100%, 0 .7rem); }
+.player-plate.is-active { border-color: color-mix(in oklch, var(--team), transparent 38%); box-shadow: inset 0 0 24px color-mix(in oklch, var(--team), transparent 89%), 0 8px 24px color-mix(in oklch, var(--background), transparent 20%); }
+.player-plate.is-removing { cursor: pointer; border-color: var(--dbd-red); background-color: color-mix(in oklch, var(--dbd-red), transparent 88%); }
+.player-plate.is-exalted.is-removing { border-color: var(--dbd-red); background: linear-gradient(105deg, color-mix(in oklch, var(--dbd-red), transparent 82%), color-mix(in oklch, var(--dbd-red), transparent 91%) 40%, color-mix(in oklch, var(--background), transparent 3%)); }
+.plate-grain { position: absolute; inset: 0; opacity: .2; pointer-events: none; background: repeating-linear-gradient(167deg, transparent 0 7px, color-mix(in oklch, var(--foreground), transparent 92%) 8px, transparent 9px 15px); }
+.player-plate > *:not(.plate-grain):not(.plate-whiteout):not(.exalted-flash):not(.exalted-corners):not(.exalted-rank) { position: relative; z-index: 2; }
+.player-name-input { width: 0; min-width: 0; flex: 1 1 0%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; color: var(--foreground); font-family: var(--font-godo); font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; outline: none; }
+.player-name-input::placeholder { color: var(--muted-foreground); }
+.skull-group { display: flex; flex: 0 0 auto; align-items: center; gap: .15rem; }
+.skull-slot { position: relative; width: 2.35rem; height: 2.55rem; flex-shrink: 0; transition: transform .15s ease, filter .15s ease; }
+.skull-slot:hover { transform: translateY(-2px) scale(1.06); filter: brightness(1.2); }
+.skull-slot:focus-visible { outline: 2px solid var(--team); outline-offset: 2px; }
+.skull-slot:disabled { pointer-events: none; }
+.skull-ghost { position: absolute; inset: 0; opacity: .13; filter: grayscale(1) brightness(.45); }
+.skull-preview { position: absolute; inset: 0; opacity: .35; filter: grayscale(.5); }
+.skull-impact { position: absolute; inset: 0; filter: drop-shadow(0 3px 2px var(--background)) drop-shadow(0 0 5px color-mix(in oklch, var(--team), transparent 55%)); }
+.half-left { clip-path: inset(0 50% 0 0); }
+.half-right { clip-path: inset(0 0 0 50%); }
+.skull-ring { position: absolute; inset: 16%; z-index: -1; border: 1px solid color-mix(in oklch, var(--team), transparent 28%); border-radius: 50%; box-shadow: 0 0 12px color-mix(in oklch, var(--team), transparent 45%); }
+  .no-kill-button { display: flex; width: 2rem; height: 2rem; flex-shrink: 0; align-items: center; justify-content: center; background: transparent; border: none; outline: none; -webkit-appearance: none; appearance: none; padding: 0; margin: 0; box-shadow: none; border-radius: 0; cursor: pointer; opacity: 0.38; transition: opacity .15s ease, transform .15s ease, filter .15s ease; }
+  .no-kill-button:hover:not(:disabled) { opacity: 0.72; transform: translateY(-2px) scale(1.06); filter: brightness(1.2); }
+  .no-kill-button:disabled { pointer-events: none; opacity: 0.18; }
+  .no-kill-button.is-selected { opacity: 1; filter: drop-shadow(0 0 6px color-mix(in oklch, var(--dbd-red), transparent 25%)) brightness(1.15); }
+.drag-handle { display: grid; flex-shrink: 0; grid-template-columns: repeat(2, 1fr); gap: .2rem; padding: .2rem; color: var(--muted-foreground); }
+.drag-handle i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+
+/* border-width is intentionally NOT changed — keeps layout stable */
+.player-plate.is-exalted { border-color: color-mix(in oklch, #ded5ba, transparent 15%); background: linear-gradient(105deg, color-mix(in oklch, var(--team), transparent 78%), color-mix(in oklch, #ded5ba, transparent 89%) 40%, color-mix(in oklch, var(--background), transparent 3%)); }
+.player-plate.is-exalted .player-name-input { color: #eee7d4; text-shadow: 0 0 12px color-mix(in oklch, var(--team), transparent 45%); letter-spacing: .02em; }
+/* 이름표 전체를 순백으로 덮는 오버레이 */
+.plate-whiteout {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  background: #ffffff;
+}
+.plate-burst-echo {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  background: #ffffff;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+.plate-burst-echo-thomas { clip-path: polygon(0 0, calc(100% - .7rem) 0, 100% .7rem, 100% 100%, .55rem 100%, 0 calc(100% - .55rem)); }
+.plate-burst-echo-ada { clip-path: polygon(.7rem 0, 100% 0, 100% calc(100% - .55rem), calc(100% - .55rem) 100%, 0 100%, 0 .7rem); }
+
+/*
+  빛 반사 반짝임:
+  - 시작: 이름표 왼쪽 바깥 (left: -8px, 즉 이름표 경계 밖에서 생성)
+  - 끝:   이름표 오른쪽 바깥으로 빠르게 퇴장
+  - 빔 자체는 .player-plate 안에 있으므로 overflow:hidden에 의해 자연스럽게 클립됨
+  - left를 translateX로만 이동: 시작 x = -(이름표 너비 + 여유), 끝 x = +(이름표 너비 + 여유)
+*/
+@keyframes exalted-shimmer {
+  0% { left: 0; transform: skewX(-16deg) translateX(-110%); opacity: 0; }
+  0.5% { opacity: 1; }
+  5.26% { left: 100%; transform: skewX(-16deg) translateX(10%); opacity: 0; }
+  100% { left: 100%; transform: skewX(-16deg) translateX(10%); opacity: 0; }
+}
+.exalted-flash {
+  position: absolute;
+  /* 이름표(player-plate)의 overflow:hidden 안에서 클립되도록 inset:0 — 외부로 넘어가지 않음 */
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+  isolation: isolate;
+}
+.exalted-flash::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  /* 넓은 광택 오버레이가 이름표와 글자 위에서 실제로 합성되도록 한다. */
+  width: 32%;
+  background: linear-gradient(to right,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,0.3) 24%,
+    rgba(255,255,255,1) 50%,
+    rgba(255,255,255,0.3) 76%,
+    rgba(255,255,255,0) 100%
+  );
+  mix-blend-mode: color-dodge;
+  filter: brightness(1.8) drop-shadow(0 0 8px rgba(255,255,255,0.9));
+  will-change: left, transform, opacity;
+  /* 3.8초마다 반복하되 이동 구간은 linear로 정확히 0.2초만 사용한다. */
+  animation: exalted-shimmer 3.8s linear 0s infinite;
+}
+.exalted-corners { position: absolute; inset: .2rem; z-index: 1; pointer-events: none; border-block: 1px solid color-mix(in oklch, #ded5ba, transparent 58%); }
+.exalted-rank {
+  position: absolute !important;
+  inset: 5% -8% -30%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+  font-family: var(--font-black-han, 'Black Han Sans', sans-serif);
+  font-size: 5.2rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: color-mix(in oklch, #ded5ba, var(--team) 28%);
+  opacity: .1;
+  transform: skewX(-8deg);
+  user-select: none;
+}
+
+@media (max-width: 767px) {
+  .versus-stage { grid-template-columns: minmax(6.5rem, 1fr) 2.5rem minmax(6.5rem, 1fr); gap: .25rem; }
+  .score-sanctum { min-height: 8rem; }
+  .score-whole { font-size: clamp(5.5rem, 25vw, 8rem); }
+  .score-caption, .versus-sub { display: none; }
+  .versus-label { font-size: 1.8rem; }
+  .skull-slot { width: 1.75rem; height: 2rem; }
+  .no-kill-button { width: 1.6rem; height: 1.6rem; }
+  .player-plate { gap: .35rem; padding: .5rem; }
+  .drag-handle { display: none; }
+}
+
+.cold-game-box { 
+  position: relative; 
+  min-height: 5.5rem;
+  padding: 1.25rem; 
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.cold-warning-title { 
+  font-family: var(--font-aldrich); 
+  font-size: clamp(1.5rem, 5vw, 2rem); 
+  font-style: italic;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--dbd-red); 
+  text-shadow: 2px 2px 0 var(--background);
+  margin-bottom: 0.75rem;
+}
+
+.cold-game-title {
+  font-family: var(--font-aldrich);
+  font-size: clamp(1.75rem, 6vw, 2.25rem);
+  font-style: italic;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--dbd-red);
+  text-shadow: 2px 2px 0 var(--background);
+  margin-bottom: 0.75rem;
+}
+
+.cold-warning-text,
+.cold-game-text,
+.cold-team-name,
+.cold-kill-count {
+  font-family: var(--font-godo);
+  font-weight: 700;
+}
+
+.cold-warning-text,
+.cold-game-text {
+  font-size: clamp(0.875rem, 2vw, 1.05rem);
+  line-height: 1.6;
+  color: color-mix(in oklch, var(--foreground), transparent 5%);
+}
+
+.cold-team-name {
+  font-weight: 900;
+  font-size: 1.15em;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.cold-team-thomas { color: var(--dbd-orange); text-shadow: 0 0 8px color-mix(in oklch, var(--dbd-orange), transparent 35%); }
+.cold-team-ada { color: var(--dbd-blue); text-shadow: 0 0 8px color-mix(in oklch, var(--dbd-blue), transparent 35%); }
+
+.cold-kill-count {
+  font-weight: 900;
+  font-size: 1.25em;
+  letter-spacing: .04em;
+  color: var(--dbd-yellow);
+  text-shadow: 0 0 12px color-mix(in oklch, var(--dbd-yellow), transparent 40%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  .cold-game-box { animation: none; }
+}

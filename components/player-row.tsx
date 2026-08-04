@@ -1,0 +1,317 @@
+"use client"
+
+import { useState, useEffect, useRef } from "react"
+import { motion, useReducedMotion } from "motion/react"
+import { cn } from "@/lib/utils"
+
+export const SKULLS_PER_PLAYER = 4
+export const MAX_KILLS = 4
+
+export type Player = { id: string; name: string; kills: number; played: boolean; killer?: string }
+type Team = "thomas" | "ada"
+const SKULL_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/skull-In6dI80mEpk5ozOhNaDWKNmXyV4w2E.png"
+const SKULL_STAGGER = 0.42
+const SKULL_DURATION = 0.68
+const SKULL_IMPACT_AT = 0.32
+const CHARGE_DURATION = 0.55
+
+function Skull({ fill, previewFill, team, animId, animOrder, animate, disabled, onPick, onHover }: {
+  fill: 0 | 0.5 | 1; previewFill: 0 | 0.5 | 1; team: Team; animId: number; animOrder: number; animate: boolean; disabled: boolean
+  onPick: (half: boolean) => void; onHover: (half: boolean) => void
+}) {
+  const reducedMotionRaw = useReducedMotion()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  const reducedMotion = mounted ? reducedMotionRaw : false
+  const full = fill > 0
+  const image = <img src={SKULL_URL} alt="" draggable={false} loading="eager" decoding="sync" className="absolute inset-0 size-full object-contain" />
+  const getHalf = (element: HTMLButtonElement, clientX: number) => {
+    const ratio = (clientX - element.getBoundingClientRect().left) / element.offsetWidth
+    return team === "thomas" ? ratio < 0.5 : ratio > 0.5
+  }
+
+  return (
+    <button type="button" disabled={disabled} aria-label={`${animOrder + 1}번째 킬 스코어`} onPointerMove={(event) => onHover(getHalf(event.currentTarget, event.clientX))} onClick={(event) => onPick(getHalf(event.currentTarget, event.clientX))} className="skull-slot">
+      <span className="skull-ghost"><img src={SKULL_URL} alt="" draggable={false} className="size-full object-contain" /></span>
+      {previewFill > 0 && <span className={cn("skull-preview", previewFill === 0.5 && (team === "thomas" ? "half-left" : "half-right"))}>{image}</span>}
+      {full && (
+        <motion.span
+          key={`${animId}-${fill}`}
+          className={cn("skull-impact", fill === 0.5 && (team === "thomas" ? "half-left" : "half-right"))}
+          initial={animate && !reducedMotion
+            ? { opacity: 0, scale: 2.9, y: -42, x: team === "thomas" ? -12 : 12, rotate: team === "thomas" ? -20 : 20, filter: "brightness(3) blur(4px)" }
+            : false}
+          animate={animate && !reducedMotion
+            ? {
+                opacity: [0, 0.45, 1, 1, 1, 1],
+                scale: [2.9, 2.15, 0.58, 1.18, 0.91, 1],
+                y: [-42, -17, 2, -3, 1, 0],
+                x: [team === "thomas" ? -12 : 12, team === "thomas" ? -5 : 5, 0, 0, 0, 0],
+                rotate: [team === "thomas" ? -20 : 20, team === "thomas" ? -8 : 8, 0, 0, 0, 0],
+                filter: [
+                  "brightness(3) blur(4px)",
+                  "brightness(2.4) blur(1px)",
+                  "brightness(5) blur(0px)",
+                  "brightness(1.7) blur(0px)",
+                  "brightness(1.1) blur(0px)",
+                  "brightness(1) blur(0px)",
+                ],
+              }
+            : { opacity: 1, scale: 1, y: 0, x: 0, rotate: 0, filter: "brightness(1) blur(0px)" }}
+          transition={{
+            duration: SKULL_DURATION,
+            delay: animate && !reducedMotion ? animOrder * SKULL_STAGGER : 0,
+            times: [0, 0.24, 0.47, 0.65, 0.82, 1],
+            ease: [0.12, 0.82, 0.18, 1],
+          }}
+        >
+          {image}
+          {animate && !reducedMotion && (
+            <motion.i
+              className="skull-ring"
+              initial={{ opacity: 0, scale: 0.1 }}
+              animate={{ opacity: [0, 0.9, 0], scale: [0.1, 1.6, 2.4] }}
+              transition={{ duration: 0.44, delay: animOrder * SKULL_STAGGER + SKULL_IMPACT_AT, ease: [0.08, 0.72, 0.18, 1] }}
+            />
+          )}
+        </motion.span>
+      )}
+    </button>
+  )
+}
+
+const ZERO_KILL_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/0kill-VuOOHcLmBrHXgAMaRTVKeAkSYOz0Pl.png"
+
+function NoKillButton({ played, kills, disabled, onZero, onCancel }: { played: boolean; kills: number; disabled: boolean; onZero: () => void; onCancel: () => void }) {
+  const selected = played && kills === 0
+  return (
+    <button
+      type="button"
+      onClick={() => selected ? onCancel() : onZero()}
+      disabled={disabled}
+      aria-label={selected ? "0킬 입력 취소" : "0킬 처리"}
+      className={cn("no-kill-button", selected && "is-selected")}
+    >
+      <img src={ZERO_KILL_URL} alt="" draggable={false} className="size-full object-contain" />
+    </button>
+  )
+}
+
+function KillerTag({ value, isThomas, disabled, onChange }: {
+  value: string; isThomas: boolean; disabled: boolean; onChange?: (v: string) => void
+}) {
+  const isEmpty = value.trim() === ""
+  return (
+    <input
+      type="text"
+      value={value}
+      placeholder=""
+      readOnly={disabled}
+      onChange={(e) => onChange?.(e.target.value)}
+      onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
+      aria-label="살인마 이름"
+      style={{
+        fontFamily: "var(--font-godo)",
+        fontWeight: 400,
+        height: "1.75rem",
+        // 빈 상태: 1ch 정사각형. 텍스트 있을 때: size 속성으로 content에 맞게 자동 늘어남
+        width: isEmpty ? "1.75rem" : undefined,
+      }}
+      size={isEmpty ? 1 : Math.max(value.length, 1)}
+      className={cn(
+        "rounded border border-dbd-yellow/80 bg-neutral-950/80 text-xs text-dbd-yellow outline-none transition-[width] duration-150 placeholder-transparent",
+        "focus:border-dbd-yellow",
+        disabled && "cursor-default pointer-events-none",
+        isEmpty ? "px-0 text-center" : cn("px-1.5", isThomas ? "text-right" : "text-left"),
+      )}
+    />
+  )
+}
+
+function DragHandle({ disabled }: { disabled: boolean }) {
+  return <span aria-hidden className={cn("drag-handle", !disabled && "cursor-grab active:cursor-grabbing")}>{Array.from({ length: 6 }).map((_, i) => <i key={i} />)}</span>
+}
+
+function buildPlateMotion(prevKills: number, kills: number, fourKill: boolean, isThomas: boolean) {
+  // position + 0.5 이상이 새로 채워졌으면 해당 슬롯이 타격받은 것으로 판단
+  // (반 개 박힐 때도 이름표 흔들림 발생)
+  const newPositions = Array.from({ length: SKULLS_PER_PLAYER }, (_, position) => position)
+    .filter((position) => position + 0.5 > prevKills && position + 0.5 <= kills)
+  if (newPositions.length === 0) return null
+
+  const finalImpact = newPositions.at(-1)! * SKULL_STAGGER + SKULL_IMPACT_AT
+  const duration = fourKill
+    ? (SKULLS_PER_PLAYER - 1) * SKULL_STAGGER + SKULL_DURATION + CHARGE_DURATION
+    : finalImpact + 0.26
+  const frames: Array<{ at: number; x: number; y: number; rotate: number }> = [{ at: 0, x: 0, y: 0, rotate: 0 }]
+
+  // thomas팀은 해골이 왼쪽부터 채워지므로 짝수 위치는 왼쪽 반동,
+  // ada팀은 해골이 오른쪽부터 채워지므로 방향을 반전
+  const dir = isThomas ? 1 : -1
+  newPositions.forEach((position) => {
+    const impact = position * SKULL_STAGGER + SKULL_IMPACT_AT
+    frames.push(
+      { at: Math.max(0, impact - 0.025), x: 0, y: 0, rotate: 0 },
+      { at: impact, x: (position % 2 === 0 ? -2.5 : 2.5) * dir, y: 2, rotate: 0 },
+      { at: impact + 0.09, x: (position % 2 === 0 ? 1 : -1) * dir, y: -1, rotate: 0 },
+      { at: impact + 0.2, x: 0, y: 0, rotate: 0 },
+    )
+  })
+
+  if (fourKill) {
+    const chargeStart = (SKULLS_PER_PLAYER - 1) * SKULL_STAGGER + SKULL_DURATION
+    const charge = [
+      [0, 0], [-0.2, 0.1], [0.25, -0.15], [-0.4, 0.2],
+      [0.55, -0.28], [-0.75, 0.38], [1.0, -0.5], [-1.35, 0.65],
+      [1.7, -0.85], [-2.2, 1.1], [2.7, -1.35], [0, 0],
+    ]
+    charge.forEach(([x, y], index) => frames.push({ at: chargeStart + (index / (charge.length - 1)) * CHARGE_DURATION, x, y, rotate: 0 }))
+  }
+
+  frames.sort((a, b) => a.at - b.at)
+  return {
+    x: frames.map((frame) => frame.x),
+    y: frames.map((frame) => frame.y),
+    rotate: frames.map((frame) => frame.rotate),
+    transition: { duration, times: frames.map((frame) => Math.min(frame.at / duration, 1)), ease: "linear" as const },
+  }
+}
+
+export function PlayerRow({ player, team, active, animId, prevKills, dragging, readOnly = false, removeMode = false, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd }: {
+  player: Player; team: Team; active: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean
+  onRemove?: () => void; onScore: (newKills: number) => void; onZeroKill: () => void; onCancel: () => void; onNameChange: (name: string) => void
+  onNameCommit: (name: string) => void; onKillerChange: (killer: string) => void; onDragStart: () => void; onDragEnter: () => void; onDragEnd: () => void
+}) {
+  const isThomas = team === "thomas"
+  const interactionsDisabled = readOnly || removeMode
+  const reducedMotionRaw = useReducedMotion()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  const reducedMotion = mounted ? reducedMotionRaw : false
+  const [hover, setHover] = useState<{ index: number; half: boolean } | null>(null)
+  // ALL KILL 이름표로의 전환이 flash peak 타이밍에 일어나도록 지연
+  const [isRevealed, setIsRevealed] = useState(false)
+  // 반짝임은 Exalted 전환 + whiteout fade 이후에 시작해야 버그 없음
+  const [isFlashReady, setIsFlashReady] = useState(false)
+  const posForIndex = (i: number) => isThomas ? i : SKULLS_PER_PLAYER - 1 - i
+  const fillFor = (pos: number, kills: number): 0 | 0.5 | 1 => kills - pos >= 1 ? 1 : kills - pos >= 0.5 ? 0.5 : 0
+  const previewKills = hover ? posForIndex(hover.index) + (hover.half ? 0.5 : 1) : null
+  const fourKill = player.played && player.kills === 4
+  // 네 번째 해골이 완전히 안착한 뒤 1초 동안 ���너지를 응축하고 Exalted로 전환한다.
+  const allKillDelay = animId > 0 ? (SKULLS_PER_PLAYER - 1) * SKULL_STAGGER + SKULL_DURATION : 0
+  const exaltedRevealDelay = allKillDelay + CHARGE_DURATION
+  const plateMotion = animId > 0 && !reducedMotion ? buildPlateMotion(prevKills, player.kills, fourKill, isThomas) : null
+
+  // fourKill이 바뀔 때마다 reveal 타이밍 제어
+  const prevFourKill = useRef(false)
+  useEffect(() => {
+    if (fourKill && !prevFourKill.current) {
+      if (reducedMotion || animId === 0) {
+        setIsRevealed(true)
+      } else {
+        // 에너지 응축이 절정에 도달해 순백으로 터지는 정확한 순간에 외형을 전환한다.
+        const t = setTimeout(() => setIsRevealed(true), exaltedRevealDelay * 1000)
+        prevFourKill.current = true
+        return () => clearTimeout(t)
+      }
+    }
+    if (!fourKill) {
+      prevFourKill.current = false
+      setIsRevealed(false)
+    }
+    prevFourKill.current = fourKill
+  }, [fourKill, reducedMotion, animId, exaltedRevealDelay])
+
+  // whiteout이 완전히 사라진 뒤에 반짝임을 활성화 (exalted-shimmer CSS delay 0s로 통일)
+  useEffect(() => {
+    if (!fourKill || reducedMotion) { setIsFlashReady(false); return }
+    // exaltedRevealDelay + whiteout fade 완료(0.62s) 이후
+    const t = setTimeout(() => setIsFlashReady(true), (exaltedRevealDelay + 0.66) * 1000)
+    return () => { clearTimeout(t); setIsFlashReady(false) }
+  }, [fourKill, reducedMotion, exaltedRevealDelay])
+
+  const skulls = Array.from({ length: SKULLS_PER_PLAYER }).map((_, i) => {
+    const pos = posForIndex(i)
+    const fill = fillFor(pos, player.kills)
+    const preview = previewKills === null ? 0 : fillFor(pos, previewKills)
+    // 새로 추가된 해골만 애니메이션: pos+1 (혹은 pos+0.5) 이 prevKills 초과 범위
+    const isNew = animId > 0 && fill > 0 && (pos + (fill === 0.5 ? 0.5 : 1)) > prevKills
+    return <Skull key={i} team={team} fill={fill} previewFill={preview === fill ? 0 : preview} animId={animId} animOrder={pos} animate={isNew} disabled={interactionsDisabled} onHover={(half) => setHover({ index: i, half })} onPick={(half) => {
+      const selected = pos + (half ? 0.5 : 1)
+      if (player.kills === selected && player.played) {
+        // 같은 값을 다시 누르면 입력 취소 (미입력 상태로 되돌림)
+        onCancel()
+      } else {
+        onScore(selected)
+      }
+    }} />
+  })
+
+  const nameInput = <input value={player.name} placeholder="이름을 입력해주세요" readOnly={interactionsDisabled} onChange={(event) => onNameChange(event.target.value)} onBlur={(event) => onNameCommit(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing && event.keyCode !== 229) event.currentTarget.blur() }} aria-label="플레이어 이름" className={cn("player-name-input", isThomas ? "text-left" : "text-right", interactionsDisabled && "cursor-default")} />
+  const skullGroup = <div className="skull-group" onMouseLeave={() => setHover(null)}>{skulls}</div>
+
+  return (
+    <div className="relative">
+      {/* 살인마 기록 — 이름표 바깥 절대 위치, 이름표 높이와 수직 중앙 정렬
+          thomas팀: 오른쪽 끝(이름표 가장자리)이 고정되고 input이 왼쪽으로 늘어남
+          ada팀:    왼쪽 끝(이름표 가장자리)이 고정되고 input이 오른쪽으로 늘어남 */}
+      <div className={cn(
+        "absolute top-1/2 -translate-y-1/2 z-10 flex",
+        isThomas
+          ? "justify-end right-[calc(100%+0.375rem)]"  // 우측 끝 고정 → 왼쪽으로 성장
+          : "justify-start left-[calc(100%+0.375rem)]", // 좌측 끝 고정 → 오른쪽으로 성장
+      )}>
+        <KillerTag
+          value={player.killer ?? ""}
+          isThomas={isThomas}
+          disabled={interactionsDisabled}
+          onChange={onKillerChange}
+        />
+      </div>
+      <motion.div
+        key={`${player.id}-${animId}`}
+        role={removeMode ? "button" : undefined} tabIndex={removeMode ? 0 : undefined} aria-label={removeMode ? `${player.name} 제거` : undefined}
+        draggable={!interactionsDisabled} onClick={removeMode ? (event) => { event.stopPropagation(); onRemove?.() } : undefined}
+        onKeyDown={removeMode ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onRemove?.() } } : undefined}
+        onDragStart={onDragStart} onDragEnter={onDragEnter} onDragOver={(event) => !interactionsDisabled && event.preventDefault()} onDragEnd={onDragEnd}
+        className={cn("plate-motion-shell", dragging && "opacity-40")}
+        animate={plateMotion ? { x: plateMotion.x, y: plateMotion.y, rotate: plateMotion.rotate } : undefined}
+        transition={plateMotion?.transition}
+      >
+        <div className={cn("player-plate", `player-plate-${team}`, active && "is-active", isRevealed && "is-exalted", removeMode && "is-removing")}>
+          <span className="plate-grain" aria-hidden="true" />
+          {fourKill && !reducedMotion && (
+            <motion.span
+              className="plate-whiteout"
+              aria-hidden="true"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 0.62, delay: exaltedRevealDelay, times: [0, 0.01, 0.22, 1], ease: [0.16, 0.84, 0.28, 1] }}
+            />
+          )}
+          {isRevealed && <span className="exalted-corners" aria-hidden="true" />}
+          {isFlashReady && <span className="exalted-flash" aria-hidden="true" />}
+          {isThomas ? <><DragHandle disabled={interactionsDisabled} />{nameInput}<NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />{skullGroup}</> : <>{skullGroup}<NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />{nameInput}<DragHandle disabled={interactionsDisabled} /></>}
+          {isRevealed && (
+            <motion.span
+              className="exalted-rank"
+              aria-hidden="true"
+              initial={animId > 0 && !reducedMotion ? { opacity: 0, x: "-60%" } : { opacity: 0.1, x: 0 }}
+              animate={{ opacity: 0.1, x: 0 }}
+              transition={{ duration: 0.6, ease: [0.8, 0, 0.15, 1] }}
+            >ALL KILL</motion.span>
+          )}
+        </div>
+        {fourKill && !reducedMotion && (
+          <motion.span
+            className={cn("plate-burst-echo", `plate-burst-echo-${team}`)}
+            aria-hidden="true"
+            initial={{ opacity: 0, scale: 1 }}
+            animate={{ opacity: [0, 0.95, 0], scale: [1, 1.18, 1.72] }}
+            transition={{ duration: 1.05, delay: exaltedRevealDelay, times: [0, 0.035, 1], ease: [0.08, 0.82, 0.18, 1] }}
+          />
+        )}
+      </motion.div>
+    </div>
+  )
+}
