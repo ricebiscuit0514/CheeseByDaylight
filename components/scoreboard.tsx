@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { MAX_KILLS, PlayerRow, type Player } from "@/components/player-row"
 import { TeamScore } from "@/components/team-score"
+import { WinnerOverlay } from "@/components/winner-overlay"
 import { cn } from "@/lib/utils"
 
 type Team = "thomas" | "ada"
@@ -41,6 +42,7 @@ type ColdState =
       isWinPossible?: boolean
     }
   | { status: "cold"; name: string }
+  | { status: "gameover"; winnerName: string | "tie" }
 
 /**
  * Best/worst-case reachability. Each remaining (un-played) player can still
@@ -72,7 +74,9 @@ function computeCold(
   // 콜드게임 룰이 적용되지 않을 때 — 이번 경기에서 몇 킬 이상 해야 우승 가능한지 안내.
   if (tr + ar === 0 && (ts !== 0 || as !== 0)) {
     // 모든 경기가 끝난 상태: 결과 표시 (이미 cold 체크 전이므로 여기선 동점 상황만 처리)
-    return { status: "none" }
+    if (ts > as) return { status: "gameover", winnerName: thomasName }
+    if (as > ts) return { status: "gameover", winnerName: adaName }
+    return { status: "gameover", winnerName: "tie" }
   }
 
   // 콜드게임 판정: 남은 플레이어가 2명 이상 있을 때만 적용
@@ -244,6 +248,8 @@ export function Scoreboard() {
   const [showFullResetConfirm, setShowFullResetConfirm] = useState(false)
   // 설명서 모달
   const [showGuide, setShowGuide] = useState(false)
+  // 우승 결과 오버레이 닫힘 여부
+  const [overlayDismissed, setOverlayDismissed] = useState(false)
 
   // 마운트 후 localStorage에서 저장된 점수 복원 (hydration 이후에만 실행)
   useEffect(() => {
@@ -317,6 +323,13 @@ export function Scoreboard() {
     () => computeCold(thomas, ada, turn, thomasName, adaName),
     [thomas, ada, turn, thomasName, adaName],
   )
+
+  // 상태가 cold나 gameover가 아닐 때 overlayDismissed 초기화
+  useEffect(() => {
+    if (cold.status !== "cold" && cold.status !== "gameover") {
+      setOverlayDismissed(false)
+    }
+  }, [cold.status])
 
   // 현재 turn 팀에만 "다음 플레이어" 태그를 표시한다.
   const thomasNext = turn === "thomas" ? thomas.findIndex((p) => !p.played) : -1
@@ -468,6 +481,7 @@ export function Scoreboard() {
     setPrevKillsMap({})
     setFirstAttackerId(null)
     setShowResetConfirm(false)
+    setOverlayDismissed(false)
     // localStorage는 useEffect가 상태 변경 후 자동으로 업데이트함
   }
 
@@ -498,6 +512,7 @@ export function Scoreboard() {
     setPrevKillsMap({})
     setFirstAttackerId(null)
     setShowFullResetConfirm(false)
+    setOverlayDismissed(false)
     try { localStorage.removeItem(LS_KEY) } catch { /* ignore */ }
   }
 
@@ -780,12 +795,33 @@ export function Scoreboard() {
           )}
           {cold.status === "cold" && (
             <>
-                <p className="cold-game-title">콜드게임!</p>
+              <p className="cold-game-title">콜드게임!</p>
               <p className="cold-game-text">
                 <span className={`cold-team-name ${cold.name === thomasName ? 'cold-team-thomas' : 'cold-team-ada'}`}>
                   {cold.name} 팀
                 </span>{" "}
                 역전 불가 — 경기 종료
+              </p>
+              <p className="mt-3 text-2xl font-black text-dbd-yellow drop-shadow-md tracking-widest" style={{ fontFamily: "var(--font-godo)" }}>
+                <span className={`cold-team-name ${cold.name === thomasName ? 'cold-team-ada text-dbd-blue' : 'cold-team-thomas text-dbd-orange'}`}>
+                  {cold.name === thomasName ? adaName : thomasName}팀
+                </span> 우승!
+              </p>
+            </>
+          )}
+          {cold.status === "gameover" && (
+            <>
+              <p className="cold-game-title text-dbd-yellow">모든 경기 종료</p>
+              <p className="mt-3 text-2xl font-black text-dbd-yellow drop-shadow-md tracking-widest" style={{ fontFamily: "var(--font-godo)" }}>
+                {cold.winnerName === "tie" ? (
+                  "최종 결과: 무승부!"
+                ) : (
+                  <>
+                    <span className={`cold-team-name ${cold.winnerName === thomasName ? 'cold-team-thomas text-dbd-orange' : 'cold-team-ada text-dbd-blue'}`}>
+                      {cold.winnerName}팀
+                    </span> 우승!
+                  </>
+                )}
               </p>
             </>
           )}
@@ -917,6 +953,22 @@ export function Scoreboard() {
             )}
           </div>
         </div>
+
+        {/* 우승 오버레이 */}
+        {!overlayDismissed && cold.status === "cold" && (
+          <WinnerOverlay 
+            winnerName={cold.name === thomasName ? adaName : thomasName} 
+            teamColor={cold.name === thomasName ? "ada" : "thomas"} 
+            onDismiss={() => setOverlayDismissed(true)} 
+          />
+        )}
+        {!overlayDismissed && cold.status === "gameover" && (
+          <WinnerOverlay 
+            winnerName={cold.winnerName === "tie" ? "tie" : cold.winnerName} 
+            teamColor={cold.winnerName === "tie" ? undefined : (cold.winnerName === thomasName ? "thomas" : "ada")} 
+            onDismiss={() => setOverlayDismissed(true)} 
+          />
+        )}
       </div>
     </main>
   )
