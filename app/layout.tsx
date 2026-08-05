@@ -25,7 +25,15 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`dark ${blackHanSans.className}`} style={{ "--font-black-han": blackHanSans.style.fontFamily } as React.CSSProperties}>
       <body className="bg-background antialiased" style={{ fontFamily: "var(--font-godo)" }}>
-        {children}
+        {/* Fixed Global Background — Never moves or resizes on page transitions */}
+        <div className="fixed inset-0 trial-arena pointer-events-none z-0 overflow-hidden" aria-hidden="true">
+          <div className="arena-fog" />
+          <div className="arena-scratches" />
+          <div className="arena-axis" />
+        </div>
+        <div className="relative z-10">
+          {children}
+        </div>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

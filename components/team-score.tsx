@@ -25,7 +25,7 @@ const PARTICLES: { startY: number; travelX: number; wave: number[]; w: number; h
   { startY: 92, travelX: 350, wave: [0, -5,  9, -3,  7, -6],  w:  7, h: 0.8, delay: 0.06, dur: 0.83 },
 ]
 
-function ScoreNumber({ value, side, lit, close }: { value: number; side: Side; lit: boolean; close: boolean }) {
+function ScoreNumber({ value, side, lit, close, bump = 0 }: { value: number; side: Side; lit: boolean; close: boolean; bump?: number }) {
   const reducedMotionRaw = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
@@ -43,9 +43,9 @@ function ScoreNumber({ value, side, lit, close }: { value: number; side: Side; l
       <span className="score-energy" aria-hidden="true" />
       <span className="score-scratch" aria-hidden="true" />
       <AnimatePresence>
-        {!reducedMotion && value > 0 && (
+        {!reducedMotion && (value > 0 || bump > 0) && (
           <motion.span
-            key={`burst-${value}`}
+            key={`burst-${value}-${bump}`}
             className="score-particle-field"
             aria-hidden="true"
             initial={{ opacity: 1 }}
@@ -84,7 +84,7 @@ function ScoreNumber({ value, side, lit, close }: { value: number; side: Side; l
       </AnimatePresence>
       <span className="score-value-wrap">
         <motion.span
-          key={whole}
+          key={`${whole}-${bump}`}
           className="score-whole"
           initial={reducedMotion ? false : { y: -28, opacity: 0, filter: "blur(10px)", scale: 0.85 }}
           animate={{ y: 0, opacity: 1, filter: "blur(0px)", scale: 1 }}
@@ -108,7 +108,7 @@ function ScoreNumber({ value, side, lit, close }: { value: number; side: Side; l
         </AnimatePresence>
       </span>
       <motion.span
-        key={`wake-${value}`}
+        key={`wake-${value}-${bump}`}
         className="score-color-wake"
         aria-hidden="true"
         initial={reducedMotion ? false : { x: direction * -30, scaleX: 0.15, opacity: 0 }}
@@ -119,15 +119,15 @@ function ScoreNumber({ value, side, lit, close }: { value: number; side: Side; l
   )
 }
 
-export function TeamScore({ left, right, orangeLit, blueLit, close }: { left: number; right: number; orangeLit: boolean; blueLit: boolean; close: boolean }) {
+export function TeamScore({ left, right, orangeLit, blueLit, close, leftBump = 0, rightBump = 0 }: { left: number; right: number; orangeLit: boolean; blueLit: boolean; close: boolean; leftBump?: number; rightBump?: number }) {
   return (
     <div className="versus-stage">
-      <ScoreNumber value={left} side="left" lit={orangeLit} close={close} />
+      <ScoreNumber value={left} side="left" lit={orangeLit} close={close} bump={leftBump} />
       <div className="versus-sigil" aria-label="대">
         <span className="versus-line" aria-hidden="true" />
         <span className="versus-label">VS</span>
       </div>
-      <ScoreNumber value={right} side="right" lit={blueLit} close={close} />
+      <ScoreNumber value={right} side="right" lit={blueLit} close={close} bump={rightBump} />
     </div>
   )
 }

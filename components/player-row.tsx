@@ -128,8 +128,18 @@ function KillerTag({ value, isThomas, disabled, onChange }: {
   )
 }
 
-function DragHandle({ disabled }: { disabled: boolean }) {
-  return <span aria-hidden className={cn("drag-handle", !disabled && "cursor-grab active:cursor-grabbing")}>{Array.from({ length: 6 }).map((_, i) => <i key={i} />)}</span>
+function DragHandle({ disabled, onDragStart, onDragEnd }: { disabled: boolean; onDragStart?: (e: React.DragEvent) => void; onDragEnd?: (e: React.DragEvent) => void }) {
+  return (
+    <span
+      aria-hidden
+      draggable={!disabled}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className={cn("drag-handle", !disabled && "cursor-grab active:cursor-grabbing")}
+    >
+      {Array.from({ length: 6 }).map((_, i) => <i key={i} />)}
+    </span>
+  )
 }
 
 function buildPlateMotion(prevKills: number, kills: number, fourKill: boolean, isThomas: boolean) {
@@ -177,8 +187,8 @@ function buildPlateMotion(prevKills: number, kills: number, fourKill: boolean, i
   }
 }
 
-export function PlayerRow({ player, team, active, animId, prevKills, dragging, readOnly = false, removeMode = false, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd }: {
-  player: Player; team: Team; active: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean
+export function PlayerRow({ player, team, active, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd }: {
+  player: Player; team: Team; active: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean
   onRemove?: () => void; onScore: (newKills: number) => void; onZeroKill: () => void; onCancel: () => void; onNameChange: (name: string) => void
   onNameCommit: (name: string) => void; onKillerChange: (killer: string) => void; onDragStart: () => void; onDragEnter: () => void; onDragEnd: () => void
 }) {
@@ -189,43 +199,42 @@ export function PlayerRow({ player, team, active, animId, prevKills, dragging, r
   useEffect(() => { setMounted(true) }, [])
   const reducedMotion = mounted ? reducedMotionRaw : false
   const [hover, setHover] = useState<{ index: number; half: boolean } | null>(null)
-  // ALL KILL 이름표로의 전환이 flash peak 타이밍에 일어나도록 지연
   const [isRevealed, setIsRevealed] = useState(false)
-  // 반짝임은 Exalted 전환 + whiteout fade 이후에 시작해야 버그 없음
   const [isFlashReady, setIsFlashReady] = useState(false)
   const posForIndex = (i: number) => isThomas ? i : SKULLS_PER_PLAYER - 1 - i
   const fillFor = (pos: number, kills: number): 0 | 0.5 | 1 => kills - pos >= 1 ? 1 : kills - pos >= 0.5 ? 0.5 : 0
-  const previewKills = hover ? posForIndex(hover.index) + (hover.half ? 0.5 : 1) : null
+  
+  // 4v4 모드에서 0.5, 1.5, 2.5킬은 규칙상 불가능함.
+  // 반 킬(0.5점)은 4번째 해골(pos === 3)에만 허용하여 3.5킬 입력을 지원함.
+  const calcScore = (pos: number, half: boolean) => {
+    if (!allowHalf) return pos + 1
+    if (pos < 3) return pos + 1
+    return pos + (half ? 0.5 : 1)
+  }
+
+  const previewKills = hover ? calcScore(posForIndex(hover.index), hover.half) : null
   const fourKill = player.played && player.kills === 4
-  // 네 번째 해골이 완전히 안착한 뒤 1초 동안 ���너지를 응축하고 Exalted로 전환한다.
   const allKillDelay = animId > 0 ? (SKULLS_PER_PLAYER - 1) * SKULL_STAGGER + SKULL_DURATION : 0
   const exaltedRevealDelay = allKillDelay + CHARGE_DURATION
   const plateMotion = animId > 0 && !reducedMotion ? buildPlateMotion(prevKills, player.kills, fourKill, isThomas) : null
 
-  // fourKill이 바뀔 때마다 reveal 타이밍 제어
   const prevFourKill = useRef(false)
   useEffect(() => {
     if (fourKill && !prevFourKill.current) {
       if (reducedMotion || animId === 0) {
         setIsRevealed(true)
       } else {
-        // 에너지 응축이 절정에 도달해 순백으로 터지는 정확한 순간에 외형을 전환한다.
         const t = setTimeout(() => setIsRevealed(true), exaltedRevealDelay * 1000)
-        prevFourKill.current = true
         return () => clearTimeout(t)
       }
-    }
-    if (!fourKill) {
-      prevFourKill.current = false
+    } else if (!fourKill) {
       setIsRevealed(false)
     }
     prevFourKill.current = fourKill
   }, [fourKill, reducedMotion, animId, exaltedRevealDelay])
 
-  // whiteout이 완전히 사라진 뒤에 반짝임을 활성화 (exalted-shimmer CSS delay 0s로 통일)
   useEffect(() => {
     if (!fourKill || reducedMotion) { setIsFlashReady(false); return }
-    // exaltedRevealDelay + whiteout fade 완료(0.62s) 이후
     const t = setTimeout(() => setIsFlashReady(true), (exaltedRevealDelay + 0.66) * 1000)
     return () => { clearTimeout(t); setIsFlashReady(false) }
   }, [fourKill, reducedMotion, exaltedRevealDelay])
@@ -234,12 +243,10 @@ export function PlayerRow({ player, team, active, animId, prevKills, dragging, r
     const pos = posForIndex(i)
     const fill = fillFor(pos, player.kills)
     const preview = previewKills === null ? 0 : fillFor(pos, previewKills)
-    // 새로 추가된 해골만 애니메이션: pos+1 (혹은 pos+0.5) 이 prevKills 초과 범위
     const isNew = animId > 0 && fill > 0 && (pos + (fill === 0.5 ? 0.5 : 1)) > prevKills
-    return <Skull key={i} team={team} fill={fill} previewFill={preview === fill ? 0 : preview} animId={animId} animOrder={pos} animate={isNew} disabled={interactionsDisabled} onHover={(half) => setHover({ index: i, half })} onPick={(half) => {
-      const selected = pos + (half ? 0.5 : 1)
+    return <Skull key={i} team={team} fill={fill} previewFill={preview === fill ? 0 : preview} animId={animId} animOrder={pos} animate={isNew} disabled={interactionsDisabled} onHover={(half) => setHover({ index: i, half: allowHalf && pos === 3 && half })} onPick={(half) => {
+      const selected = calcScore(pos, half)
       if (player.kills === selected && player.played) {
-        // 같은 값을 다시 누르면 입력 취소 (미입력 상태로 되돌림)
         onCancel()
       } else {
         onScore(selected)
@@ -271,9 +278,9 @@ export function PlayerRow({ player, team, active, animId, prevKills, dragging, r
       <motion.div
         key={`${player.id}-${animId}`}
         role={removeMode ? "button" : undefined} tabIndex={removeMode ? 0 : undefined} aria-label={removeMode ? `${player.name} 제거` : undefined}
-        draggable={!interactionsDisabled} onClick={removeMode ? (event) => { event.stopPropagation(); onRemove?.() } : undefined}
+        onClick={removeMode ? (event) => { event.stopPropagation(); onRemove?.() } : undefined}
         onKeyDown={removeMode ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onRemove?.() } } : undefined}
-        onDragStart={onDragStart} onDragEnter={onDragEnter} onDragOver={(event) => !interactionsDisabled && event.preventDefault()} onDragEnd={onDragEnd}
+        onDragEnter={onDragEnter} onDragOver={(event) => !interactionsDisabled && event.preventDefault()}
         className={cn("plate-motion-shell", dragging && "opacity-40")}
         animate={plateMotion ? { x: plateMotion.x, y: plateMotion.y, rotate: plateMotion.rotate } : undefined}
         transition={plateMotion?.transition}
@@ -291,7 +298,23 @@ export function PlayerRow({ player, team, active, animId, prevKills, dragging, r
           )}
           {isRevealed && <span className="exalted-corners" aria-hidden="true" />}
           {isFlashReady && <span className="exalted-flash" aria-hidden="true" />}
-          {isThomas ? <><DragHandle disabled={interactionsDisabled} />{nameInput}<NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />{skullGroup}</> : <>{skullGroup}<NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />{nameInput}<DragHandle disabled={interactionsDisabled} /></>}
+          {isThomas ? (
+            <>
+              <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+              <div className="w-32 sm:w-36 flex-none flex items-center">{nameInput}</div>
+              <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
+              <NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
+              {skullGroup}
+            </>
+          ) : (
+            <>
+              {skullGroup}
+              <NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
+              <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
+              <div className="w-32 sm:w-36 flex-none flex items-center justify-end">{nameInput}</div>
+              <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+            </>
+          )}
           {isRevealed && (
             <motion.span
               className="exalted-rank"
