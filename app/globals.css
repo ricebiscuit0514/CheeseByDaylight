@@ -192,7 +192,7 @@
 }
 
 /* Premium asymmetric-horror combat system */
-.trial-arena { background-color: var(--background); background-image: url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/lullaby-of-the-dark-key-art-CeQDd8I2BZWkoEGg7f74CgaTWer5pO.png"); background-position: center; background-size: cover; background-attachment: fixed; }
+.trial-arena { background-color: var(--background); background-image: url("/images/lullaby-of-the-dark-key-art.png"); background-position: center; background-size: cover; background-attachment: fixed; }
 .trial-arena::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in oklch, var(--background), transparent 18%), color-mix(in oklch, var(--background), transparent 34%) 42%, color-mix(in oklch, var(--background), transparent 8%)), linear-gradient(to right, color-mix(in oklch, var(--background), transparent 22%), transparent 34% 66%, color-mix(in oklch, var(--background), transparent 22%)); }
 .arena-fog { position: absolute; inset: 22% -15% 0; opacity: .28; background: radial-gradient(ellipse at center, color-mix(in oklch, var(--muted-foreground), transparent 91%), transparent 65%); filter: blur(32px); }
 .arena-scratches { position: absolute; inset: 0; opacity: .11; pointer-events: none; background: repeating-linear-gradient(112deg, transparent 0 42px, color-mix(in oklch, var(--foreground), transparent 90%) 43px, transparent 44px 76px); mask-image: linear-gradient(to bottom, transparent, black 25%, black 80%, transparent); }
@@ -262,13 +262,15 @@
 .player-name-input { width: 0; min-width: 0; flex: 1 1 0%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; color: var(--foreground); font-family: var(--font-godo); font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; outline: none; }
 .player-name-input::placeholder { color: var(--muted-foreground); }
 
-/* Enlarge number input spin buttons */
+/* Hide number input spin buttons globally */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
-  height: 28px;
-  width: 20px;
-  opacity: 0.9;
-  cursor: pointer;
+  -webkit-appearance: none;
+  margin: 0;
+  display: none;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
 }
 .skull-group { display: flex; flex: 0 0 auto; align-items: center; gap: .15rem; }
 .skull-slot { position: relative; width: 2.35rem; height: 2.55rem; flex-shrink: 0; transition: transform .15s ease, filter .15s ease; }

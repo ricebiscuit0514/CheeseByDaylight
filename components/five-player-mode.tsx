@@ -5,6 +5,7 @@ import { Copy } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { useRouter } from "next/navigation"
 import { PlayerRow, type Player } from "@/components/player-row"
+import { cn } from "@/lib/utils"
 
 const DEFAULT_RECEIVING = [5, 8, 10, 12, 15]
 const DEFAULT_GIVING = [15, 12, 10, 8, 5]
@@ -62,9 +63,14 @@ export function FivePlayerMode() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        if (parsed.players && Array.isArray(parsed.players)) setPlayers(parsed.players)
-        if (parsed.receivingConfig) setReceivingConfig(parsed.receivingConfig)
-        if (parsed.givingConfig) setGivingConfig(parsed.givingConfig)
+        const EXPIRATION_TIME_MS = 2 * 60 * 60 * 1000 // 2시간 만료
+        if (parsed.updatedAt && Date.now() - parsed.updatedAt > EXPIRATION_TIME_MS) {
+          localStorage.removeItem("dbd-5p-state-v2")
+        } else {
+          if (parsed.players && Array.isArray(parsed.players)) setPlayers(parsed.players)
+          if (parsed.receivingConfig) setReceivingConfig(parsed.receivingConfig)
+          if (parsed.givingConfig) setGivingConfig(parsed.givingConfig)
+        }
       } catch (e) {
         console.error("Failed to parse saved state", e)
       }
@@ -75,7 +81,10 @@ export function FivePlayerMode() {
   useEffect(() => {
     if (!isLoaded) return
     try {
-      localStorage.setItem("dbd-5p-state-v2", JSON.stringify({ players, receivingConfig, givingConfig }))
+      localStorage.setItem(
+        "dbd-5p-state-v2",
+        JSON.stringify({ players, receivingConfig, givingConfig, updatedAt: Date.now() })
+      )
     } catch {
       // ignore
     }
@@ -203,6 +212,7 @@ export function FivePlayerMode() {
     .join(", ")
 
   const [copiedType, setCopiedType] = useState<"receiving" | "giving" | null>(null)
+  const [isEditingPinball, setIsEditingPinball] = useState(false)
 
   const handleCopy = (text: string, type: "receiving" | "giving") => {
     try {
@@ -221,6 +231,7 @@ export function FivePlayerMode() {
       className="relative min-h-screen w-full overflow-hidden text-foreground"
       onClick={() => {
         if (removeMode) setRemoveMode(false)
+        if (isEditingPinball) setIsEditingPinball(false)
       }}
     >
 
@@ -274,7 +285,7 @@ export function FivePlayerMode() {
                   className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   <img
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Addplayer-j1Wdqcd9gLokCKfKVrdt96Gu5wBqbM.png"
+                    src="/images/addplayer.png"
                     alt=""
                     draggable={false}
                     className="size-full object-cover transition-[filter] group-hover:brightness-125"
@@ -292,7 +303,7 @@ export function FivePlayerMode() {
                   }`}
                 >
                   <img
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Removeplayer-ExYhz8hM8Tgzqopazw6mq4EtaVtoK4.png"
+                    src="/images/removeplayer.png"
                     alt=""
                     draggable={false}
                     className="size-full object-cover transition-[filter] group-hover:brightness-125"
@@ -347,14 +358,33 @@ export function FivePlayerMode() {
           </div>
 
           {/* Right Column: Pinball Config (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col gap-3">
-            <div className="max-w-[310px] w-full mx-auto">
+          <div
+            className="lg:col-span-5 flex flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative max-w-[310px] w-full mx-auto flex items-center justify-center border-b border-neutral-700/60 pb-2">
               <h2
-                className="text-xl font-bold italic text-dbd-yellow border-b border-neutral-700/60 pb-2 text-center"
+                className="text-xl font-bold italic text-dbd-yellow text-center"
                 style={{ fontFamily: "var(--font-aldrich)" }}
               >
                 핀볼 갯수 설정
               </h2>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setIsEditingPinball((prev) => !prev)
+                }}
+                className={cn(
+                  "absolute right-0 px-2 py-0.5 text-xs font-bold rounded transition-all duration-200 cursor-pointer select-none",
+                  isEditingPinball
+                    ? "bg-dbd-yellow text-black hover:bg-yellow-400 font-extrabold shadow-[0_0_10px_rgba(234,179,8,0.5)]"
+                    : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white border border-neutral-700 opacity-80"
+                )}
+                style={{ fontFamily: "var(--font-godo)" }}
+              >
+                {isEditingPinball ? "완료" : "수정하기"}
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 max-w-[310px] w-full mx-auto pt-1">
@@ -369,23 +399,29 @@ export function FivePlayerMode() {
                     <input
                       type="number"
                       value={receivingConfig[k]}
-                      onChange={(e) => updateConfig(true, k, e.target.value)}
-                      className="w-9 bg-neutral-900/90 text-white font-bold text-center py-0.5 text-sm rounded border border-neutral-700 focus:border-emerald-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      readOnly={!isEditingPinball}
+                      onChange={(e) => isEditingPinball && updateConfig(true, k, e.target.value)}
+                      className={cn(
+                        "w-9 bg-neutral-900/90 text-white font-bold text-center py-0.5 text-sm rounded border border-neutral-700 focus:border-emerald-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all",
+                        !isEditingPinball && "cursor-default border-neutral-800"
+                      )}
                     />
                     <span className="text-neutral-500 text-xs">개</span>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
+                        disabled={!isEditingPinball}
                         onClick={() => updateConfig(true, k, receivingConfig[k] + 1)}
-                        className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-emerald-600 hover:text-white font-bold text-xs transition-colors cursor-pointer select-none"
+                        className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-emerald-600 hover:text-white font-bold text-xs transition-colors cursor-pointer select-none disabled:opacity-20 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed"
                         title="1 증가"
                       >
                         +
                       </button>
                       <button
                         type="button"
+                        disabled={!isEditingPinball}
                         onClick={() => updateConfig(true, k, Math.max(0, receivingConfig[k] - 1))}
-                        className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-red-600 hover:text-white font-bold text-xs transition-colors cursor-pointer select-none"
+                        className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-red-600 hover:text-white font-bold text-xs transition-colors cursor-pointer select-none disabled:opacity-20 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed"
                         title="1 감소"
                       >
                         -
@@ -406,23 +442,29 @@ export function FivePlayerMode() {
                     <input
                       type="number"
                       value={givingConfig[k]}
-                      onChange={(e) => updateConfig(false, k, e.target.value)}
-                      className="w-9 bg-neutral-900/90 text-white font-bold text-center py-0.5 text-sm rounded border border-neutral-700 focus:border-dbd-orange focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      readOnly={!isEditingPinball}
+                      onChange={(e) => isEditingPinball && updateConfig(false, k, e.target.value)}
+                      className={cn(
+                        "w-9 bg-neutral-900/90 text-white font-bold text-center py-0.5 text-sm rounded border border-neutral-700 focus:border-dbd-orange focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all",
+                        !isEditingPinball && "cursor-default border-neutral-800"
+                      )}
                     />
                     <span className="text-neutral-500 text-xs">개</span>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
+                        disabled={!isEditingPinball}
                         onClick={() => updateConfig(false, k, givingConfig[k] + 1)}
-                        className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-dbd-orange hover:text-white font-bold text-xs transition-colors cursor-pointer select-none"
+                        className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-dbd-orange hover:text-white font-bold text-xs transition-colors cursor-pointer select-none disabled:opacity-20 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed"
                         title="1 증가"
                       >
                         +
                       </button>
                       <button
                         type="button"
+                        disabled={!isEditingPinball}
                         onClick={() => updateConfig(false, k, Math.max(0, givingConfig[k] - 1))}
-                        className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-red-600 hover:text-white font-bold text-xs transition-colors cursor-pointer select-none"
+                        className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-red-600 hover:text-white font-bold text-xs transition-colors cursor-pointer select-none disabled:opacity-20 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed"
                         title="1 감소"
                       >
                         -
@@ -436,7 +478,7 @@ export function FivePlayerMode() {
         </div>
 
         {/* Bottom Commands Area & Semi-transparent Divider */}
-        <div className="mt-10 md:mt-12 pt-5 border-t border-foreground/10 flex flex-col space-y-2.5">
+        <div className="mt-8 md:mt-10 pt-5 border-t border-foreground/10 flex flex-col space-y-2.5 max-w-3xl w-full mx-auto">
           
           {/* Receiving Command Box */}
           <div

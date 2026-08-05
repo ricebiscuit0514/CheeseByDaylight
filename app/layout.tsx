@@ -7,9 +7,27 @@ import './globals.css'
 const blackHanSans = Black_Han_Sans({ weight: '400', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Dead by Daylight 스코어보드',
-  description: '데드 바이 데이라이트 팀 스코어보드',
-  generator: 'v0.app',
+  title: 'Cheese By Daylight | 치즈 바이 데이라이트',
+  description: '데드 바이 데이라이트 커스텀 게임 진행 보조 프로그램입니다.',
+  keywords: ['cheesebydaylight', 'cheese by Daylight', '치즈바이데이라이트', '치즈 바이 데이라이트', '치바데'],
+  applicationName: 'Cheese by Daylight',
+  authors: [{ name: 'Cheese by Daylight' }],
+  openGraph: {
+    title: 'Cheese By Daylight | 치즈 바이 데이라이트',
+    description: '데드 바이 데이라이트 커스텀 게임 진행 보조 프로그램입니다.',
+    siteName: 'Cheese by Daylight',
+    locale: 'ko_KR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Cheese By Daylight | 치즈 바이 데이라이트',
+    description: '데드 바이 데이라이트 커스텀 게임 진행 보조 프로그램입니다.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 }
 
 export const viewport: Viewport = {

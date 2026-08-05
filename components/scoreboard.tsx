@@ -5,6 +5,7 @@ import { MAX_KILLS, PlayerRow, type Player } from "@/components/player-row"
 import { TeamScore } from "@/components/team-score"
 import { WinnerOverlay } from "@/components/winner-overlay"
 import { cn } from "@/lib/utils"
+import { motion } from "motion/react"
 import { useRouter } from "next/navigation"
 
 type Team = "thomas" | "ada"
@@ -226,21 +227,118 @@ function loadFromStorage() {
   try {
     const raw = localStorage.getItem(LS_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as {
+    const parsed = JSON.parse(raw) as {
       thomas: Player[]
       ada: Player[]
       thomasName: string
       adaName: string
+      updatedAt?: number
     }
+    if (parsed.updatedAt && Date.now() - parsed.updatedAt > EXPIRATION_TIME_MS) {
+      localStorage.removeItem(LS_KEY)
+      return null
+    }
+    return parsed
   } catch {
     return null
   }
 }
 
+function CoinTossWidget({ thomasName, adaName }: { thomasName: string; adaName: string }) {
+  const [tossing, setTossing] = useState(false)
+  const [result, setResult] = useState<"thomas" | "ada" | null>(null)
+
+  const handleToss = () => {
+    if (tossing) return
+    setTossing(true)
+    setResult(null)
+
+    setTimeout(() => {
+      const winner = Math.random() < 0.5 ? "thomas" : "ada"
+      setResult(winner)
+      setTossing(false)
+    }, 1100)
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={tossing}
+      onClick={handleToss}
+      title={result ? "클릭 시 다시 추첨합니다" : "클릭 시 선공 팀을 무작위로 추첨합니다"}
+      className={cn(
+        "group relative flex items-center justify-center gap-2 px-4 py-1.5 rounded-full text-xs font-black backdrop-blur-md border transition-all duration-300 cursor-pointer select-none active:scale-95",
+        tossing
+          ? "bg-black/90 text-dbd-yellow border-dbd-yellow"
+          : result === "thomas"
+          ? "bg-black/90 text-dbd-orange border-dbd-orange hover:brightness-125"
+          : result === "ada"
+          ? "bg-black/90 text-dbd-blue border-dbd-blue hover:brightness-125"
+          : "bg-black/85 text-dbd-yellow border-dbd-yellow/70 hover:border-dbd-yellow hover:bg-black"
+      )}
+      style={{ fontFamily: "var(--font-godo)" }}
+    >
+      {/* Tossing State */}
+      {tossing && (
+        <>
+          <motion.span
+            animate={{ rotateY: [0, 1080] }}
+            transition={{ duration: 1.1, ease: "easeInOut" }}
+            className="inline-block text-sm"
+          >
+            🪙
+          </motion.span>
+          <span className="tracking-widest">선공 결정 중...</span>
+        </>
+      )}
+
+      {/* Result State */}
+      {!tossing && result !== null && (
+        <>
+          {result === "thomas" && (
+            <motion.span
+              animate={{ x: [-4, 0, -4] }}
+              transition={{ repeat: Infinity, duration: 0.8 }}
+              className="text-sm text-dbd-orange font-black"
+            >
+              ◄
+            </motion.span>
+          )}
+          <span className="tracking-wide">
+            {result === "thomas" ? thomasName : adaName} 팀 선공!
+          </span>
+          {result === "ada" && (
+            <motion.span
+              animate={{ x: [0, 4, 0] }}
+              transition={{ repeat: Infinity, duration: 0.8 }}
+              className="text-sm text-dbd-blue font-black"
+            >
+              ►
+            </motion.span>
+          )}
+          <span className="ml-1 text-[10px] opacity-70 group-hover:opacity-100 transition-opacity">
+            (재추첨)
+          </span>
+        </>
+      )}
+
+      {/* Idle State */}
+      {!tossing && result === null && (
+        <>
+          <span className="text-sm transition-transform duration-300 group-hover:rotate-180">
+            🪙
+          </span>
+          <span className="tracking-wider">선공 결정</span>
+        </>
+      )}
+    </button>
+  )
+}
+
 export function Scoreboard() {
   const router = useRouter()
   // SSR/CSR hydration mismatch 방지: 초기값은 항상 서버와 동일한 기본값으로 시작하고,
-  // 마운트 ��� useEffect에서 localStorage 값을 불러와 상태에 반영한다.
+  // 마운트 후 useEffect에서 localStorage 값을 불러와 상태에 반영한다.
   const [thomas, setThomas] = useState<Player[]>(INITIAL_THOMAS)
   const [ada, setAda] = useState<Player[]>(INITIAL_ADA)
   const [thomasName, setThomasName] = useState("A")
@@ -281,7 +379,10 @@ export function Scoreboard() {
   // localStorage 자동 저장 — thomas/ada 점수 및 팀 이름 변경 시마다 저장
   useEffect(() => {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify({ thomas, ada, thomasName, adaName }))
+      localStorage.setItem(
+        LS_KEY,
+        JSON.stringify({ thomas, ada, thomasName, adaName, updatedAt: Date.now() })
+      )
     } catch {
       // 저장 실패 시 무시
     }
@@ -614,8 +715,12 @@ export function Scoreboard() {
       }}
     >
       <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-5 pb-28 md:px-8 md:py-6 md:pb-28">
-        {/* editable team titles */}
-        <div className="grid grid-cols-2 gap-4 border-b border-foreground/10 pb-4">
+        {/* editable team titles & floating coin toss widget */}
+        <div className="relative border-b border-foreground/10 pb-4">
+          <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-30">
+            <CoinTossWidget thomasName={thomasName} adaName={adaName} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
           <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
             {/* 숨겨진 span으로 실제 렌더 폭을 측정해 input에 적용 */}
             <span className="relative inline-block pr-[0.35em]">
@@ -654,6 +759,7 @@ export function Scoreboard() {
             <span className="font-bold italic text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
           </h1>
         </div>
+      </div>
 
         {/* rosters */}
         <div className="mt-1 grid grid-cols-1 gap-5 md:h-96 md:grid-cols-2 md:gap-12 lg:gap-20">

@@ -9,7 +9,7 @@ export const MAX_KILLS = 4
 
 export type Player = { id: string; name: string; kills: number; played: boolean; killer?: string }
 type Team = "thomas" | "ada"
-const SKULL_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/skull-In6dI80mEpk5ozOhNaDWKNmXyV4w2E.png"
+const SKULL_URL = "/images/skull.png"
 const SKULL_STAGGER = 0.42
 const SKULL_DURATION = 0.68
 const SKULL_IMPACT_AT = 0.32
@@ -80,7 +80,7 @@ function Skull({ fill, previewFill, team, animId, animOrder, animate, disabled, 
   )
 }
 
-const ZERO_KILL_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/0kill-VuOOHcLmBrHXgAMaRTVKeAkSYOz0Pl.png"
+const ZERO_KILL_URL = "/images/0kill.png"
 
 function NoKillButton({ played, kills, disabled, onZero, onCancel }: { played: boolean; kills: number; disabled: boolean; onZero: () => void; onCancel: () => void }) {
   const selected = played && kills === 0
@@ -102,29 +102,33 @@ function KillerTag({ value, isThomas, disabled, onChange }: {
 }) {
   const isEmpty = value.trim() === ""
   return (
-    <input
-      type="text"
-      value={value}
-      placeholder=""
-      readOnly={disabled}
-      onChange={(e) => onChange?.(e.target.value)}
-      onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
-      aria-label="살인마 이름"
-      style={{
-        fontFamily: "var(--font-godo)",
-        fontWeight: 400,
-        height: "1.75rem",
-        // 빈 상태: 1ch 정사각형. 텍스트 있을 때: size 속성으로 content에 맞게 자동 늘어남
-        width: isEmpty ? "1.75rem" : undefined,
-      }}
-      size={isEmpty ? 1 : Math.max(value.length, 1)}
-      className={cn(
-        "rounded border border-dbd-yellow/80 bg-neutral-950/80 text-xs text-dbd-yellow outline-none transition-[width] duration-150 placeholder-transparent",
-        "focus:border-dbd-yellow",
-        disabled && "cursor-default pointer-events-none",
-        isEmpty ? "px-0 text-center" : cn("px-1.5", isThomas ? "text-right" : "text-left"),
-      )}
-    />
+    <div className="relative inline-flex items-center min-w-[1.75rem] h-[1.75rem]">
+      <span
+        aria-hidden="true"
+        className="invisible px-2 text-xs font-normal whitespace-pre h-[1.75rem] flex items-center select-none pointer-events-none"
+        style={{ fontFamily: "var(--font-godo)" }}
+      >
+        {isEmpty ? " " : value}
+      </span>
+      <input
+        type="text"
+        value={value}
+        placeholder=""
+        readOnly={disabled}
+        onChange={(e) => onChange?.(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
+        aria-label="살인마 이름"
+        style={{
+          fontFamily: "var(--font-godo)",
+          fontWeight: 400,
+        }}
+        className={cn(
+          "absolute inset-0 size-full rounded border border-dbd-yellow/80 bg-neutral-950/80 text-xs text-dbd-yellow outline-none text-center px-1.5 placeholder-transparent transition-all duration-150",
+          "focus:border-dbd-yellow",
+          disabled && "cursor-default pointer-events-none"
+        )}
+      />
+    </div>
   )
 }
 
