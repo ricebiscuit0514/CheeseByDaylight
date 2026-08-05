@@ -5,6 +5,7 @@ import { MAX_KILLS, PlayerRow, type Player } from "@/components/player-row"
 import { TeamScore } from "@/components/team-score"
 import { WinnerOverlay } from "@/components/winner-overlay"
 import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
 
 type Team = "thomas" | "ada"
 
@@ -44,6 +45,16 @@ type ColdState =
   | { status: "cold"; name: string }
   | { status: "gameover"; winnerName: string | "tie" }
 
+/** 4v4 모드에서 실제 득점 가능한 킬 수 단위: 1, 2, 3, 3.5, 4킬만 올림 계산 */
+function toValid4v4Step(rawNeed: number): number {
+  if (rawNeed <= 0) return 0
+  if (rawNeed <= 1) return 1
+  if (rawNeed <= 2) return 2
+  if (rawNeed <= 3) return 3
+  if (rawNeed <= 3.5) return 3.5
+  return 4
+}
+
 /**
  * Best/worst-case reachability. Each remaining (un-played) player can still
  * score up to MAX_KILLS. A team is mathematically out ("cold game") once its
@@ -70,14 +81,15 @@ function computeCold(
   const aMax = as + ar * MAX_KILLS
 
   // ── 남은 경기 없는 상황: 콜드게임 아닌 일반 경고 ──
-  // 현재 경기가 마지막(남은 플레이어가 한 명씩 있거나 한 팀에만 한 명 남은 상황)이고
-  // 콜드게임 룰이 적용되지 않을 때 — 이번 경기에서 몇 킬 이상 해야 우승 가능한지 안내.
   if (tr + ar === 0 && (ts !== 0 || as !== 0)) {
-    // 모든 경기가 끝난 상태: 결과 표시 (이미 cold 체크 전이므로 여기선 동점 상황만 처리)
     if (ts > as) return { status: "gameover", winnerName: thomasName }
     if (as > ts) return { status: "gameover", winnerName: adaName }
     return { status: "gameover", winnerName: "tie" }
   }
+
+  // ── 한 팀의 현재 점수가 상대팀의 최대 가능 점수를 초과한 경우: 즉시 우승 확정 ──
+  if (as > tMax) return { status: "gameover", winnerName: adaName }
+  if (ts > aMax) return { status: "gameover", winnerName: thomasName }
 
   // 콜드게임 판정: 남은 플레이어가 2명 이상 있을 때만 적용
   // 한 팀에만 1명 남은 마지막 경기 상황에서는 콜드게임 적용 안 함
@@ -99,19 +111,18 @@ function computeCold(
     if (my > opp) return { status: "none" }
 
     // 동점에 필요한 킬 수 (my + tieNeed = opp)
-    const tieNeed = opp - my
-    // 우승(초과)에 필요한 킬 수 — 0.5킬 단위가 존재하므로 +0.5
-    const winNeed = opp - my + 0.5
+    const tieNeed = toValid4v4Step(opp - my)
+    const validSteps = [1, 2, 3, 3.5, 4]
+    const winNeedStep = validSteps.find((step) => my + step > opp)
+    const canWin = winNeedStep !== undefined
 
     // 동점조차 불가능한 경우 (올킬로도 동점 못 만듦) → cold 선언
-    if (tieNeed > MAX_KILLS) {
+    if (my + MAX_KILLS < opp) {
       return { status: "cold", name: myName }
     }
 
     // 동점 또는 역전 가능: 일반 경고
-    // winNeed <= MAX_KILLS 이면 우승 가능, 아니면 올킬로 동점만 가능
-    const canWin = winNeed <= MAX_KILLS
-    const displayNeed = canWin ? winNeed : MAX_KILLS
+    const displayNeed = canWin ? winNeedStep : tieNeed
     return {
       status: "warning",
       name: myName,
@@ -141,7 +152,8 @@ function computeCold(
 
       // ── 현재 차례 팀 경고 ─────────────────────────────────────────
       // 이번 선수가 최소 need킬, 나머지 내 선수들이 모두 MAX_KILLS를 해야 동점
-      const need = opp - my - (myRem - 1) * MAX_KILLS
+      const rawNeed = opp - my - (myRem - 1) * MAX_KILLS
+      const need = toValid4v4Step(rawNeed)
       if (need > 0) {
         const myRemainingAfterThis = myRem - 1
         const myNextCapacity = myRemainingAfterThis * MAX_KILLS
@@ -226,6 +238,7 @@ function loadFromStorage() {
 }
 
 export function Scoreboard() {
+  const router = useRouter()
   // SSR/CSR hydration mismatch 방지: 초기값은 항상 서버와 동일한 기본값으로 시작하고,
   // 마운트 ��� useEffect에서 localStorage 값을 불러와 상태에 반영한다.
   const [thomas, setThomas] = useState<Player[]>(INITIAL_THOMAS)
@@ -240,6 +253,8 @@ export function Scoreboard() {
   const [anim, setAnim] = useState<Record<string, number>>({})
   // previous kills snapshot per player id — used to animate only newly added skulls
   const [prevKillsMap, setPrevKillsMap] = useState<Record<string, number>>({})
+  const [leftBump, setLeftBump] = useState(0)
+  const [rightBump, setRightBump] = useState(0)
   // 선공: first player (any team) to take their turn
   const [firstAttackerId, setFirstAttackerId] = useState<string | null>(null)
   // 점수 초기화 확인 프롬프트
@@ -250,6 +265,8 @@ export function Scoreboard() {
   const [showGuide, setShowGuide] = useState(false)
   // 우승 결과 오버레이 닫힘 여부
   const [overlayDismissed, setOverlayDismissed] = useState(false)
+  // 모드 전환 확인 프롬프트
+  const [showModeSwitchConfirm, setShowModeSwitchConfirm] = useState(false)
 
   // 마운트 후 localStorage에서 저장된 점수 복원 (hydration 이후에만 실행)
   useEffect(() => {
@@ -324,12 +341,24 @@ export function Scoreboard() {
     [thomas, ada, turn, thomasName, adaName],
   )
 
-  // 상태가 cold나 gameover가 아닐 때 overlayDismissed 초기화
+  const [showOverlay, setShowOverlay] = useState(false)
+  const [lastScoredKills, setLastScoredKills] = useState<number | null>(null)
+
+  // cold/gameover 발생 시 킬 점수(0~4킬)에 맞는 동적 애니메이션 대기시간 후 우승 오버레이 표시
+  // 0킬: 500ms, 1킬: 750ms, 2킬: 1000ms, 3/3.5킬: 1250ms, 4킬: 1500ms
   useEffect(() => {
-    if (cold.status !== "cold" && cold.status !== "gameover") {
+    if (cold.status === "cold" || cold.status === "gameover") {
+      const kills = lastScoredKills ?? 0
+      const delayMs = kills === 0 ? 500 : kills === 1 ? 750 : kills === 2 ? 1000 : kills < 4 ? 1250 : 1500
+      const timer = setTimeout(() => {
+        setShowOverlay(true)
+      }, delayMs)
+      return () => clearTimeout(timer)
+    } else {
+      setShowOverlay(false)
       setOverlayDismissed(false)
     }
-  }, [cold.status])
+  }, [cold.status, lastScoredKills])
 
   // 현재 turn 팀에만 "다음 플레이어" 태그를 표시한다.
   const thomasNext = turn === "thomas" ? thomas.findIndex((p) => !p.played) : -1
@@ -342,6 +371,7 @@ export function Scoreboard() {
   const hasAnyScore = thomas.some((p) => p.played) || ada.some((p) => p.played)
 
   function record(team: Team, playerId: string, newKills: number, animate: boolean) {
+    setLastScoredKills(newKills)
     const roster = team === "thomas" ? thomas : ada
     const setTeam = team === "thomas" ? setThomas : setAda
     const current = roster.find((p) => p.id === playerId)?.kills ?? 0
@@ -365,6 +395,8 @@ export function Scoreboard() {
   }
 
   function handleZeroKill(team: Team, playerId: string) {
+    if (team === "thomas") setLeftBump((b) => b + 1)
+    else setRightBump((b) => b + 1)
     record(team, playerId, 0, false)
   }
 
@@ -575,11 +607,12 @@ export function Scoreboard() {
   }
 
   return (
-    <main className="trial-arena relative min-h-screen w-full overflow-hidden text-foreground" onClick={() => { if (removeMode) setRemoveMode(null) }}>
-      <div className="arena-fog" aria-hidden="true" />
-      <div className="arena-scratches" aria-hidden="true" />
-      <div className="arena-axis" aria-hidden="true" />
-
+    <main
+      className="relative min-h-screen w-full overflow-hidden text-foreground"
+      onClick={() => {
+        if (removeMode) setRemoveMode(false)
+      }}
+    >
       <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-5 pb-28 md:px-8 md:py-6 md:pb-28">
         {/* editable team titles */}
         <div className="grid grid-cols-2 gap-4 border-b border-foreground/10 pb-4">
@@ -712,6 +745,8 @@ export function Scoreboard() {
           <TeamScore
             left={leftScore}
             right={rightScore}
+            leftBump={leftBump}
+            rightBump={rightBump}
             orangeLit={orangeLit}
             blueLit={blueLit}
             close={close}
@@ -775,13 +810,7 @@ export function Scoreboard() {
                     }
                   </p>
                 )}
-                {/* 다음 경기 전부 생존 조건 */}
-                {cold.nextSurviveRequired && (
-                  <p>
-                    {"그리고, 다음 경기 전부 생존해야 동점이 가능합니다"}
-                  </p>
-                )}
-                {/* 상대팀 이번 경기 생존 경고 (현재 차례 팀이 1킬이���도 하면 상대 콜드) */}
+                {/* 상대팀 이번 경기 생존 경고 (현재 차례 팀이 1킬이라도 하면 상대 콜드) */}
                 {cold.opponentMustSurviveName && (
                   <p>
                     <span className={`cold-team-name ${cold.opponentMustSurviveName === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
@@ -955,14 +984,14 @@ export function Scoreboard() {
         </div>
 
         {/* 우승 오버레이 */}
-        {!overlayDismissed && cold.status === "cold" && (
+        {showOverlay && !overlayDismissed && cold.status === "cold" && (
           <WinnerOverlay 
             winnerName={cold.name === thomasName ? adaName : thomasName} 
             teamColor={cold.name === thomasName ? "ada" : "thomas"} 
             onDismiss={() => setOverlayDismissed(true)} 
           />
         )}
-        {!overlayDismissed && cold.status === "gameover" && (
+        {showOverlay && !overlayDismissed && cold.status === "gameover" && (
           <WinnerOverlay 
             winnerName={cold.winnerName === "tie" ? "tie" : cold.winnerName} 
             teamColor={cold.winnerName === "tie" ? undefined : (cold.winnerName === thomasName ? "thomas" : "ada")} 
@@ -970,6 +999,42 @@ export function Scoreboard() {
           />
         )}
       </div>
+
+      {/* Mode Switcher Floating Button & Popover */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <button
+          type="button"
+          onClick={() => setShowModeSwitchConfirm((prev) => !prev)}
+          className="rounded border border-dbd-yellow/70 bg-black/80 px-4 py-2 text-sm text-dbd-yellow backdrop-blur-sm transition-colors hover:bg-dbd-yellow/10 shadow-lg cursor-pointer flex items-center space-x-2"
+          style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+        >
+          <span>5인 내전 모드로 전환</span>
+        </button>
+        {showModeSwitchConfirm && (
+          <div className="absolute right-0 bottom-full mb-2 z-50 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap shadow-2xl">
+            <p className="text-xs text-neutral-200">5인 내전 모드로 넘어가시겠습니까?</p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => router.push("/5v1")}
+                className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20 cursor-pointer"
+                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+              >
+                예
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowModeSwitchConfirm(false)}
+                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white cursor-pointer"
+                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+              >
+                아니오
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
     </main>
   )
 }

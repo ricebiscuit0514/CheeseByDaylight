@@ -184,7 +184,9 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+  html, body {
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
     @apply bg-background text-foreground;
   }
 }
@@ -259,6 +261,15 @@
 .player-plate > *:not(.plate-grain):not(.plate-whiteout):not(.exalted-flash):not(.exalted-corners):not(.exalted-rank) { position: relative; z-index: 2; }
 .player-name-input { width: 0; min-width: 0; flex: 1 1 0%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; color: var(--foreground); font-family: var(--font-godo); font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; outline: none; }
 .player-name-input::placeholder { color: var(--muted-foreground); }
+
+/* Enlarge number input spin buttons */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  height: 28px;
+  width: 20px;
+  opacity: 0.9;
+  cursor: pointer;
+}
 .skull-group { display: flex; flex: 0 0 auto; align-items: center; gap: .15rem; }
 .skull-slot { position: relative; width: 2.35rem; height: 2.55rem; flex-shrink: 0; transition: transform .15s ease, filter .15s ease; }
 .skull-slot:hover { transform: translateY(-2px) scale(1.06); filter: brightness(1.2); }
