@@ -42,7 +42,7 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
       lineControls.start(i => ({
         x: ["-180%", "280%"],
         skewX: -35,
-        opacity: [0, 0.95, 0.95, 0],
+        opacity: [0, 0.75, 0.75, 0],
         transition: {
           duration: speeds[i % 3],
           delay: i * 0.04,
@@ -88,7 +88,7 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
       await lineControls.start(i => ({
         x: ["-180%", "280%"],
         skewX: -35,
-        opacity: [0, 0.95, 0.95, 0],
+        opacity: [0, 0.75, 0.75, 0],
         transition: {
           duration: speeds[i % 3],
           delay: i * 0.04,
@@ -119,16 +119,16 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
 
   const isTie = winnerName === "tie"
   const lineBg = teamColor === "thomas" 
-    ? "rgba(249, 115, 22, 0.55)" 
+    ? "rgba(249, 115, 22, 0.40)" 
     : teamColor === "ada" 
-    ? "rgba(59, 130, 246, 0.55)" 
-    : "rgba(255, 255, 255, 0.45)"
+    ? "rgba(59, 130, 246, 0.40)" 
+    : "rgba(255, 255, 255, 0.30)"
 
   const companionBg = teamColor === "thomas" 
-    ? "rgba(249, 115, 22, 0.22)" 
+    ? "rgba(249, 115, 22, 0.15)" 
     : teamColor === "ada" 
-    ? "rgba(59, 130, 246, 0.22)" 
-    : "rgba(255, 255, 255, 0.18)"
+    ? "rgba(59, 130, 246, 0.15)" 
+    : "rgba(255, 255, 255, 0.12)"
   
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden pointer-events-none">
@@ -147,7 +147,6 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
             className="absolute top-0 h-full pointer-events-none shadow-2xl border-x border-white/40"
             style={{
               width: `${18 + index * 8}%`,
-              clipPath: "polygon(40px 0%, 100% 0%, calc(100% - 40px) 100%, 0% 100%)",
               backgroundColor: lineBg,
             }}
           />
@@ -167,8 +166,8 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
             ].map((item, i) => (
               <motion.div
                 key={i}
-                initial={{ x: item.base + item.fromX }}
-                animate={{ x: item.base + item.toX }}
+                initial={{ x: item.base + item.fromX, skewX: -35 }}
+                animate={{ x: item.base + item.toX, skewX: -35 }}
                 transition={{
                   repeat: Infinity,
                   repeatType: "reverse",
@@ -178,8 +177,6 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
                 className="absolute top-0 h-full pointer-events-none border-x border-white/20 shadow-lg"
                 style={{
                   width: `${16 + i * 6}%`,
-                  transform: "skewX(-35deg)",
-                  clipPath: "polygon(40px 0%, 100% 0%, calc(100% - 40px) 100%, 0% 100%)",
                   backgroundColor: companionBg,
                 }}
               />

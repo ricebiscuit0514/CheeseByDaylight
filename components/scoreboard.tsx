@@ -16,6 +16,7 @@ const SCORE_BEAT_MS = 355
 const SCORE_BEAT_DOWN_MS = 40  // 점수 감소 시 빠르게 주르륵
 const MAX_PLAYERS_PER_TEAM = 4
 const LS_KEY = "dbd-scoreboard-v1"
+const EXPIRATION_TIME_MS = 30 * 60 * 1000 // 30분 만료
 
 const teamScore = (players: Player[]) => players.reduce((s, p) => s + p.kills, 0)
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
@@ -44,7 +45,7 @@ type ColdState =
       isWinPossible?: boolean
     }
   | { status: "cold"; name: string }
-  | { status: "gameover"; winnerName: string | "tie" }
+  | { status: "gameover"; winnerName: string | "tie"; isCold?: boolean }
 
 /** 4v4 모드에서 실제 득점 가능한 킬 수 단위: 1, 2, 3, 3.5, 4킬만 올림 계산 */
 function toValid4v4Step(rawNeed: number): number {
@@ -81,16 +82,16 @@ function computeCold(
   const tMax = ts + tr * MAX_KILLS
   const aMax = as + ar * MAX_KILLS
 
-  // ── 남은 경기 없는 상황: 콜드게임 아닌 일반 경고 ──
+  // ── 남은 경기 없는 상황: 콜드게임 아닌 정규 경기 종료 ──
   if (tr + ar === 0 && (ts !== 0 || as !== 0)) {
-    if (ts > as) return { status: "gameover", winnerName: thomasName }
-    if (as > ts) return { status: "gameover", winnerName: adaName }
-    return { status: "gameover", winnerName: "tie" }
+    if (ts > as) return { status: "gameover", winnerName: thomasName, isCold: false }
+    if (as > ts) return { status: "gameover", winnerName: adaName, isCold: false }
+    return { status: "gameover", winnerName: "tie", isCold: false }
   }
 
-  // ── 한 팀의 현재 점수가 상대팀의 최대 가능 점수를 초과한 경우: 즉시 우승 확정 ──
-  if (as > tMax) return { status: "gameover", winnerName: adaName }
-  if (ts > aMax) return { status: "gameover", winnerName: thomasName }
+  // ── 한 팀의 현재 점수가 상대팀의 최대 가능 점수를 초과한 경우: 즉시 콜드게임 우승 ──
+  if (as > tMax) return { status: "gameover", winnerName: adaName, isCold: true }
+  if (ts > aMax) return { status: "gameover", winnerName: thomasName, isCold: true }
 
   // 콜드게임 판정: 남은 플레이어가 2명 이상 있을 때만 적용
   // 한 팀에만 1명 남은 마지막 경기 상황에서는 콜드게임 적용 안 함
@@ -192,7 +193,7 @@ function computeCold(
   return { status: "none" }
 }
 
-/** Counts by whole numbers and reveals a target half-point only as the final step.
+/** Counts step-by-step (+1 or -1) while preserving decimal offset if starting with .5.
  *  Increases at SCORE_BEAT_MS; decreases rapidly at SCORE_BEAT_DOWN_MS. */
 function useCountUp(target: number) {
   const [display, setDisplay] = useState(target)
@@ -206,14 +207,9 @@ function useCountUp(target: number) {
     const id = window.setTimeout(() => {
       setDisplay((current) => {
         if (current < target) {
-          const targetWhole = Math.floor(target)
-          if (current < targetWhole) return Math.min(Math.floor(current) + 1, targetWhole)
-          return target
+          return current + 1 <= target ? current + 1 : target
         }
-
-        const targetCeiling = Math.ceil(target)
-        if (current > targetCeiling) return Math.max(Math.ceil(current) - 1, targetCeiling)
-        return target
+        return current - 1 >= target ? current - 1 : target
       })
     }, step)
 
@@ -366,18 +362,49 @@ export function Scoreboard() {
   // 모드 전환 확인 프롬프트
   const [showModeSwitchConfirm, setShowModeSwitchConfirm] = useState(false)
 
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  // 최초 접속 시 설명서 유도 팝업/글로우 표시 여부
+  const [hasSeenGuide, setHasSeenGuide] = useState(true)
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem("dbd-guide-seen-4v4")
+      if (!seen) setHasSeenGuide(false)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const handleOpenGuide = () => {
+    setShowResetConfirm(false)
+    setShowFullResetConfirm(false)
+    setShowGuide(true)
+    if (!hasSeenGuide) {
+      setHasSeenGuide(true)
+      try {
+        localStorage.setItem("dbd-guide-seen-4v4", "true")
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   // 마운트 후 localStorage에서 저장된 점수 복원 (hydration 이후에만 실행)
   useEffect(() => {
     const saved = loadFromStorage()
-    if (!saved) return
-    if (saved.thomas.length > 0) setThomas(saved.thomas)
-    if (saved.ada.length > 0) setAda(saved.ada)
-    if (saved.thomasName && saved.thomasName !== "-" && saved.thomasName !== "A") setThomasName(saved.thomasName)
-    if (saved.adaName && saved.adaName !== "-" && saved.adaName !== "B") setAdaName(saved.adaName)
+    if (saved) {
+      if (Array.isArray(saved.thomas)) setThomas(saved.thomas)
+      if (Array.isArray(saved.ada)) setAda(saved.ada)
+      if (saved.thomasName) setThomasName(saved.thomasName)
+      if (saved.adaName) setAdaName(saved.adaName)
+    }
+    setIsLoaded(true)
   }, [])
 
-  // localStorage 자동 저장 — thomas/ada 점수 및 팀 이름 변경 시마다 저장
+  // localStorage 자동 저장 — 복원이 완료(isLoaded === true)된 이후에만 동기화
   useEffect(() => {
+    if (!isLoaded) return
     try {
       localStorage.setItem(
         LS_KEY,
@@ -386,7 +413,7 @@ export function Scoreboard() {
     } catch {
       // 저장 실패 시 무시
     }
-  }, [thomas, ada, thomasName, adaName])
+  }, [isLoaded, thomas, ada, thomasName, adaName])
 
   // "다음 플레이어" 계산: 선공 팀을 기준으로 교대 순서를 파악한다.
   // 선공 팀이 결정되면, 총 플레이 횟수의 홀짝으로 다음 차례 팀을 정한다.
@@ -446,11 +473,17 @@ export function Scoreboard() {
   const [lastScoredKills, setLastScoredKills] = useState<number | null>(null)
 
   // cold/gameover 발생 시 킬 점수(0~4킬)에 맞는 동적 애니메이션 대기시간 후 우승 오버레이 표시
-  // 0킬: 500ms, 1킬: 750ms, 2킬: 1000ms, 3/3.5킬: 1250ms, 4킬: 1500ms
+  // 0킬: 600ms, 1킬: 900ms, 2킬: 1250ms, 3킬: 1650ms, 3.5킬: 2100ms, 4킬: 2400ms (해골이 완전히 박힌 후 여유 있게 재생)
   useEffect(() => {
     if (cold.status === "cold" || cold.status === "gameover") {
       const kills = lastScoredKills ?? 0
-      const delayMs = kills === 0 ? 500 : kills === 1 ? 750 : kills === 2 ? 1000 : kills < 4 ? 1250 : 1500
+      let delayMs = 600
+      if (kills === 1) delayMs = 900
+      else if (kills === 2) delayMs = 1250
+      else if (kills === 3) delayMs = 1650
+      else if (kills === 3.5) delayMs = 2100
+      else if (kills >= 4) delayMs = 2400
+
       const timer = setTimeout(() => {
         setShowOverlay(true)
       }, delayMs)
@@ -714,7 +747,7 @@ export function Scoreboard() {
         if (removeMode) setRemoveMode(false)
       }}
     >
-      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-5 pb-28 md:px-8 md:py-6 md:pb-28">
+      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-3 pb-12 md:px-8 md:py-4 md:pb-14">
         {/* editable team titles & floating coin toss widget */}
         <div className="relative border-b border-foreground/10 pb-4">
           <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-30">
@@ -775,7 +808,7 @@ export function Scoreboard() {
                 className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
               >
                 <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Addplayer-j1Wdqcd9gLokCKfKVrdt96Gu5wBqbM.png"
+                  src="/images/addplayer.png"
                   alt=""
                   draggable={false}
                   className="size-full object-cover transition-[filter] group-hover:brightness-125"
@@ -790,7 +823,7 @@ export function Scoreboard() {
                 className={cn("group size-9 overflow-hidden rounded-sm transition-[transform,filter] hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue", removeMode === "thomas" && "drop-shadow-[0_0_8px_var(--dbd-red)]")}
               >
                 <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Removeplayer-ExYhz8hM8Tgzqopazw6mq4EtaVtoK4.png"
+                  src="/images/removeplayer.png"
                   alt=""
                   draggable={false}
                   className={cn("size-full object-cover transition-[filter] group-hover:brightness-125", removeMode === "thomas" && "brightness-125")}
@@ -826,7 +859,7 @@ export function Scoreboard() {
                 onClick={() => addPlayer("ada")}
                 disabled={ada.length >= MAX_PLAYERS_PER_TEAM}
                 aria-label="오른쪽 팀원 추가"
-                title={ada.length >= MAX_PLAYERS_PER_TEAM ? "최대 4명까지 추가�� 수 있습니다" : "팀원 추가"}
+                title={ada.length >= MAX_PLAYERS_PER_TEAM ? "최대 4명까지 추가할 수 있습니다" : "팀원 추가"}
                 className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
               >
                 <img
@@ -847,7 +880,7 @@ export function Scoreboard() {
         </div>
 
         {/* center score */}
-        <div className="relative flex h-56 shrink-0 translate-y-4 items-center justify-center py-4 md:py-6">
+        <div className="relative flex h-48 md:h-52 shrink-0 translate-y-3 items-center justify-center pt-4 pb-2">
           <TeamScore
             left={leftScore}
             right={rightScore}
@@ -860,7 +893,7 @@ export function Scoreboard() {
         </div>
 
         {/* cold game warning / result */}
-        <div className="cold-game-box mb-4">
+        <div className="cold-game-box mb-2">
           {cold.status === "warning" && (
             <>
               {/* 콜드게임 적용 여부에 따라 제목 분기 */}
@@ -881,21 +914,21 @@ export function Scoreboard() {
                             <>
                               {"이번 경기에서 "}
                               <span className="cold-kill-count">{"올킬"}</span>
-                              {" 하면 우승"}
+                              {" 해야 우승입니다"}
                             </>
                           )
                           : (
                             <>
                               {"이번 경기에서 "}
                               <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                              {" 이상 하면 우승"}
+                              {" 이상 해야 우승입니다"}
                             </>
                           )
                         : (
                           <>
                             {"이번 경기에서 "}
                             <span className="cold-kill-count">{"올킬"}</span>
-                            {"을 해야 동점"}
+                            {"을 해야합니다"}
                           </>
                         )
                       : cold.need >= MAX_KILLS
@@ -903,7 +936,7 @@ export function Scoreboard() {
                           <>
                             {"이번 경기에서 "}
                             <span className="cold-kill-count">{"올킬"}</span>
-                            {"을 해야 동점"}
+                            {"을 해야합니다"}
                           </>
                         )
                         : (
@@ -946,7 +979,9 @@ export function Scoreboard() {
           )}
           {cold.status === "gameover" && (
             <>
-              <p className="cold-game-title text-dbd-yellow">모든 경기 종료</p>
+              <p className="cold-game-title text-dbd-yellow">
+                {cold.isCold ? "콜드게임!" : "모든 경기 종료"}
+              </p>
               <p className="mt-3 text-2xl font-black text-dbd-yellow drop-shadow-md tracking-widest" style={{ fontFamily: "var(--font-godo)" }}>
                 {cold.winnerName === "tie" ? (
                   "최종 결과: 무승부!"
@@ -980,7 +1015,7 @@ export function Scoreboard() {
                   ✕
                 </button>
                 <img
-                  src="/images/guide.jpg"
+                  src="/images/guide_4v4.jpg"
                   alt="Game Guide"
                   className="h-auto w-full"
                 />
@@ -1002,15 +1037,28 @@ export function Scoreboard() {
 
         {/* fixed utility controls */}
         <div className="fixed bottom-5 left-4 z-50 flex flex-col gap-2 text-neutral-300 md:bottom-6 md:left-8">
-          <FooterBtn
-            onClick={() => {
-              setShowResetConfirm(false)
-              setShowFullResetConfirm(false)
-              setShowGuide(true)
-            }}
-          >
-            설명서
-          </FooterBtn>
+          <div className="relative flex items-center">
+            <FooterBtn
+              onClick={handleOpenGuide}
+              className={cn(!hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold")}
+            >
+              설명서
+            </FooterBtn>
+
+            {!hasSeenGuide && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: [0, 6, 0] }}
+                transition={{ x: { repeat: Infinity, duration: 1.4 }, opacity: { duration: 0.3 } }}
+                className="absolute left-full ml-3 z-50 flex items-center gap-1.5 rounded-md border border-dbd-yellow/80 bg-black/95 px-3 py-1.5 text-xs text-dbd-yellow shadow-[0_0_20px_rgba(234,179,8,0.5)] backdrop-blur-md whitespace-nowrap cursor-pointer hover:brightness-125"
+                onClick={handleOpenGuide}
+                style={{ fontFamily: "var(--font-godo)" }}
+              >
+                <span className="text-sm">👈</span>
+                <span className="font-bold">최초 접속! 사용설명서를 확인해 보세요</span>
+              </motion.div>
+            )}
+          </div>
           {/* 점수 초기화 */}
           <div className="relative">
             <button
@@ -1122,7 +1170,7 @@ export function Scoreboard() {
             <div className="flex gap-2 justify-end">
               <button
                 type="button"
-                onClick={() => router.push("/5v1")}
+                onClick={() => router.push("/1v4")}
                 className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20 cursor-pointer"
                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
               >
@@ -1164,7 +1212,7 @@ function ShuffleButton({ teamName, onClick, disabled }: { teamName: string; onCl
       onClick={onClick}
       disabled={disabled}
       aria-label={`${teamName} 팀원 무작위 배치`}
-      title={disabled ? "점수 초기화 후 ��기가 가능합니다" : "팀원 무작위 배치"}
+      title={disabled ? "점수 초기화 후 섞기가 가능합니다" : "팀원 무작위 배치"}
       className="group size-12 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
     >
       <img
@@ -1179,12 +1227,15 @@ function ShuffleButton({ teamName, onClick, disabled }: { teamName: string; onCl
 
 
 
-function FooterBtn({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+function FooterBtn({ children, onClick, className }: { children: React.ReactNode; onClick?: () => void; className?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded border border-neutral-600 bg-black/50 px-3 py-1 text-sm transition-colors hover:border-neutral-400 hover:text-white"
+      className={cn(
+        "rounded border border-neutral-600 bg-black/50 px-3 py-1 text-sm transition-colors hover:border-neutral-400 hover:text-white",
+        className
+      )}
       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
     >
       {children}

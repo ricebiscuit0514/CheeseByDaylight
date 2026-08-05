@@ -186,17 +186,19 @@
   }
   html, body {
     overflow-x: hidden;
-    scrollbar-gutter: stable;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100vh;
     @apply bg-background text-foreground;
   }
 }
 
 /* Premium asymmetric-horror combat system */
-.trial-arena { background-color: var(--background); background-image: url("/images/lullaby-of-the-dark-key-art.png"); background-position: center; background-size: cover; background-attachment: fixed; }
-.trial-arena::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in oklch, var(--background), transparent 18%), color-mix(in oklch, var(--background), transparent 34%) 42%, color-mix(in oklch, var(--background), transparent 8%)), linear-gradient(to right, color-mix(in oklch, var(--background), transparent 22%), transparent 34% 66%, color-mix(in oklch, var(--background), transparent 22%)); }
+.trial-arena { background-color: var(--background); background-image: url("/images/lullaby-of-the-dark-key-art.png"); background-position: center center; background-size: cover; background-repeat: no-repeat; width: 100vw; height: 100vh; }
+.trial-arena::before { content: ""; position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.85); }
 .arena-fog { position: absolute; inset: 22% -15% 0; opacity: .28; background: radial-gradient(ellipse at center, color-mix(in oklch, var(--muted-foreground), transparent 91%), transparent 65%); filter: blur(32px); }
 .arena-scratches { position: absolute; inset: 0; opacity: .11; pointer-events: none; background: repeating-linear-gradient(112deg, transparent 0 42px, color-mix(in oklch, var(--foreground), transparent 90%) 43px, transparent 44px 76px); mask-image: linear-gradient(to bottom, transparent, black 25%, black 80%, transparent); }
-.arena-axis { position: absolute; inset-block: 0; left: 50%; width: 1px; opacity: .35; background: linear-gradient(to bottom, transparent 4%, color-mix(in oklch, var(--dbd-red), transparent 55%) 25%, color-mix(in oklch, var(--foreground), transparent 76%) 55%, transparent 96%); transform: rotate(1.5deg); }
 
 .versus-stage {
   display: grid;
@@ -226,6 +228,23 @@
 .score-sanctum-right .score-energy {
   background: radial-gradient(ellipse at 28% 50%, color-mix(in oklch, var(--team), transparent 64%), transparent 66%);
   mask-image: linear-gradient(to right, black 22%, transparent 100%);
+}
+.score-flare {
+  position: absolute;
+  top: 50%;
+  right: -0.8rem;
+  transform: translateY(-50%) scale(1.15);
+  height: 125%;
+  width: auto;
+  pointer-events: none;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  z-index: 1;
+}
+.score-sanctum-right .score-flare {
+  right: auto;
+  left: -0.8rem;
+  transform: translateY(-50%) scale(1.15);
 }
 .score-sanctum.is-lit .score-energy { opacity: 1; filter: saturate(1.15); }
 .score-scratch { position: absolute; inset: 12% 4%; z-index: -1; opacity: .2; background: repeating-linear-gradient(104deg, transparent 0 18px, color-mix(in oklch, var(--foreground), transparent 80%) 19px, transparent 20px 32px); mask-image: linear-gradient(to left, black, transparent); }
@@ -392,8 +411,8 @@ input[type="number"] {
 
 .cold-game-box { 
   position: relative; 
-  min-height: 5.5rem;
-  padding: 1.25rem; 
+  min-height: 3.5rem;
+  padding: 0.5rem 1rem; 
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -403,14 +422,14 @@ input[type="number"] {
 
 .cold-warning-title { 
   font-family: var(--font-aldrich); 
-  font-size: clamp(1.5rem, 5vw, 2rem); 
+  font-size: clamp(1.25rem, 4vw, 1.65rem); 
   font-style: italic;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--dbd-red); 
   text-shadow: 2px 2px 0 var(--background);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.35rem;
 }
 
 .cold-game-title {

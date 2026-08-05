@@ -41,6 +41,31 @@ function ScoreNumber({ value, side, lit, close, bump = 0 }: { value: number; sid
       className={cn("score-sanctum", `score-sanctum-${side}`, lit && "is-lit", close && "is-clutch")}
     >
       <span className="score-energy" aria-hidden="true" />
+      <motion.img
+        key={`flare-${value}-${bump}`}
+        src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
+        alt=""
+        className="score-flare"
+        aria-hidden="true"
+        initial={{ y: "-50%", scaleY: 1.15, scaleX: 1.15, opacity: 0.8, filter: "brightness(1) drop-shadow(0 0 10px var(--team))" }}
+        animate={{
+          y: "-50%",
+          scaleY: [1.15, 1.85, 1.12, 1.25, 1.15],
+          scaleX: [1.15, 1.48, 1.12, 1.20, 1.15],
+          opacity: [0.8, 1, 0.75, 0.95, 0.8],
+          filter: [
+            "brightness(1) drop-shadow(0 0 10px var(--team))",
+            "brightness(2.6) drop-shadow(0 0 45px var(--team))",
+            "brightness(1) drop-shadow(0 0 12px var(--team))",
+            "brightness(1.5) drop-shadow(0 0 25px var(--team))",
+            "brightness(1) drop-shadow(0 0 10px var(--team))",
+          ],
+        }}
+        transition={{
+          duration: 0.75,
+          ease: [0.16, 1, 0.3, 1],
+        }}
+      />
       <span className="score-scratch" aria-hidden="true" />
       <AnimatePresence>
         {!reducedMotion && (value > 0 || bump > 0) && (

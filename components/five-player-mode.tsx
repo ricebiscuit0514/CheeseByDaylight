@@ -56,6 +56,30 @@ export function FivePlayerMode() {
   }
 
   const [isLoaded, setIsLoaded] = useState(false)
+  const [hasSeenGuide, setHasSeenGuide] = useState(true)
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem("dbd-guide-seen-1v4")
+      if (!seen) setHasSeenGuide(false)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const handleOpenGuide = () => {
+    setShowResetConfirm(false)
+    setShowFullResetConfirm(false)
+    setShowGuide(true)
+    if (!hasSeenGuide) {
+      setHasSeenGuide(true)
+      try {
+        localStorage.setItem("dbd-guide-seen-1v4", "true")
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   // Load/Save state from localStorage to maintain data when navigating away
   useEffect(() => {
@@ -63,7 +87,7 @@ export function FivePlayerMode() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        const EXPIRATION_TIME_MS = 2 * 60 * 60 * 1000 // 2시간 만료
+        const EXPIRATION_TIME_MS = 30 * 60 * 1000 // 30분 만료
         if (parsed.updatedAt && Date.now() - parsed.updatedAt > EXPIRATION_TIME_MS) {
           localStorage.removeItem("dbd-5p-state-v2")
         } else {
@@ -563,20 +587,20 @@ export function FivePlayerMode() {
               className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
               onClick={() => setShowGuide(false)}
             />
-            <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-4">
-              <div className="pointer-events-auto relative max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-lg">
+            <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-2 sm:p-4">
+              <div className="pointer-events-auto relative max-h-[94vh] w-full max-w-6xl overflow-y-auto rounded-lg shadow-2xl border border-neutral-800 bg-black/90">
                 <button
                   type="button"
                   onClick={() => setShowGuide(false)}
-                  className="absolute top-4 right-4 z-10 size-8 flex items-center justify-center rounded bg-black/60 text-white transition-colors hover:bg-black/80"
+                  className="absolute top-4 right-4 z-10 size-9 flex items-center justify-center rounded-full bg-black/80 text-white transition-all hover:bg-neutral-800 border border-white/20 shadow-lg text-lg cursor-pointer"
                   aria-label="Close guide"
                 >
                   ✕
                 </button>
                 <img
-                  src="/images/guide.jpg"
+                  src="/images/guide_1v4.jpg"
                   alt="Game Guide"
-                  className="h-auto w-full"
+                  className="h-auto w-full object-contain"
                 />
               </div>
             </div>
@@ -596,18 +620,33 @@ export function FivePlayerMode() {
 
         {/* Fixed Utility Controls (Bottom-Left) matching 4v4 mode */}
         <div className="fixed bottom-5 left-4 z-50 flex flex-col gap-2 text-neutral-300 md:bottom-6 md:left-8">
-          <button
-            type="button"
-            onClick={() => {
-              setShowResetConfirm(false)
-              setShowFullResetConfirm(false)
-              setShowGuide(true)
-            }}
-            className="rounded border border-neutral-600 bg-black/50 px-3 py-1 text-sm transition-colors hover:border-neutral-400 hover:text-white text-center"
-            style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-          >
-            설명서
-          </button>
+          <div className="relative flex items-center">
+            <button
+              type="button"
+              onClick={handleOpenGuide}
+              className={cn(
+                "rounded border border-neutral-600 bg-black/50 px-3 py-1 text-sm transition-colors hover:border-neutral-400 hover:text-white text-center",
+                !hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold"
+              )}
+              style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+            >
+              설명서
+            </button>
+
+            {!hasSeenGuide && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: [0, 6, 0] }}
+                transition={{ x: { repeat: Infinity, duration: 1.4 }, opacity: { duration: 0.3 } }}
+                className="absolute left-full ml-3 z-50 flex items-center gap-1.5 rounded-md border border-dbd-yellow/80 bg-black/95 px-3 py-1.5 text-xs text-dbd-yellow shadow-[0_0_20px_rgba(234,179,8,0.5)] backdrop-blur-md whitespace-nowrap cursor-pointer hover:brightness-125"
+                onClick={handleOpenGuide}
+                style={{ fontFamily: "var(--font-godo)" }}
+              >
+                <span className="text-sm">👈</span>
+                <span className="font-bold">최초 접속! 사용설명서를 확인해 보세요</span>
+              </motion.div>
+            )}
+          </div>
           
           {/* 점수 초기화 */}
           <div className="relative">

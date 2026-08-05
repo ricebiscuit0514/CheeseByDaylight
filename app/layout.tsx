@@ -47,7 +47,6 @@ export default function RootLayout({
         <div className="fixed inset-0 trial-arena pointer-events-none z-0 overflow-hidden" aria-hidden="true">
           <div className="arena-fog" />
           <div className="arena-scratches" />
-          <div className="arena-axis" />
         </div>
         <div className="relative z-10">
           {children}

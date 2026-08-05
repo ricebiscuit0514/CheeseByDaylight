@@ -22,8 +22,8 @@ export default function LandingPage() {
         router.replace("/4v4")
         return
       }
-      if (lastMode === "5v1") {
-        router.replace("/5v1")
+      if (lastMode === "1v4" || lastMode === "5v1") {
+        router.replace("/1v4")
         return
       }
     } catch {
@@ -32,7 +32,7 @@ export default function LandingPage() {
     setChecking(false)
   }, [router])
 
-  const handleSelectMode = (mode: "4v4" | "5v1") => {
+  const handleSelectMode = (mode: "4v4" | "1v4") => {
     try {
       localStorage.setItem("dbd-last-mode", mode)
     } catch {
@@ -52,16 +52,6 @@ export default function LandingPage() {
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden text-foreground flex flex-col items-center justify-center p-4 select-none">
-      {/* 1. Balanced & Darkened Blurred Background */}
-      <div 
-        className="absolute -inset-10 bg-cover bg-center filter blur-[8px] scale-110 transition-all duration-700 pointer-events-none" 
-        style={{ backgroundImage: "url('/images/lullaby-of-the-dark-key-art.png')" }} 
-        aria-hidden="true" 
-      />
-      {/* Ambient Dark Overlay + Vignette */}
-      <div className="absolute inset-0 bg-black/65" aria-hidden="true" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_30%,_rgba(0,0,0,0.9)_100%)] pointer-events-none" aria-hidden="true" />
-
       {/* DBD Scratch & Fog Atmosphere */}
       <div className="arena-fog opacity-35 pointer-events-none" aria-hidden="true" />
       <div className="arena-scratches opacity-25 pointer-events-none" aria-hidden="true" />
@@ -96,7 +86,7 @@ export default function LandingPage() {
           {/* 5-Player Mode Button */}
           <button
             type="button"
-            onClick={() => handleSelectMode("5v1")}
+            onClick={() => handleSelectMode("1v4")}
             className="w-56 sm:w-64 md:w-72 py-3 px-6 bg-black/60 hover:bg-black/85 border border-white/40 hover:border-white text-white rounded-none font-bold text-base sm:text-lg tracking-wider shadow-2xl backdrop-blur-md transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center"
             style={{ fontFamily: "var(--font-godo)" }}
           >
