@@ -11,14 +11,14 @@
 
 <p align="center">
   <a href="https://cheesebydaylight.vercel.app/">
-    <img src="https://img.shields.io/badge/🌐_웹사이트_바로가기-https%3A%2F%2Fcheesebydaylight.vercel.app%2F-ffc107?style=for-the-badge&logoColor=black" alt="Live Demo" />
+    <img src="https://img.shields.io/badge/바로가기-https%3A%2F%2Fcheesebydaylight.vercel.app%2F-ffc107?style=for-the-badge&logoColor=black" alt="Live Demo" />
 </p>
 
 <br />
 
 ---
 
-## 🔗 웹사이트 접속 주소 (Live URL)
+## 접속 주소
 
 > **[https://cheesebydaylight.vercel.app/](https://cheesebydaylight.vercel.app/)**
 
