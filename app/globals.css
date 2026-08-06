@@ -458,6 +458,7 @@ input[type="number"] {
 .cold-game-box { 
   position: relative; 
   min-height: 3.5rem;
+  margin-top: 1.5rem;
   padding: 0.5rem 1rem; 
   text-align: center;
   display: flex;
@@ -480,14 +481,14 @@ input[type="number"] {
 
 .cold-game-title {
   font-family: var(--font-aldrich);
-  font-size: clamp(1.75rem, 6vw, 2.25rem);
+  font-size: clamp(1.1rem, 3.5vw, 1.45rem);
   font-style: italic;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .08em;
   color: var(--dbd-red);
   text-shadow: 2px 2px 0 var(--background);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .cold-warning-text,

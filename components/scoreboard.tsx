@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { AceMatchModal } from "@/components/ace-match-modal"
+import { AceMatchOverlay } from "@/components/ace-match-overlay"
+import { HoldButton } from "@/components/hold-button"
 import { MAX_KILLS, PlayerRow, type Player } from "@/components/player-row"
 import { TeamScore } from "@/components/team-score"
 import { WinnerOverlay } from "@/components/winner-overlay"
@@ -286,7 +289,21 @@ function CoinIcon({ className = "size-4" }: { className?: string }) {
   )
 }
 
-function CoinTossWidget({ thomasName, adaName, activeTeam, onTossResult }: { thomasName: string; adaName: string; activeTeam: Team | null; onTossResult?: (winner: "thomas" | "ada") => void }) {
+function CoinTossWidget({
+  thomasName,
+  adaName,
+  activeTeam,
+  onTossResult,
+  thomasDisplayName,
+  adaDisplayName,
+}: {
+  thomasName: string
+  adaName: string
+  activeTeam: Team | null
+  onTossResult?: (winner: "thomas" | "ada") => void
+  thomasDisplayName?: string
+  adaDisplayName?: string
+}) {
   const [tossing, setTossing] = useState(false)
   const [result, setResult] = useState<"thomas" | "ada" | null>(activeTeam)
 
@@ -305,6 +322,13 @@ function CoinTossWidget({ thomasName, adaName, activeTeam, onTossResult }: { tho
       setTossing(false)
       onTossResult?.(winner)
     }, 1100)
+  }
+
+  const getWinnerLabel = (winner: "thomas" | "ada") => {
+    if (winner === "thomas") {
+      return thomasDisplayName || `${thomasName} 팀`
+    }
+    return adaDisplayName || `${adaName} 팀`
   }
 
   return (
@@ -352,7 +376,7 @@ function CoinTossWidget({ thomasName, adaName, activeTeam, onTossResult }: { tho
             </motion.span>
           )}
           <span className="tracking-wide">
-            {result === "thomas" ? thomasName : adaName} 팀 선공!
+            {getWinnerLabel(result)} 선공!
           </span>
           {result === "ada" && (
             <motion.span
@@ -412,6 +436,26 @@ export function Scoreboard() {
   const [overlayDismissed, setOverlayDismissed] = useState(false)
   // 모드 전환 확인 프롬프트
   const [showModeSwitchConfirm, setShowModeSwitchConfirm] = useState(false)
+
+  // Ace Match States
+  const [isAceMatchMode, setIsAceMatchMode] = useState(false)
+  const [showAcePromptModal, setShowAcePromptModal] = useState(false)
+  const [hasCompletedAceMatch, setHasCompletedAceMatch] = useState(false)
+  const [aceThomasId, setAceThomasId] = useState<string | null>(null)
+  const [aceAdaId, setAceAdaId] = useState<string | null>(null)
+  const [aceThomasBackup, setAceThomasBackup] = useState<Player | null>(null)
+  const [aceAdaBackup, setAceAdaBackup] = useState<Player | null>(null)
+  const [aceFirstAttackerBackup, setAceFirstAttackerBackup] = useState<string | null>(null)
+  const [aceWinnerTeam, setAceWinnerTeam] = useState<Team | null>(null)
+  const [aceWinnersMap, setAceWinnersMap] = useState<Record<string, "win" | "lose">>({})
+  const [aceVictoryOverlay, setAceVictoryOverlay] = useState<{
+    winnerTeamName: string
+    acePlayerName: string
+    teamColor: "thomas" | "ada"
+  } | null>(null)
+  const [showAceRematchPrompt, setShowAceRematchPrompt] = useState(false)
+  const [showAceProceedButton, setShowAceProceedButton] = useState(false)
+  const [aceModalInitialStep, setAceModalInitialStep] = useState<"prompt" | "method_select">("prompt")
 
   const [isLoaded, setIsLoaded] = useState(false)
 
@@ -506,8 +550,41 @@ export function Scoreboard() {
     return nextTeam
   }, [thomas, ada, firstAttackTeam])
 
-  const leftTarget = useMemo(() => teamScore(thomas), [thomas])
-  const rightTarget = useMemo(() => teamScore(ada), [ada])
+  const leftTarget = useMemo(() => {
+    if (isAceMatchMode && aceThomasId) {
+      const p = thomas.find((item) => item.id === aceThomasId)
+      return p && p.played ? p.kills : 0
+    }
+    return teamScore(thomas)
+  }, [thomas, isAceMatchMode, aceThomasId])
+
+  const rightTarget = useMemo(() => {
+    if (isAceMatchMode && aceAdaId) {
+      const p = ada.find((item) => item.id === aceAdaId)
+      return p && p.played ? p.kills : 0
+    }
+    return teamScore(ada)
+  }, [ada, isAceMatchMode, aceAdaId])
+
+  const displayThomas = useMemo(() => {
+    if (isAceMatchMode && aceThomasId) {
+      const ace = thomas.find((p) => p.id === aceThomasId)
+      if (ace) {
+        return [ace, ...thomas.filter((p) => p.id !== aceThomasId)]
+      }
+    }
+    return thomas
+  }, [thomas, isAceMatchMode, aceThomasId])
+
+  const displayAda = useMemo(() => {
+    if (isAceMatchMode && aceAdaId) {
+      const ace = ada.find((p) => p.id === aceAdaId)
+      if (ace) {
+        return [ace, ...ada.filter((p) => p.id !== aceAdaId)]
+      }
+    }
+    return ada
+  }, [ada, isAceMatchMode, aceAdaId])
 
   const leftScore = useCountUp(leftTarget)
   const rightScore = useCountUp(rightTarget)
@@ -524,13 +601,181 @@ export function Scoreboard() {
   const close = (!isGameOver || isTie) && Math.abs(diff) <= 2
   const orangeLit = isGameOver ? (isTie || diff > 0) : bothTeamsPlayed && (close || diff > 0)
   const blueLit = isGameOver ? (isTie || diff < 0) : bothTeamsPlayed && (close || diff < 0)
+  const isGameOverDisplay = isAceMatchMode ? false : isGameOver
+  const orangeLitDisplay = isAceMatchMode ? true : orangeLit
+  const blueLitDisplay = isAceMatchMode ? true : blueLit
+  const closeDisplay = isAceMatchMode ? true : close
+
+  const bothAcePlayed = useMemo(() => {
+    if (!isAceMatchMode || !aceThomasId || !aceAdaId) return false
+    const tAce = thomas.find((p) => p.id === aceThomasId)
+    const aAce = ada.find((p) => p.id === aceAdaId)
+    return Boolean(tAce?.played && aAce?.played)
+  }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada])
 
   const [showOverlay, setShowOverlay] = useState(false)
   const [lastScoredKills, setLastScoredKills] = useState<number | null>(null)
 
+  // 1:1 Ace Match Notification Warning Logic
+  const aceMatchWarning = useMemo(() => {
+    if (!isAceMatchMode || !aceThomasId || !aceAdaId) return null
+    const tPlayer = thomas.find((p) => p.id === aceThomasId)
+    const aPlayer = ada.find((p) => p.id === aceAdaId)
+    if (!tPlayer || !aPlayer) return null
+
+    // If Thomas Ace played first and Ada Ace hasn't played yet:
+    if (tPlayer.played && !aPlayer.played) {
+      const k = tPlayer.kills
+      const targetName = aPlayer.name.trim() || adaName
+      if (k < 4) {
+        return {
+          name: targetName,
+          team: "ada",
+          text: `이번 경기에서 ${k + 1}킬 이상 해야 우승입니다`,
+        }
+      } else {
+        return {
+          name: targetName,
+          team: "ada",
+          text: "이번 경기에서 올킬(4킬)을 해야 동점입니다",
+        }
+      }
+    }
+
+    // If Ada Ace played first and Thomas Ace hasn't played yet:
+    if (aPlayer.played && !tPlayer.played) {
+      const k = aPlayer.kills
+      const targetName = tPlayer.name.trim() || thomasName
+      if (k < 4) {
+        return {
+          name: targetName,
+          team: "thomas",
+          text: `이번 경기에서 ${k + 1}킬 이상 해야 우승입니다`,
+        }
+      } else {
+        return {
+          name: targetName,
+          team: "thomas",
+          text: "이번 경기에서 올킬(4킬)을 해야 동점입니다",
+        }
+      }
+    }
+
+    return null
+  }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada, thomasName, adaName])
+
+  // Ace Match Completion Detection (With skull impact animation delay)
+  useEffect(() => {
+    if (!isAceMatchMode || !aceThomasId || !aceAdaId) return
+
+    const thomasAce = thomas.find((p) => p.id === aceThomasId)
+    const adaAce = ada.find((p) => p.id === aceAdaId)
+
+    if (thomasAce && adaAce && thomasAce.played && adaAce.played) {
+      const kills = lastScoredKills ?? 0
+      let delayMs = 600
+      if (kills === 1) delayMs = 900
+      else if (kills === 2) delayMs = 1250
+      else if (kills === 3) delayMs = 1650
+      else if (kills === 3.5) delayMs = 2100
+      else if (kills >= 4) delayMs = 2400
+
+      const timer = setTimeout(() => {
+        if (thomasAce.kills > adaAce.kills) {
+          setAceWinnersMap((prev) => ({
+            ...prev,
+            [thomasAce.id]: "win",
+            [adaAce.id]: "lose",
+          }))
+          setAceWinnerTeam("thomas")
+          setAceVictoryOverlay({
+            winnerTeamName: thomasName,
+            acePlayerName: thomasAce.name || "에이스",
+            teamColor: "thomas",
+          })
+          // Keep isAceMatchMode true while victory overlay is playing!
+        } else if (adaAce.kills > thomasAce.kills) {
+          setAceWinnersMap((prev) => ({
+            ...prev,
+            [adaAce.id]: "win",
+            [thomasAce.id]: "lose",
+          }))
+          setAceWinnerTeam("ada")
+          setAceVictoryOverlay({
+            winnerTeamName: adaName,
+            acePlayerName: adaAce.name || "에이스",
+            teamColor: "ada",
+          })
+          // Keep isAceMatchMode true while victory overlay is playing!
+        } else {
+          setAceWinnerTeam(null)
+          setShowAceRematchPrompt(true)
+        }
+      }, delayMs)
+
+      return () => clearTimeout(timer)
+    }
+  }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada, thomasName, adaName, lastScoredKills])
+
+  const handleAceVictoryDismiss = () => {
+    setAceVictoryOverlay(null)
+    setHasCompletedAceMatch(true)
+  }
+
+  const handleConfirmAceMatch = (selectedThomasId: string, selectedAdaId: string) => {
+    setShowAcePromptModal(false)
+    setShowAceProceedButton(false)
+    setHasCompletedAceMatch(true)
+
+    // Save exact 4v4 scores & first attacker before resetting for 1v1 match
+    const tOriginal = thomas.find((p) => p.id === selectedThomasId)
+    const aOriginal = ada.find((p) => p.id === selectedAdaId)
+    if (tOriginal) setAceThomasBackup({ ...tOriginal })
+    if (aOriginal) setAceAdaBackup({ ...aOriginal })
+    setAceFirstAttackerBackup(firstAttackerId)
+
+    setAceThomasId(selectedThomasId)
+    setAceAdaId(selectedAdaId)
+    setIsAceMatchMode(true)
+    setFirstAttackerId(null) // Reset coin toss / first attacker for Ace match!
+
+    // Reset scores of the 2 selected Ace players to 0 for 1v1 match
+    setThomas((prev) =>
+      prev.map((p) => (p.id === selectedThomasId ? { ...p, kills: 0, played: false } : p))
+    )
+    setAda((prev) =>
+      prev.map((p) => (p.id === selectedAdaId ? { ...p, kills: 0, played: false } : p))
+    )
+  }
+
+  const handleExitAceMatch = () => {
+    // Restore original 4v4 scores & first attacker of the 2 Ace players
+    if (aceThomasBackup) {
+      setThomas((prev) => prev.map((p) => (p.id === aceThomasBackup.id ? { ...aceThomasBackup } : p)))
+    }
+    if (aceAdaBackup) {
+      setAda((prev) => prev.map((p) => (p.id === aceAdaBackup.id ? { ...aceAdaBackup } : p)))
+    }
+    if (aceFirstAttackerBackup !== null) {
+      setFirstAttackerId(aceFirstAttackerBackup)
+    }
+
+    setIsAceMatchMode(false)
+    setAceThomasId(null)
+    setAceAdaId(null)
+    setAceThomasBackup(null)
+    setAceAdaBackup(null)
+    setAceFirstAttackerBackup(null)
+    setHasCompletedAceMatch(true)
+    setShowAceProceedButton(false)
+    setOverlayDismissed(true)
+    setShowOverlay(false)
+  }
+
   // cold/gameover 발생 시 킬 점수(0~4킬)에 맞는 동적 애니메이션 대기시간 후 우승 오버레이 표시
   // 0킬: 600ms, 1킬: 900ms, 2킬: 1250ms, 3킬: 1650ms, 3.5킬: 2100ms, 4킬: 2400ms (해골이 완전히 박힌 후 여유 있게 재생)
   useEffect(() => {
+    if (isAceMatchMode) return
     if (cold.status === "cold" || cold.status === "gameover") {
       const kills = lastScoredKills ?? 0
       let delayMs = 600
@@ -548,7 +793,7 @@ export function Scoreboard() {
       setShowOverlay(false)
       setOverlayDismissed(false)
     }
-  }, [cold.status, lastScoredKills])
+  }, [cold.status, lastScoredKills, isAceMatchMode])
 
   // 현재 turn 팀에만 "다음 플레이어" 태그를 표시한다.
   const thomasNext = turn === "thomas" ? thomas.findIndex((p) => !p.played) : -1
@@ -600,6 +845,26 @@ export function Scoreboard() {
     )
     setAnim((a) => ({ ...a, [playerId]: 0 }))
     setPrevKillsMap((prev) => { const next = { ...prev }; delete next[playerId]; return next })
+
+    if (isAceMatchMode) {
+      const aceThomas = thomas.find((p) => p.id === aceThomasId)
+      const aceAda = ada.find((p) => p.id === aceAdaId)
+      const isThomasAceCancelled = playerId === aceThomasId
+      const isAdaAceCancelled = playerId === aceAdaId
+
+      const thomasAcePlayed = isThomasAceCancelled ? false : (aceThomas?.played ?? false)
+      const adaAcePlayed = isAdaAceCancelled ? false : (aceAda?.played ?? false)
+
+      if (!thomasAcePlayed && !adaAcePlayed) {
+        setFirstAttackerId(null)
+      }
+    } else {
+      const otherPlayedInThomas = thomas.some((p) => p.id !== playerId && p.played)
+      const otherPlayedInAda = ada.some((p) => p.id !== playerId && p.played)
+      if (!otherPlayedInThomas && !otherPlayedInAda) {
+        setFirstAttackerId(null)
+      }
+    }
   }
 
   function reorder(team: Team, fromId: string, toId: string) {
@@ -661,6 +926,128 @@ export function Scoreboard() {
     setRemoveMode(null)
   }
 
+  const renderRow = (team: Team, p: Player, index: number, nextIndex: number) => {
+    const isThomas = team === "thomas"
+    const isAcePlayer = isAceMatchMode && (isThomas ? p.id === aceThomasId : p.id === aceAdaId)
+    const isNonAcePlayer = isAceMatchMode && !isAcePlayer
+
+    const active = isAceMatchMode
+      ? (firstAttackerId || firstAttackTeam ? isAcePlayer && turn === team : false)
+      : turn === team && index === nextIndex && nextIndex !== -1
+    const selgongPlayerId = firstAttackTeam === "thomas"
+      ? (isAceMatchMode ? aceThomasId : thomas[0]?.id)
+      : firstAttackTeam === "ada"
+      ? (isAceMatchMode ? aceAdaId : ada[0]?.id)
+      : firstAttackerId
+    const selgong = p.id === selgongPlayerId
+    const tabIdx = isThomas ? index + 1 : 5 + index
+    const isLastPlayerOverall = team === "ada" && index === ada.length - 1
+
+    if (isNonAcePlayer) {
+      return (
+        <div key={p.id} className="relative opacity-20 pointer-events-none filter blur-[0.5px]">
+          <PlayerRow
+            player={p}
+            team={team}
+            active={false}
+            readOnly={true}
+            isSelgong={false}
+            isGoldSkull={false}
+            aceBadge={aceWinnersMap[p.id] ?? null}
+            tabIndex={tabIdx}
+            animId={anim[p.id] ?? 0}
+            prevKills={prevKillsMap[p.id] ?? 0}
+            dragging={false}
+            onScore={() => {}}
+            onZeroKill={() => {}}
+            onCancel={() => {}}
+            onNameChange={() => {}}
+            onNameCommit={() => {}}
+            onKillerChange={() => {}}
+            onDragStart={() => {}}
+            onDragEnter={() => {}}
+            onDragEnd={() => {}}
+          />
+        </div>
+      )
+    }
+
+    return (
+      <div key={p.id} className={cn("relative transition-all duration-300", isAcePlayer && "z-20 scale-[1.02] rounded-lg")}>
+        <PlayerRow
+          player={p}
+          team={team}
+          active={active}
+          isSelgong={selgong && !p.played}
+          isGoldSkull={isAceMatchMode}
+          aceBadge={aceWinnersMap[p.id] ?? null}
+          tabIndex={tabIdx}
+          onNameKeyDown={(e) => {
+            if (isLastPlayerOverall && e.key === "Tab" && !e.shiftKey) {
+              e.preventDefault()
+              e.currentTarget.blur()
+            }
+          }}
+          animId={anim[p.id] ?? 0}
+          prevKills={prevKillsMap[p.id] ?? 0}
+          dragging={draggingId === p.id}
+          removeMode={removeMode === team}
+          onRemove={() => removePlayer(team, p.id)}
+          onScore={(nk) => handleScore(team, p.id, nk)}
+          onZeroKill={() => handleZeroKill(team, p.id)}
+          onCancel={() => handleCancel(team, p.id)}
+          onNameChange={(name) => updatePlayerName(team, p.id, name)}
+          onNameCommit={(name) => updatePlayerName(team, p.id, name)}
+          onKillerChange={(killer) => updateKiller(team, p.id, killer)}
+          onDragStart={() => {
+            dragItem.current = { team, id: p.id }
+            setDraggingId(p.id)
+          }}
+          onDragEnter={() => handleDragEnter(team, p.id)}
+          onDragEnd={() => {
+            dragItem.current = null
+            setDraggingId(null)
+          }}
+        />
+        {selgong && !p.played && removeMode !== team && (
+          <motion.span
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={`absolute -top-3 z-20 flex items-center gap-1 whitespace-nowrap rounded border border-black/80 bg-dbd-yellow px-2.5 py-0.5 text-xs font-black text-black ${
+              isThomas ? "right-3" : "left-3"
+            }`}
+            style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
+          >
+            선공
+          </motion.span>
+        )}
+        {active && !selgong && removeMode !== team && (
+          <span
+            className={`absolute -top-2.5 z-10 whitespace-nowrap rounded-sm bg-neutral-950/95 px-2 text-xs text-neutral-200 ${
+              isThomas ? "right-3" : "left-3"
+            }`}
+            style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+          >
+            다음 플레이어
+          </span>
+        )}
+        {aceWinnersMap[p.id] === "win" && (
+          <motion.span
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={cn(
+              "absolute -top-3 z-30 flex items-center gap-1 whitespace-nowrap rounded border border-amber-300 bg-dbd-yellow px-2.5 py-0.5 text-xs font-black text-black tracking-wider shadow-[0_0_12px_rgba(234,179,8,0.7)] select-none",
+              isThomas ? "right-3" : "left-3"
+            )}
+            style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
+          >
+            ACE
+          </motion.span>
+        )}
+      </div>
+    )
+  }
+
   function removePlayer(team: Team, playerId: string) {
     const setTeam = team === "thomas" ? setThomas : setAda
     const roster = team === "thomas" ? thomas : ada
@@ -690,6 +1077,11 @@ export function Scoreboard() {
     }
   }
 
+  function updateKiller(team: Team, playerId: string, killer: string) {
+    const setTeam = team === "thomas" ? setThomas : setAda
+    setTeam((prev) => prev.map((player) => player.id === playerId ? { ...player, killer } : player))
+  }
+
   function commitPlayerName(team: Team, playerId: string, name: string) {
     const roster = team === "thomas" ? thomas : ada
     const cleanName = name.trim()
@@ -708,6 +1100,19 @@ export function Scoreboard() {
     setFirstAttackerId(null)
     setShowResetConfirm(false)
     setOverlayDismissed(false)
+    setIsAceMatchMode(false)
+    setShowAcePromptModal(false)
+    setAceThomasId(null)
+    setAceAdaId(null)
+    setAceThomasBackup(null)
+    setAceAdaBackup(null)
+    setAceFirstAttackerBackup(null)
+    setAceWinnerTeam(null)
+    setAceWinnersMap({})
+    setAceVictoryOverlay(null)
+    setShowAceRematchPrompt(false)
+    setHasCompletedAceMatch(false)
+    setShowAceProceedButton(false)
     // localStorage는 useEffect가 상태 변경 후 자동으로 업데이트함
   }
 
@@ -739,78 +1144,20 @@ export function Scoreboard() {
     setFirstAttackerId(null)
     setShowFullResetConfirm(false)
     setOverlayDismissed(false)
+    setIsAceMatchMode(false)
+    setShowAcePromptModal(false)
+    setAceThomasId(null)
+    setAceAdaId(null)
+    setAceThomasBackup(null)
+    setAceAdaBackup(null)
+    setAceFirstAttackerBackup(null)
+    setAceWinnerTeam(null)
+    setAceWinnersMap({})
+    setAceVictoryOverlay(null)
+    setShowAceRematchPrompt(false)
+    setHasCompletedAceMatch(false)
+    setShowAceProceedButton(false)
     try { localStorage.removeItem(LS_KEY) } catch { /* ignore */ }
-  }
-
-  const renderRow = (team: Team, p: Player, index: number, nextIndex: number) => {
-    const active = turn === team && index === nextIndex && nextIndex !== -1
-    const selgongPlayerId = firstAttackTeam === "thomas" ? thomas[0]?.id : firstAttackTeam === "ada" ? ada[0]?.id : firstAttackerId
-    const selgong = p.id === selgongPlayerId
-    const isThomas = team === "thomas"
-    const tabIdx = isThomas ? index + 1 : 5 + index
-    const isLastPlayerOverall = team === "ada" && index === ada.length - 1
-    return (
-      <div key={p.id} className="relative">
-        <PlayerRow
-          player={p}
-          team={team}
-          active={active}
-          isSelgong={selgong && !p.played}
-          tabIndex={tabIdx}
-          onNameKeyDown={(e) => {
-            if (isLastPlayerOverall && e.key === "Tab" && !e.shiftKey) {
-              e.preventDefault()
-              e.currentTarget.blur()
-            }
-          }}
-          animId={anim[p.id] ?? 0}
-          prevKills={prevKillsMap[p.id] ?? 0}
-          dragging={draggingId === p.id}
-          removeMode={removeMode === team}
-          onRemove={() => removePlayer(team, p.id)}
-          onScore={(nk) => handleScore(team, p.id, nk)}
-          onZeroKill={() => handleZeroKill(team, p.id)}
-          onCancel={() => handleCancel(team, p.id)}
-          onNameChange={(name) => updatePlayerName(team, p.id, name)}
-          onNameCommit={(name) => commitPlayerName(team, p.id, name)}
-          onKillerChange={(killer) => {
-            const setter = team === "thomas" ? setThomas : setAda
-            setter((prev) => prev.map((pl) => pl.id === p.id ? { ...pl, killer } : pl))
-          }}
-          onDragStart={() => {
-            dragItem.current = { team, id: p.id }
-            setDraggingId(p.id)
-          }}
-          onDragEnter={() => handleDragEnter(team, p.id)}
-          onDragEnd={() => {
-            dragItem.current = null
-            setDraggingId(null)
-          }}
-        />
-        {selgong && removeMode !== team && (
-          <motion.span
-            initial={{ scale: 0.7, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className={`absolute -top-3 z-20 flex items-center gap-1 whitespace-nowrap rounded border border-black/80 bg-dbd-yellow px-2.5 py-0.5 text-xs font-black text-black ${
-              isThomas ? "right-3" : "left-3"
-            }`}
-            style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
-          >
-            선공
-          </motion.span>
-        )}
-        {active && !selgong && removeMode !== team && (
-          <span
-            className={`absolute -top-2.5 z-10 whitespace-nowrap rounded-sm bg-neutral-950/95 px-2 text-xs text-neutral-200 ${
-              isThomas ? "right-3" : "left-3"
-            }`}
-            style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-          >
-            다음 플레이어
-          </span>
-        )}
-      </div>
-    )
   }
 
   return (
@@ -834,19 +1181,21 @@ export function Scoreboard() {
       <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-3 pb-12 md:px-8 md:py-4 md:pb-14">
         {/* editable team titles & floating coin toss widget */}
         <div className="relative border-b border-foreground/10 pb-4">
-          <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-30">
-            <CoinTossWidget
-              thomasName={thomasName}
-              adaName={adaName}
-              activeTeam={firstAttackTeam}
-              onTossResult={(winner) => {
-                const roster = winner === "thomas" ? thomas : ada
-                if (roster.length > 0) {
-                  setFirstAttackerId(roster[0].id)
-                }
-              }}
-            />
-          </div>
+          {!isAceMatchMode && (
+            <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-30">
+              <CoinTossWidget
+                thomasName={thomasName}
+                adaName={adaName}
+                activeTeam={firstAttackTeam}
+                onTossResult={(winner) => {
+                  const roster = winner === "thomas" ? thomas : ada
+                  if (roster.length > 0) {
+                    setFirstAttackerId(roster[0].id)
+                  }
+                }}
+              />
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
           <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
             {/* 숨겨진 span으로 실제 렌더 폭을 측정해 input에 적용 */}
@@ -889,89 +1238,144 @@ export function Scoreboard() {
       </div>
 
         {/* rosters */}
-        <div className="mt-1 grid grid-cols-1 gap-5 md:h-96 md:grid-cols-2 md:gap-12 lg:gap-20">
-          <div className="flex w-full max-w-xl flex-col justify-self-end gap-2">
-            <div className="flex items-center gap-1 text-neutral-400">
-              <ShuffleButton teamName={thomasName} onClick={() => shuffleTeam("thomas")} disabled={hasAnyScore} />
-              <button
-                type="button"
-                onClick={() => addPlayer("thomas")}
-                disabled={thomas.length >= MAX_PLAYERS_PER_TEAM}
-                aria-label="왼쪽 팀원 추가"
-                title={thomas.length >= MAX_PLAYERS_PER_TEAM ? "최대 4명까지 추가할 수 있습니다" : "팀원 추가"}
-                className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
-              >
-                <img
-                  src="/images/addplayer.png"
-                  alt=""
-                  draggable={false}
-                  className="size-full object-cover transition-[filter] group-hover:brightness-125"
-                />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setRemoveMode((current) => current === "thomas" ? null : "thomas") }}
-                aria-label="왼쪽 팀원 제거 선택"
-                title={removeMode === "thomas" ? "제거 모드 취소" : "팀원 제거"}
-                aria-pressed={removeMode === "thomas"}
-                className={cn("group size-9 overflow-hidden rounded-sm transition-[transform,filter] hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue", removeMode === "thomas" && "drop-shadow-[0_0_8px_var(--dbd-red)]")}
-              >
-                <img
-                  src="/images/removeplayer.png"
-                  alt=""
-                  draggable={false}
-                  className={cn("size-full object-cover transition-[filter] group-hover:brightness-125", removeMode === "thomas" && "brightness-125")}
-                />
-              </button>
+        {isAceMatchMode ? (
+          <motion.div
+            initial={{ scaleY: 0, opacity: 0 }}
+            animate={{ scaleY: 1, opacity: 1 }}
+            transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+            className="mt-1 relative w-screen left-1/2 -translate-x-1/2 h-[360px] md:h-[400px] bg-black/95 p-4 md:p-6 shadow-[0_0_60px_rgba(0,0,0,0.95)] flex flex-col items-center justify-center backdrop-blur-md overflow-hidden"
+          >
+            {/* 에이스 결정전 전용 선공 정하기 버튼 — 높이 고정(h-16)으로 레이아웃 밀림 방지 */}
+            <div className="h-16 flex items-center justify-center relative w-full shrink-0 mb-2 overflow-visible">
+              <CoinTossWidget
+                thomasName={thomasName}
+                adaName={adaName}
+                thomasDisplayName={thomas.find((p) => p.id === aceThomasId)?.name.trim() || undefined}
+                adaDisplayName={ada.find((p) => p.id === aceAdaId)?.name.trim() || undefined}
+                activeTeam={firstAttackTeam}
+                onTossResult={(winner) => {
+                  const aceId = winner === "thomas" ? aceThomasId : aceAdaId
+                  if (aceId) {
+                    setFirstAttackerId(aceId)
+                  }
+                }}
+              />
             </div>
-            <div className="flex min-h-36 flex-col gap-3" onClick={(event) => {
-              if (event.target === event.currentTarget && removeMode === "thomas") setRemoveMode(null)
-            }}>
-              {thomas.length === 0 ? <EmptyRoster onClick={() => removeMode === "thomas" ? setRemoveMode(null) : addPlayer("thomas")} /> : thomas.map((p, i) => renderRow("thomas", p, i, thomasNext))}
-            </div>
-          </div>
 
-          <div className="flex w-full max-w-xl flex-col gap-2">
-            <div className="flex items-center justify-end gap-1 text-neutral-400">
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setRemoveMode((current) => current === "ada" ? null : "ada") }}
-                aria-label="오른쪽 팀원 제거 선택"
-                title={removeMode === "ada" ? "제거 모드 취소" : "팀원 제거"}
-                aria-pressed={removeMode === "ada"}
-                className={cn("group size-9 overflow-hidden rounded-sm transition-[transform,filter] hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue", removeMode === "ada" && "drop-shadow-[0_0_8px_var(--dbd-red)]")}
+            {/* 양 팀 에이스 2인 이름표 — 양쪽에서 서로를 향해 슬라이딩 및 수직 중앙 정렬 */}
+            <div className="w-full max-w-5xl px-2 md:px-4 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 items-center">
+              <motion.div
+                initial={{ x: "-100vw", opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+                className="w-full flex flex-col items-center"
               >
-                <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Removeplayer-ExYhz8hM8Tgzqopazw6mq4EtaVtoK4.png"
-                  alt=""
-                  draggable={false}
-                  className={cn("size-full object-cover transition-[filter] group-hover:brightness-125", removeMode === "ada" && "brightness-125")}
-                />
-              </button>
-              <button
-                type="button"
-                onClick={() => addPlayer("ada")}
-                disabled={ada.length >= MAX_PLAYERS_PER_TEAM}
-                aria-label="오른쪽 팀원 추가"
-                title={ada.length >= MAX_PLAYERS_PER_TEAM ? "최대 4명까지 추가할 수 있습니다" : "팀원 추가"}
-                className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
+                {thomas.find((p) => p.id === aceThomasId) && (
+                  <div className="w-full max-w-xl">
+                    {renderRow("thomas", thomas.find((p) => p.id === aceThomasId)!, 0, 0)}
+                  </div>
+                )}
+              </motion.div>
+
+              <motion.div
+                initial={{ x: "100vw", opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+                className="w-full flex flex-col items-center"
               >
-                <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Addplayer-j1Wdqcd9gLokCKfKVrdt96Gu5wBqbM.png"
-                  alt=""
-                  draggable={false}
-                  className="size-full object-cover transition-[filter] group-hover:brightness-125"
-                />
-              </button>
-              <ShuffleButton teamName={adaName} onClick={() => shuffleTeam("ada")} disabled={hasAnyScore} />
+                {ada.find((p) => p.id === aceAdaId) && (
+                  <div className="w-full max-w-xl">
+                    {renderRow("ada", ada.find((p) => p.id === aceAdaId)!, 0, 0)}
+                  </div>
+                )}
+              </motion.div>
             </div>
-            <div className="flex min-h-36 flex-col gap-3" onClick={(event) => {
-              if (event.target === event.currentTarget && removeMode === "ada") setRemoveMode(null)
-            }}>
-              {ada.length === 0 ? <EmptyRoster onClick={() => removeMode === "ada" ? setRemoveMode(null) : addPlayer("ada")} /> : ada.map((p, i) => renderRow("ada", p, i, adaNext))}
+          </motion.div>
+        ) : (
+          <div className="mt-1 grid grid-cols-1 gap-5 md:h-96 md:grid-cols-2 md:gap-12 lg:gap-20">
+            <div className="flex w-full max-w-xl flex-col justify-self-end gap-2">
+              <div className="flex items-center gap-1 text-neutral-400">
+                <ShuffleButton teamName={thomasName} onClick={() => shuffleTeam("thomas")} disabled={hasAnyScore} />
+                <button
+                  type="button"
+                  onClick={() => addPlayer("thomas")}
+                  disabled={thomas.length >= MAX_PLAYERS_PER_TEAM}
+                  aria-label="왼쪽 팀원 추가"
+                  title={thomas.length >= MAX_PLAYERS_PER_TEAM ? "최대 4명까지 추가할 수 있습니다" : "팀원 추가"}
+                  className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
+                >
+                  <img
+                    src="/images/addplayer.png"
+                    alt=""
+                    draggable={false}
+                    className="size-full object-cover transition-[filter] group-hover:brightness-125"
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setRemoveMode((current) => current === "thomas" ? null : "thomas") }}
+                  aria-label="왼쪽 팀원 제거 선택"
+                  title={removeMode === "thomas" ? "제거 모드 취소" : "팀원 제거"}
+                  aria-pressed={removeMode === "thomas"}
+                  className={cn("group size-9 overflow-hidden rounded-sm transition-[transform,filter] hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue", removeMode === "thomas" && "drop-shadow-[0_0_8px_var(--dbd-red)]")}
+                >
+                  <img
+                    src="/images/removeplayer.png"
+                    alt=""
+                    draggable={false}
+                    className={cn("size-full object-cover transition-[filter] group-hover:brightness-125", removeMode === "thomas" && "brightness-125")}
+                  />
+                </button>
+              </div>
+              <div className="flex min-h-36 flex-col gap-3" onClick={(event) => {
+                if (event.target === event.currentTarget && removeMode === "thomas") setRemoveMode(null)
+              }}>
+                {displayThomas.length === 0 ? <EmptyRoster onClick={() => removeMode === "thomas" ? setRemoveMode(null) : addPlayer("thomas")} /> : displayThomas.map((p, i) => renderRow("thomas", p, i, thomasNext))}
+              </div>
+            </div>
+
+            <div className="flex w-full max-w-xl flex-col gap-2">
+              <div className="flex items-center justify-end gap-1 text-neutral-400">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setRemoveMode((current) => current === "ada" ? null : "ada") }}
+                  aria-label="오른쪽 팀원 제거 선택"
+                  title={removeMode === "ada" ? "제거 모드 취소" : "팀원 제거"}
+                  aria-pressed={removeMode === "ada"}
+                  className={cn("group size-9 overflow-hidden rounded-sm transition-[transform,filter] hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue", removeMode === "ada" && "drop-shadow-[0_0_8px_var(--dbd-red)]")}
+                >
+                  <img
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Removeplayer-ExYhz8hM8Tgzqopazw6mq4EtaVtoK4.png"
+                    alt=""
+                    draggable={false}
+                    className={cn("size-full object-cover transition-[filter] group-hover:brightness-125", removeMode === "ada" && "brightness-125")}
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => addPlayer("ada")}
+                  disabled={ada.length >= MAX_PLAYERS_PER_TEAM}
+                  aria-label="오른쪽 팀원 추가"
+                  title={ada.length >= MAX_PLAYERS_PER_TEAM ? "최대 4명까지 추가할 수 있습니다" : "팀원 추가"}
+                  className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
+                >
+                  <img
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Addplayer-j1Wdqcd9gLokCKfKVrdt96Gu5wBqbM.png"
+                    alt=""
+                    draggable={false}
+                    className="size-full object-cover transition-[filter] group-hover:brightness-125"
+                  />
+                </button>
+                <ShuffleButton teamName={adaName} onClick={() => shuffleTeam("ada")} disabled={hasAnyScore} />
+              </div>
+              <div className="flex min-h-36 flex-col gap-3" onClick={(event) => {
+                if (event.target === event.currentTarget && removeMode === "ada") setRemoveMode(null)
+              }}>
+                {displayAda.length === 0 ? <EmptyRoster onClick={() => removeMode === "ada" ? setRemoveMode(null) : addPlayer("ada")} /> : displayAda.map((p, i) => renderRow("ada", p, i, adaNext))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* center score */}
         <div className="relative flex h-48 md:h-52 shrink-0 translate-y-3 items-center justify-center pt-4 pb-2">
@@ -980,107 +1384,123 @@ export function Scoreboard() {
             right={rightScore}
             leftBump={leftBump}
             rightBump={rightBump}
-            orangeLit={orangeLit}
-            blueLit={blueLit}
-            close={close}
-            isGameOver={isGameOver}
+            orangeLit={orangeLitDisplay}
+            blueLit={blueLitDisplay}
+            close={closeDisplay}
+            isGameOver={isGameOverDisplay}
           />
         </div>
 
         {/* cold game warning / result */}
-        <div className="cold-game-box mb-2">
-          {cold.status === "warning" && (
-            <>
-              {/* 콜드게임 적용 여부에 따라 제목 분기 */}
-              <p className="cold-warning-title">
-                {cold.opponentMustSurviveName ? "콜드게임 경고" : cold.isGeneral ? "알림" : "콜드게임 경고"}
-              </p>
-              <div className="cold-warning-text flex flex-col items-center gap-1">
-                {/* 상대팀 생존 경고가 있는 경우 우선 단일 표시 (1킬 시 상대 콜드 상황) */}
-                {cold.opponentMustSurviveName ? (
+        <div className="cold-game-box mt-6 md:mt-8 mb-2">
+          {isAceMatchMode ? (
+            aceMatchWarning && (
+              <>
+                <p className="cold-warning-title">알림</p>
+                <div className="cold-warning-text flex flex-col items-center gap-1">
                   <p>
-                    <span className={`cold-team-name ${cold.opponentMustSurviveName === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
-                      {cold.opponentMustSurviveName}
+                    <span className={`cold-team-name ${aceMatchWarning.team === "thomas" ? "cold-team-thomas" : "cold-team-ada"}`}>
+                      {aceMatchWarning.name}
                     </span>{" "}
-                    팀{" "}
-                    {"이번 경기 전부 생존해야 합니다"}
+                    {aceMatchWarning.text}
                   </p>
-                ) : (
-                  cold.need > 0 && (
+                </div>
+              </>
+            )
+          ) : (
+            cold.status === "warning" && (
+              <>
+                {/* 콜드게임 적용 여부에 따라 제목 분기 */}
+                <p className="cold-warning-title">
+                  {cold.opponentMustSurviveName ? "콜드게임 경고" : cold.isGeneral ? "알림" : "콜드게임 경고"}
+                </p>
+                <div className="cold-warning-text flex flex-col items-center gap-1">
+                  {/* 상대팀 생존 경고가 있는 경우 우선 단일 표시 (1킬 시 상대 콜드 상황) */}
+                  {cold.opponentMustSurviveName ? (
                     <p>
-                      <span className={`cold-team-name ${cold.name === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
-                        {cold.name}
+                      <span className={`cold-team-name ${cold.opponentMustSurviveName === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
+                        {cold.opponentMustSurviveName}
                       </span>{" "}
                       팀{" "}
-                      {cold.isEarlyWinNotice
-                        ? cold.need >= MAX_KILLS
-                          ? (
-                            <>
-                              {"이번 경기에서 "}
-                              <span className="cold-kill-count">{"올킬"}</span>
-                              {"하면 콜드게임으로 우승입니다"}
-                            </>
-                          )
-                          : (
-                            <>
-                              {"이번 경기에서 "}
-                              <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                              {" 이상 하면 콜드게임으로 우승입니다"}
-                            </>
-                          )
-                        : cold.isGeneral
-                          ? cold.isWinPossible
-                            ? cold.need >= MAX_KILLS
-                              ? (
-                                <>
-                                  {"이번 경기에서 "}
-                                  <span className="cold-kill-count">{"올킬"}</span>
-                                  {" 하면 우승입니다"}
-                                </>
-                              )
-                              : (
-                                <>
-                                  {"이번 경기에서 "}
-                                  <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                                  {" 이상 하면 우승입니다"}
-                                </>
-                              )
-                            : cold.need >= MAX_KILLS
-                              ? (
-                                <>
-                                  {"이번 경기에서 "}
-                                  <span className="cold-kill-count">{"올킬"}</span>
-                                  {"을 해야 동점입니다"}
-                                </>
-                              )
-                              : (
-                                <>
-                                  {"이번 경기에서 "}
-                                  <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                                  {" 이상 해야 동점입니다"}
-                                </>
-                              )
-                          : cold.need >= MAX_KILLS
+                      {"이번 경기 전부 생존해야 합니다"}
+                    </p>
+                  ) : (
+                    cold.need > 0 && (
+                      <p>
+                        <span className={`cold-team-name ${cold.name === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
+                          {cold.name}
+                        </span>{" "}
+                        팀{" "}
+                        {cold.isEarlyWinNotice
+                          ? cold.need >= MAX_KILLS
                             ? (
                               <>
                                 {"이번 경기에서 "}
                                 <span className="cold-kill-count">{"올킬"}</span>
-                                {"을 해야합니다"}
+                                {"하면 콜드게임으로 우승입니다"}
                               </>
                             )
                             : (
                               <>
                                 {"이번 경기에서 "}
                                 <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                                {" 이상 해야 합니다"}
+                                {" 이상 하면 콜드게임으로 우승입니다"}
                               </>
                             )
-                      }
-                    </p>
-                  )
-                )}
-              </div>
-            </>
+                          : cold.isGeneral
+                            ? cold.isWinPossible
+                              ? cold.need >= MAX_KILLS
+                                ? (
+                                  <>
+                                    {"이번 경기에서 "}
+                                    <span className="cold-kill-count">{"올킬"}</span>
+                                    {" 하면 우승입니다"}
+                                  </>
+                                )
+                                : (
+                                  <>
+                                    {"이번 경기에서 "}
+                                    <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                                    {" 이상 하면 우승입니다"}
+                                  </>
+                                )
+                              : cold.need >= MAX_KILLS
+                                ? (
+                                  <>
+                                    {"이번 경기에서 "}
+                                    <span className="cold-kill-count">{"올킬"}</span>
+                                    {"을 해야 동점입니다"}
+                                  </>
+                                )
+                                : (
+                                  <>
+                                    {"이번 경기에서 "}
+                                    <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                                    {" 이상 해야 동점입니다"}
+                                  </>
+                                )
+                            : cold.need >= MAX_KILLS
+                              ? (
+                                <>
+                                  {"이번 경기에서 "}
+                                  <span className="cold-kill-count">{"올킬"}</span>
+                                  {"을 해야합니다"}
+                                </>
+                              )
+                              : (
+                                <>
+                                  {"이번 경기에서 "}
+                                  <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                                  {" 이상 해야 합니다"}
+                                </>
+                              )
+                        }
+                      </p>
+                    )
+                  )}
+                </div>
+              </>
+            )
           )}
           {cold.status === "cold" && (
             <>
@@ -1099,13 +1519,48 @@ export function Scoreboard() {
               </p>
             </>
           )}
-          {cold.status === "gameover" && (
+          {cold.status === "gameover" && (isAceMatchMode ? bothAcePlayed : true) && (
             <>
               <p className="cold-game-title text-dbd-yellow">
-                {cold.isCold ? "콜드게임!" : "모든 경기 종료"}
+                {isAceMatchMode || aceWinnerTeam
+                  ? "에이스 결정전 종료"
+                  : cold.isCold
+                  ? "콜드게임!"
+                  : "모든 경기 종료"}
               </p>
               <p className="mt-3 text-2xl font-black text-white drop-shadow-md tracking-widest" style={{ fontFamily: "var(--font-godo)" }}>
-                {cold.winnerName === "tie" ? (
+                {isAceMatchMode ? (
+                  (() => {
+                    const tAce = thomas.find((p) => p.id === aceThomasId)
+                    const aAce = ada.find((p) => p.id === aceAdaId)
+                    if (tAce && aAce && tAce.kills === aAce.kills) {
+                      return <span className="text-dbd-yellow">무승부</span>
+                    }
+                    const aceWinner = tAce && aAce && tAce.kills > aAce.kills ? thomasName : adaName
+                    const isThomasWin = aceWinner === thomasName
+                    return (
+                      <>
+                        <span className={`cold-team-name ${isThomasWin ? 'cold-team-thomas text-dbd-orange' : 'cold-team-ada text-dbd-blue'}`}>
+                          {aceWinner}
+                        </span>{" "}
+                        <span className="text-white">팀 승리!</span>
+                      </>
+                    )
+                  })()
+                ) : aceWinnerTeam ? (
+                  (() => {
+                    const winnerName = aceWinnerTeam === "thomas" ? thomasName : adaName
+                    const isThomasWin = aceWinnerTeam === "thomas"
+                    return (
+                      <>
+                        <span className={`cold-team-name ${isThomasWin ? 'cold-team-thomas text-dbd-orange' : 'cold-team-ada text-dbd-blue'}`}>
+                          {winnerName}
+                        </span>{" "}
+                        <span className="text-white">팀 승리!</span>
+                      </>
+                    )
+                  })()
+                ) : cold.winnerName === "tie" ? (
                   <span className="text-dbd-yellow">최종 결과: 무승부!</span>
                 ) : (
                   <>
@@ -1261,26 +1716,149 @@ export function Scoreboard() {
         </div>
 
         {/* 우승 오버레이 */}
-        {showOverlay && !overlayDismissed && cold.status === "cold" && (
+        {showOverlay && !overlayDismissed && !isAceMatchMode && cold.status === "cold" && (
           <WinnerOverlay 
             winnerName={cold.name === thomasName ? adaName : thomasName} 
             teamColor={cold.name === thomasName ? "ada" : "thomas"} 
             onDismiss={() => setOverlayDismissed(true)} 
           />
         )}
-        {showOverlay && !overlayDismissed && cold.status === "gameover" && (
+        {showOverlay && !overlayDismissed && !isAceMatchMode && cold.status === "gameover" && (
           <WinnerOverlay 
             winnerName={cold.winnerName === "tie" ? "tie" : cold.winnerName} 
             teamColor={cold.winnerName === "tie" ? undefined : (cold.winnerName === thomasName ? "thomas" : "ada")} 
-            onDismiss={() => setOverlayDismissed(true)} 
+            onDismiss={() => {
+              setOverlayDismissed(true)
+              if (cold.winnerName === "tie" && !hasCompletedAceMatch) {
+                setShowAcePromptModal(true)
+              }
+            }} 
           />
+        )}
+
+        {/* 에이스 결정전 선택 모달 */}
+        {showAcePromptModal && (
+          <AceMatchModal
+            thomas={thomas}
+            ada={ada}
+            thomasName={thomasName}
+            adaName={adaName}
+            initialStep={aceModalInitialStep}
+            onCancel={() => {
+              setShowAcePromptModal(false)
+              setShowAceProceedButton(true)
+            }}
+            onConfirmAceMatch={handleConfirmAceMatch}
+          />
+        )}
+
+        {/* 에이스 결정전 승리 오버레이 */}
+        {aceVictoryOverlay && (
+          <AceMatchOverlay
+            winnerTeamName={aceVictoryOverlay.winnerTeamName}
+            acePlayerName={aceVictoryOverlay.acePlayerName}
+            teamColor={aceVictoryOverlay.teamColor}
+            onDismiss={handleAceVictoryDismiss}
+          />
+        )}
+
+        {/* 에이스 결정전 2차 무승부 리매치 팝업 — 흐림/어두움 배경 제거 및 직각 플레이어 이름표 스타일 적용 */}
+        {showAceRematchPrompt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto p-4">
+            <div className="w-full max-w-md rounded-lg border border-neutral-600 bg-black/95 p-6 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]">
+              <h2 className="text-xl font-bold text-dbd-yellow mb-3" style={{ fontFamily: "var(--font-godo)" }}>
+                에이스 결정전 무승부
+              </h2>
+              <p className="text-sm text-neutral-300 mb-6 leading-relaxed">
+                다시 결정전을 진행하시겠습니까?
+              </p>
+              <div className="flex flex-col gap-3">
+                <HoldButton
+                  onConfirm={() => {
+                    setShowAceRematchPrompt(false)
+                    setFirstAttackerId(null) // Reset coin toss & hide first attacker badge!
+                    if (aceThomasId && aceAdaId) {
+                      setThomas((prev) => prev.map((p) => (p.id === aceThomasId ? { ...p, kills: 0, played: false } : p)))
+                      setAda((prev) => prev.map((p) => (p.id === aceAdaId ? { ...p, kills: 0, played: false } : p)))
+                    }
+                  }}
+                  className="rounded border border-neutral-600 bg-black/90 py-2.5 text-sm font-bold text-dbd-yellow hover:border-neutral-400 hover:bg-dbd-yellow/20 transition-all"
+                >
+                  현재 멤버로 재경기 (꾹 누르기)
+                </HoldButton>
+                <HoldButton
+                  onConfirm={() => {
+                    setShowAceRematchPrompt(false)
+                    // Restore original 4v4 scores & first attacker before Ace match started
+                    if (aceThomasBackup) {
+                      setThomas((prev) => prev.map((p) => (p.id === aceThomasBackup.id ? { ...aceThomasBackup } : p)))
+                    }
+                    if (aceAdaBackup) {
+                      setAda((prev) => prev.map((p) => (p.id === aceAdaBackup.id ? { ...aceAdaBackup } : p)))
+                    }
+                    if (aceFirstAttackerBackup !== null) {
+                      setFirstAttackerId(aceFirstAttackerBackup)
+                    }
+
+                    setIsAceMatchMode(false)
+                    setAceThomasId(null)
+                    setAceAdaId(null)
+                    setAceThomasBackup(null)
+                    setAceAdaBackup(null)
+                    setAceFirstAttackerBackup(null)
+                    setAceModalInitialStep("method_select")
+                    setShowAcePromptModal(true)
+                  }}
+                  className="rounded border border-neutral-600 bg-black/90 py-2.5 text-sm font-bold text-dbd-blue hover:border-neutral-400 hover:bg-dbd-blue/20 transition-all"
+                >
+                  멤버 다시 뽑기 (꾹 누르기)
+                </HoldButton>
+                <HoldButton
+                  onConfirm={() => {
+                    setShowAceRematchPrompt(false)
+                    handleExitAceMatch()
+                  }}
+                  className="rounded border border-neutral-600 bg-neutral-900/90 py-2.5 text-sm font-bold text-neutral-300 hover:border-neutral-400 hover:text-white transition-all"
+                >
+                  결정전 종료 (꾹 누르기)
+                </HoldButton>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 에이스 결정전 진행 중: 종료하기 버튼 / 모달 닫힘 상태: 진행하기 버튼 */}
+        {isAceMatchMode ? (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+            <HoldButton
+              onConfirm={handleExitAceMatch}
+              className="rounded border border-red-600/80 bg-black/90 px-6 py-2.5 text-xs font-bold text-red-400 hover:bg-red-950/80 transition-all uppercase tracking-wider"
+            >
+              에이스 결정전 종료하기 (꾹 누르기)
+            </HoldButton>
+          </div>
+        ) : (
+          showAceProceedButton && !showAcePromptModal && (
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+              <HoldButton
+                onConfirm={() => {
+                  setShowAceProceedButton(false)
+                  setAceModalInitialStep("prompt")
+                  setShowAcePromptModal(true)
+                }}
+                className="rounded border border-dbd-yellow/90 bg-black/90 px-6 py-2.5 text-xs font-bold text-dbd-yellow hover:bg-dbd-yellow/20 shadow-[0_0_15px_rgba(234,179,8,0.3)] transition-all uppercase tracking-wider"
+              >
+                에이스 결정전 진행하기 (꾹 누르기)
+              </HoldButton>
+            </div>
+          )
         )}
       </div>
 
       {/* Mode Switcher Floating Button & Popover */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1">
         <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider select-none pr-1">
-          v1.0.6
+          v1.1.0
         </span>
         <button
           type="button"

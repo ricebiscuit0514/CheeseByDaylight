@@ -199,8 +199,8 @@ function buildPlateMotion(prevKills: number, kills: number, fourKill: boolean, i
   }
 }
 
-export function PlayerRow({ player, team, active, isSelgong = false, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, tabIndex, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd, onNameKeyDown }: {
-  player: Player; team: Team; active: boolean; isSelgong?: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean; tabIndex?: number
+export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, isGoldSkull = false, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, tabIndex, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd, onNameKeyDown }: {
+  player: Player; team: Team; active: boolean; isSelgong?: boolean; aceBadge?: "win" | "lose" | null; isGoldSkull?: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean; tabIndex?: number
   onRemove?: () => void; onScore: (newKills: number) => void; onZeroKill: () => void; onCancel: () => void; onNameChange: (name: string) => void
   onNameCommit: (name: string) => void; onKillerChange: (killer: string) => void; onDragStart: () => void; onDragEnter: () => void; onDragEnd: () => void
   onNameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
@@ -366,6 +366,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, animId, pre
               transition={{ duration: 0.6, ease: [0.8, 0, 0.15, 1] }}
             >ALL KILL</motion.span>
           )}
+
         </div>
         {fourKill && !reducedMotion && (
           <motion.span

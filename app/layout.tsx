@@ -44,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ko" className={`dark ${blackHanSans.className}`} style={{ "--font-black-han": blackHanSans.style.fontFamily } as React.CSSProperties}>
+    <html suppressHydrationWarning lang="ko" className={`dark ${blackHanSans.className}`} style={{ "--font-black-han": blackHanSans.style.fontFamily } as React.CSSProperties}>
       <body className="bg-background antialiased" style={{ fontFamily: "var(--font-godo)" }}>
         {/* Fixed Global Background — Never moves or resizes on page transitions */}
         <div className="fixed inset-0 trial-arena pointer-events-none z-0 overflow-hidden" aria-hidden="true">
