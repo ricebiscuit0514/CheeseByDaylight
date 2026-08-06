@@ -753,7 +753,18 @@ export function Scoreboard() {
   return (
     <main
       className="relative min-h-screen w-full overflow-hidden text-foreground"
-      onClick={() => {
+      onClick={(e) => {
+        const target = e.target as HTMLElement
+        if (
+          target &&
+          !target.closest("input") &&
+          !target.closest("button") &&
+          !target.closest("textarea")
+        ) {
+          if (document.activeElement && document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur()
+          }
+        }
         if (removeMode) setRemoveMode(false)
       }}
     >

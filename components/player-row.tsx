@@ -137,7 +137,15 @@ function DragHandle({ disabled, onDragStart, onDragEnd }: { disabled: boolean; o
     <span
       aria-hidden
       draggable={!disabled}
-      onDragStart={onDragStart}
+      onDragStart={(e) => {
+        try {
+          e.dataTransfer.setData("text/plain", "drag")
+          e.dataTransfer.effectAllowed = "move"
+        } catch {
+          // ignore
+        }
+        onDragStart?.(e)
+      }}
       onDragEnd={onDragEnd}
       className={cn("drag-handle", !disabled && "cursor-grab active:cursor-grabbing")}
     >
@@ -303,7 +311,18 @@ export function PlayerRow({ player, team, active, animId, prevKills, dragging, r
         role={removeMode ? "button" : undefined} tabIndex={removeMode ? 0 : undefined} aria-label={removeMode ? `${player.name} 제거` : undefined}
         onClick={removeMode ? (event) => { event.stopPropagation(); onRemove?.() } : undefined}
         onKeyDown={removeMode ? (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onRemove?.() } } : undefined}
-        onDragEnter={onDragEnter} onDragOver={(event) => !interactionsDisabled && event.preventDefault()}
+        onDragEnter={onDragEnter}
+        onDragOver={(event) => {
+          if (!interactionsDisabled) {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = "move"
+          }
+        }}
+        onDrop={(event) => {
+          if (!interactionsDisabled) {
+            event.preventDefault()
+          }
+        }}
         className={cn("plate-motion-shell", dragging && "opacity-40")}
         animate={plateMotion ? { x: plateMotion.x, y: plateMotion.y, rotate: plateMotion.rotate } : undefined}
         transition={plateMotion?.transition}
