@@ -191,7 +191,7 @@ export function FivePlayerMode() {
   }
 
   const fullReset = () => {
-    setPlayers([])
+    setPlayers(createInitialPlayers())
     setReceivingConfig([...DEFAULT_RECEIVING])
     setGivingConfig([...DEFAULT_GIVING])
     setAnim({})
