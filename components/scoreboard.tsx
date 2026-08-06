@@ -95,7 +95,7 @@ function computeCold(
   const aMax = as + ar * MAX_KILLS
 
   // ── 남은 경기 없는 상황: 콜드게임 아닌 정규 경기 종료 ──
-  if (tr + ar === 0 && (ts !== 0 || as !== 0)) {
+  if (tr + ar === 0) {
     if (ts > as) return { status: "gameover", winnerName: thomasName, isCold: false }
     if (as > ts) return { status: "gameover", winnerName: adaName, isCold: false }
     return { status: "gameover", winnerName: "tie", isCold: false }
