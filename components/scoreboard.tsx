@@ -10,8 +10,18 @@ import { useRouter } from "next/navigation"
 
 type Team = "thomas" | "ada"
 
-const INITIAL_THOMAS: Player[] = []
-const INITIAL_ADA: Player[] = []
+const INITIAL_THOMAS: Player[] = [
+  { id: "thomas-1", name: "", kills: 0, played: false },
+  { id: "thomas-2", name: "", kills: 0, played: false },
+  { id: "thomas-3", name: "", kills: 0, played: false },
+  { id: "thomas-4", name: "", kills: 0, played: false },
+]
+const INITIAL_ADA: Player[] = [
+  { id: "ada-1", name: "", kills: 0, played: false },
+  { id: "ada-2", name: "", kills: 0, played: false },
+  { id: "ada-3", name: "", kills: 0, played: false },
+  { id: "ada-4", name: "", kills: 0, played: false },
+]
 const SCORE_BEAT_MS = 355
 const SCORE_BEAT_DOWN_MS = 40  // 점수 감소 시 빠르게 주르륵
 const MAX_PLAYERS_PER_TEAM = 4
@@ -43,6 +53,8 @@ type ColdState =
       isGeneral?: boolean
       /** isGeneral일 때 올킬로 우승(역전) 가능한지 여부. false면 올킬로 동점만 가능. */
       isWinPossible?: boolean
+      /** 선제 콜드게임 우승 가능 알림 여부 */
+      isEarlyWinNotice?: boolean
     }
   | { status: "cold"; name: string }
   | { status: "gameover"; winnerName: string | "tie"; isCold?: boolean }
@@ -179,6 +191,23 @@ function computeCold(
         }
       }
 
+      // ── 선제 콜드게임 우승 알림 ────────────────────────────────────
+      // 현재 차례 팀에게 방어적 경고(need > 0)가 없는 상황에서,
+      // 이번 주자가 일정 킬 수 이상을 올리면 상대의 남은 모든 경기 결과와 무관하게
+      // 콜드게임으로 즉시 우승이 확정되는지 체크한다.
+      const validSteps = [1, 2, 3, 3.5, 4]
+      const earlyWinNeed = validSteps.find((step) => my + step > oppMaxNow)
+      if (earlyWinNeed !== undefined) {
+        return {
+          status: "warning",
+          name: myName,
+          need: earlyWinNeed,
+          isEarlyWinNotice: true,
+          isGeneral: true,
+          opponentMustSurviveName,
+        }
+      }
+
       // 현재 차례 팀에게 경고는 없지만 상대가 생존해야 하는 경우
       if (opponentMustSurviveName) {
         return {
@@ -240,7 +269,7 @@ function loadFromStorage() {
   }
 }
 
-function CoinTossWidget({ thomasName, adaName }: { thomasName: string; adaName: string }) {
+function CoinTossWidget({ thomasName, adaName, onTossResult }: { thomasName: string; adaName: string; onTossResult?: (winner: "thomas" | "ada") => void }) {
   const [tossing, setTossing] = useState(false)
   const [result, setResult] = useState<"thomas" | "ada" | null>(null)
 
@@ -250,9 +279,10 @@ function CoinTossWidget({ thomasName, adaName }: { thomasName: string; adaName: 
     setResult(null)
 
     setTimeout(() => {
-      const winner = Math.random() < 0.5 ? "thomas" : "ada"
+      const winner: Team = Math.random() < 0.5 ? "thomas" : "ada"
       setResult(winner)
       setTossing(false)
+      onTossResult?.(winner)
     }, 1100)
   }
 
@@ -419,9 +449,10 @@ export function Scoreboard() {
   // 선공 팀이 결정되면, 총 플레이 횟수의 홀짝으로 다음 차례 팀을 정한다.
   // 선공 팀이 없으면 (아직 아무도 안 플레이) null 반환.
   const firstAttackTeam: Team | null = useMemo(() => {
-    if (!firstAttackerId) return null
-    if (thomas.some((p) => p.id === firstAttackerId)) return "thomas"
-    if (ada.some((p) => p.id === firstAttackerId)) return "ada"
+    const targetId = firstAttackerId ?? thomas[0]?.id
+    if (!targetId) return null
+    if (thomas.some((p) => p.id === targetId)) return "thomas"
+    if (ada.some((p) => p.id === targetId)) return "ada"
     return null
   }, [firstAttackerId, thomas, ada])
 
@@ -545,8 +576,6 @@ export function Scoreboard() {
     )
     setAnim((a) => ({ ...a, [playerId]: 0 }))
     setPrevKillsMap((prev) => { const next = { ...prev }; delete next[playerId]; return next })
-    // 선공자가 취소한 경우 선공 표시도 해제
-    setFirstAttackerId((prev) => (prev === playerId ? null : prev))
   }
 
   function reorder(team: Team, fromId: string, toId: string) {
@@ -685,7 +714,8 @@ export function Scoreboard() {
 
   const renderRow = (team: Team, p: Player, index: number, nextIndex: number) => {
     const active = turn === team && index === nextIndex && nextIndex !== -1
-    const selgong = p.id === firstAttackerId
+    const effectiveFirstAttacker = firstAttackerId ?? thomas[0]?.id
+    const selgong = p.id === effectiveFirstAttacker
     const isThomas = team === "thomas"
     const tabIdx = isThomas ? index + 1 : 5 + index
     const isLastPlayerOverall = team === "ada" && index === ada.length - 1
@@ -695,6 +725,7 @@ export function Scoreboard() {
           player={p}
           team={team}
           active={active}
+          isSelgong={selgong && !p.played}
           tabIndex={tabIdx}
           onNameKeyDown={(e) => {
             if (isLastPlayerOverall && e.key === "Tab" && !e.shiftKey) {
@@ -727,14 +758,16 @@ export function Scoreboard() {
           }}
         />
         {selgong && removeMode !== team && (
-          <span
-            className={`absolute -top-2.5 z-10 whitespace-nowrap rounded-sm bg-neutral-950/95 px-2 text-xs font-bold text-dbd-yellow ${
+          <motion.span
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={`absolute -top-3 z-20 flex items-center gap-1 whitespace-nowrap rounded border border-black/80 bg-dbd-yellow px-2.5 py-0.5 text-xs font-black text-black ${
               isThomas ? "right-3" : "left-3"
             }`}
-            style={{ fontFamily: "var(--font-godo)", fontWeight: 700 }}
+            style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
           >
             선공
-          </span>
+          </motion.span>
         )}
         {active && !selgong && removeMode !== team && (
           <span
@@ -772,7 +805,16 @@ export function Scoreboard() {
         {/* editable team titles & floating coin toss widget */}
         <div className="relative border-b border-foreground/10 pb-4">
           <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-30">
-            <CoinTossWidget thomasName={thomasName} adaName={adaName} />
+            <CoinTossWidget
+              thomasName={thomasName}
+              adaName={adaName}
+              onTossResult={(winner) => {
+                const roster = winner === "thomas" ? thomas : ada
+                if (roster.length > 0) {
+                  setFirstAttackerId(roster[0].id)
+                }
+              }}
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
           <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
@@ -926,47 +968,72 @@ export function Scoreboard() {
                 {cold.need > 0 && (
                   <p>
                     <span className={`cold-team-name ${cold.name === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
-                      {cold.name} 팀
+                      {cold.name}
                     </span>{" "}
-                    {cold.isGeneral
-                      ? cold.isWinPossible
-                        ? cold.need >= MAX_KILLS
-                          ? (
-                            <>
-                              {"이번 경기에서 "}
-                              <span className="cold-kill-count">{"올킬"}</span>
-                              {" 해야 우승입니다"}
-                            </>
-                          )
-                          : (
-                            <>
-                              {"이번 경기에서 "}
-                              <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                              {" 이상 해야 우승입니다"}
-                            </>
-                          )
-                        : (
-                          <>
-                            {"이번 경기에서 "}
-                            <span className="cold-kill-count">{"올킬"}</span>
-                            {"을 해야합니다"}
-                          </>
-                        )
-                      : cold.need >= MAX_KILLS
+                    팀{" "}
+                    {cold.isEarlyWinNotice
+                      ? cold.need >= MAX_KILLS
                         ? (
                           <>
                             {"이번 경기에서 "}
                             <span className="cold-kill-count">{"올킬"}</span>
-                            {"을 해야합니다"}
+                            {"하면 콜드게임으로 우승입니다"}
                           </>
                         )
                         : (
                           <>
                             {"이번 경기에서 "}
                             <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                            {" 이상 해야 합니다"}
+                            {" 이상 하면 콜드게임으로 우승입니다"}
                           </>
                         )
+                      : cold.isGeneral
+                        ? cold.isWinPossible
+                          ? cold.need >= MAX_KILLS
+                            ? (
+                              <>
+                                {"이번 경기에서 "}
+                                <span className="cold-kill-count">{"올킬"}</span>
+                                {" 해야 우승입니다"}
+                              </>
+                            )
+                            : (
+                              <>
+                                {"이번 경기에서 "}
+                                <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                                {" 이상 해야 우승입니다"}
+                              </>
+                            )
+                          : cold.need >= MAX_KILLS
+                            ? (
+                              <>
+                                {"이번 경기에서 "}
+                                <span className="cold-kill-count">{"올킬"}</span>
+                                {"을 해야 동점입니다"}
+                              </>
+                            )
+                            : (
+                              <>
+                                {"이번 경기에서 "}
+                                <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                                {" 이상 해야 동점입니다"}
+                              </>
+                            )
+                        : cold.need >= MAX_KILLS
+                          ? (
+                            <>
+                              {"이번 경기에서 "}
+                              <span className="cold-kill-count">{"올킬"}</span>
+                              {"을 해야합니다"}
+                            </>
+                          )
+                          : (
+                            <>
+                              {"이번 경기에서 "}
+                              <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                              {" 이상 해야 합니다"}
+                            </>
+                          )
                     }
                   </p>
                 )}
@@ -974,8 +1041,9 @@ export function Scoreboard() {
                 {cold.opponentMustSurviveName && (
                   <p>
                     <span className={`cold-team-name ${cold.opponentMustSurviveName === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
-                      {cold.opponentMustSurviveName} 팀
+                      {cold.opponentMustSurviveName}
                     </span>{" "}
+                    팀{" "}
                     {"이번 경기 전부 생존해야 합니다"}
                   </p>
                 )}
@@ -987,14 +1055,15 @@ export function Scoreboard() {
               <p className="cold-game-title">콜드게임!</p>
               <p className="cold-game-text">
                 <span className={`cold-team-name ${cold.name === thomasName ? 'cold-team-thomas' : 'cold-team-ada'}`}>
-                  {cold.name} 팀
+                  {cold.name}
                 </span>{" "}
-                역전 불가 — 경기 종료
+                팀 역전 불가 — 경기 종료
               </p>
-              <p className="mt-3 text-2xl font-black text-dbd-yellow drop-shadow-md tracking-widest" style={{ fontFamily: "var(--font-godo)" }}>
+              <p className="mt-3 text-2xl font-black text-white drop-shadow-md tracking-widest" style={{ fontFamily: "var(--font-godo)" }}>
                 <span className={`cold-team-name ${cold.name === thomasName ? 'cold-team-ada text-dbd-blue' : 'cold-team-thomas text-dbd-orange'}`}>
-                  {cold.name === thomasName ? adaName : thomasName}팀
-                </span> 우승!
+                  {cold.name === thomasName ? adaName : thomasName}
+                </span>{" "}
+                <span className="text-white">팀 우승!</span>
               </p>
             </>
           )}
@@ -1003,14 +1072,15 @@ export function Scoreboard() {
               <p className="cold-game-title text-dbd-yellow">
                 {cold.isCold ? "콜드게임!" : "모든 경기 종료"}
               </p>
-              <p className="mt-3 text-2xl font-black text-dbd-yellow drop-shadow-md tracking-widest" style={{ fontFamily: "var(--font-godo)" }}>
+              <p className="mt-3 text-2xl font-black text-white drop-shadow-md tracking-widest" style={{ fontFamily: "var(--font-godo)" }}>
                 {cold.winnerName === "tie" ? (
-                  "최종 결과: 무승부!"
+                  <span className="text-dbd-yellow">최종 결과: 무승부!</span>
                 ) : (
                   <>
                     <span className={`cold-team-name ${cold.winnerName === thomasName ? 'cold-team-thomas text-dbd-orange' : 'cold-team-ada text-dbd-blue'}`}>
-                      {cold.winnerName}팀
-                    </span> 우승!
+                      {cold.winnerName}
+                    </span>{" "}
+                    <span className="text-white">팀 우승!</span>
                   </>
                 )}
               </p>

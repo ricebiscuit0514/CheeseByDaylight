@@ -229,6 +229,12 @@
   background: radial-gradient(ellipse at 28% 50%, color-mix(in oklch, var(--team), transparent 64%), transparent 66%);
   mask-image: linear-gradient(to right, black 22%, transparent 100%);
 }
+.score-sanctum:not(.is-lit) .score-energy {
+  mask-image: linear-gradient(to left, black 10%, transparent 50%);
+}
+.score-sanctum-right:not(.is-lit) .score-energy {
+  mask-image: linear-gradient(to right, black 10%, transparent 50%);
+}
 .score-flare {
   position: absolute;
   top: 50%;
@@ -247,6 +253,30 @@
   transform: translateY(-50%) scale(1.15);
 }
 .score-sanctum.is-lit .score-energy { opacity: 1; filter: saturate(1.15); }
+
+.score-sanctum.is-lit:not(.score-sanctum-right) .score-energy {
+  left: -15%;
+  right: 0;
+  transform-origin: right center;
+  animation: energy-pulse-left 0.22s ease-in-out infinite;
+}
+
+.score-sanctum-right.is-lit .score-energy {
+  right: -15%;
+  left: 0;
+  transform-origin: left center;
+  animation: energy-pulse-right 0.22s ease-in-out infinite;
+}
+
+@keyframes energy-pulse-left {
+  0%, 100% { opacity: 0.96; transform: scaleX(1.0); filter: saturate(1.15) brightness(1.0); }
+  50%      { opacity: 1.00; transform: scaleX(1.03); filter: saturate(1.18) brightness(1.03); }
+}
+
+@keyframes energy-pulse-right {
+  0%, 100% { opacity: 0.96; transform: scaleX(1.0); filter: saturate(1.15) brightness(1.0); }
+  50%      { opacity: 1.00; transform: scaleX(1.03); filter: saturate(1.18) brightness(1.03); }
+}
 .score-scratch { position: absolute; inset: 12% 4%; z-index: -1; opacity: .2; background: repeating-linear-gradient(104deg, transparent 0 18px, color-mix(in oklch, var(--foreground), transparent 80%) 19px, transparent 20px 32px); mask-image: linear-gradient(to left, black, transparent); }
 .score-sanctum-right .score-scratch { transform: scaleX(-1); }
 .score-caption { position: absolute; top: 1.8rem; right: 1.25rem; color: color-mix(in oklch, var(--team), var(--foreground) 25%); font-size: .65rem; font-weight: 900; letter-spacing: .26em; }
@@ -274,6 +304,22 @@
 .player-plate { --team: var(--dbd-orange); position: relative; display: flex; min-height: 4.2rem; width: 100%; align-items: center; gap: .65rem; overflow: hidden; border: 1px solid color-mix(in oklch, var(--foreground), transparent 86%); border-left: 3px solid color-mix(in oklch, var(--team), transparent 32%); padding: .65rem .8rem; background: linear-gradient(104deg, color-mix(in oklch, var(--team), transparent 91%), color-mix(in oklch, var(--background), transparent 7%) 38%, color-mix(in oklch, var(--card), transparent 22%)); clip-path: polygon(0 0, calc(100% - .7rem) 0, 100% .7rem, 100% 100%, .55rem 100%, 0 calc(100% - .55rem)); backdrop-filter: blur(10px); }
 .player-plate-ada { --team: var(--dbd-blue); border-left: 1px solid color-mix(in oklch, var(--foreground), transparent 86%); border-right: 3px solid color-mix(in oklch, var(--team), transparent 32%); clip-path: polygon(.7rem 0, 100% 0, 100% calc(100% - .55rem), calc(100% - .55rem) 100%, 0 100%, 0 .7rem); }
 .player-plate.is-active { border-color: color-mix(in oklch, var(--team), transparent 38%); box-shadow: inset 0 0 24px color-mix(in oklch, var(--team), transparent 89%), 0 8px 24px color-mix(in oklch, var(--background), transparent 20%); }
+.player-plate.is-selgong {
+  animation: selgong-glow-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes selgong-glow-pulse {
+  0%, 100% {
+    border-color: var(--dbd-yellow);
+    box-shadow: 0 0 8px color-mix(in oklch, var(--dbd-yellow), transparent 45%),
+                inset 0 0 6px color-mix(in oklch, var(--dbd-yellow), transparent 75%);
+  }
+  50% {
+    border-color: color-mix(in oklch, var(--dbd-yellow), #fff 30%);
+    box-shadow: 0 0 22px color-mix(in oklch, var(--dbd-yellow), transparent 10%),
+                inset 0 0 14px color-mix(in oklch, var(--dbd-yellow), transparent 50%);
+  }
+}
 .player-plate.is-removing { cursor: pointer; border-color: var(--dbd-red); background-color: color-mix(in oklch, var(--dbd-red), transparent 88%); }
 .player-plate.is-exalted.is-removing { border-color: var(--dbd-red); background: linear-gradient(105deg, color-mix(in oklch, var(--dbd-red), transparent 82%), color-mix(in oklch, var(--dbd-red), transparent 91%) 40%, color-mix(in oklch, var(--background), transparent 3%)); }
 .plate-grain { position: absolute; inset: 0; opacity: .2; pointer-events: none; background: repeating-linear-gradient(167deg, transparent 0 7px, color-mix(in oklch, var(--foreground), transparent 92%) 8px, transparent 9px 15px); }

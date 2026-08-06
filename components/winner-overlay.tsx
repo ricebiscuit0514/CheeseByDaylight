@@ -198,9 +198,9 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
                   style={{ fontFamily: "var(--font-godo)", whiteSpace: "nowrap", letterSpacing: "-0.02em" }}
                 >
                   <span className={teamColor === "thomas" ? "text-dbd-orange" : "text-dbd-blue"}>
-                    {winnerName}팀
-                  </span>{" "}
-                  <span className="text-neutral-100">우승!</span>
+                    {winnerName}
+                  </span>
+                  <span className="text-neutral-100">팀 우승!</span>
                 </span>
             )}
           </div>

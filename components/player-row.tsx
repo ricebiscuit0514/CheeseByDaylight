@@ -199,8 +199,8 @@ function buildPlateMotion(prevKills: number, kills: number, fourKill: boolean, i
   }
 }
 
-export function PlayerRow({ player, team, active, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, tabIndex, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd, onNameKeyDown }: {
-  player: Player; team: Team; active: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean; tabIndex?: number
+export function PlayerRow({ player, team, active, isSelgong = false, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, tabIndex, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd, onNameKeyDown }: {
+  player: Player; team: Team; active: boolean; isSelgong?: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean; tabIndex?: number
   onRemove?: () => void; onScore: (newKills: number) => void; onZeroKill: () => void; onCancel: () => void; onNameChange: (name: string) => void
   onNameCommit: (name: string) => void; onKillerChange: (killer: string) => void; onDragStart: () => void; onDragEnter: () => void; onDragEnd: () => void
   onNameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
@@ -327,7 +327,7 @@ export function PlayerRow({ player, team, active, animId, prevKills, dragging, r
         animate={plateMotion ? { x: plateMotion.x, y: plateMotion.y, rotate: plateMotion.rotate } : undefined}
         transition={plateMotion?.transition}
       >
-        <div className={cn("player-plate", `player-plate-${team}`, active && "is-active", isRevealed && "is-exalted", removeMode && "is-removing")}>
+        <div className={cn("player-plate", `player-plate-${team}`, active && "is-active", isSelgong && "is-selgong", isRevealed && "is-exalted", removeMode && "is-removing")}>
           <span className="plate-grain" aria-hidden="true" />
           {fourKill && !reducedMotion && (
             <motion.span
