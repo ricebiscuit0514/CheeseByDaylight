@@ -16,7 +16,7 @@ const SCORE_BEAT_MS = 355
 const SCORE_BEAT_DOWN_MS = 40  // 점수 감소 시 빠르게 주르륵
 const MAX_PLAYERS_PER_TEAM = 4
 const LS_KEY = "dbd-scoreboard-v1"
-const EXPIRATION_TIME_MS = 30 * 60 * 1000 // 30분 만료
+const EXPIRATION_TIME_MS = 60 * 60 * 1000 // 마지막 조작 기준 1시간 만료
 
 const teamScore = (players: Player[]) => players.reduce((s, p) => s + p.kills, 0)
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
@@ -457,12 +457,13 @@ export function Scoreboard() {
   const leftScore = useCountUp(leftTarget)
   const rightScore = useCountUp(rightTarget)
 
-  // Flare logic: close game -> both lit, otherwise only the leader.
+  // Flare & Particle logic: 양 팀 모두 최소 1명 이상 경기를 치른 후(bothTeamsPlayed) 이펙트 연동 시스템 가동.
+  // 가동 후: 박빙(2점 차이까지) 양 팀 활성화, 3점 차 이상은 유리한 팀만 활성화
   const diff = leftTarget - rightTarget
-  const hasScore = leftTarget > 0 || rightTarget > 0
-  const close = hasScore && Math.abs(diff) <= 1
-  const orangeLit = hasScore && (close || diff > 0)
-  const blueLit = hasScore && (close || diff < 0)
+  const bothTeamsPlayed = thomas.some((p) => p.played) && ada.some((p) => p.played)
+  const close = Math.abs(diff) <= 2
+  const orangeLit = bothTeamsPlayed && (close || diff > 0)
+  const blueLit = bothTeamsPlayed && (close || diff < 0)
 
   const cold = useMemo(
     () => computeCold(thomas, ada, turn, thomasName, adaName),
@@ -686,12 +687,21 @@ export function Scoreboard() {
     const active = turn === team && index === nextIndex && nextIndex !== -1
     const selgong = p.id === firstAttackerId
     const isThomas = team === "thomas"
+    const tabIdx = isThomas ? index + 1 : 5 + index
+    const isLastPlayerOverall = team === "ada" && index === ada.length - 1
     return (
       <div key={p.id} className="relative">
         <PlayerRow
           player={p}
           team={team}
           active={active}
+          tabIndex={tabIdx}
+          onNameKeyDown={(e) => {
+            if (isLastPlayerOverall && e.key === "Tab" && !e.shiftKey) {
+              e.preventDefault()
+              e.currentTarget.blur()
+            }
+          }}
           animId={anim[p.id] ?? 0}
           prevKills={prevKillsMap[p.id] ?? 0}
           dragging={draggingId === p.id}

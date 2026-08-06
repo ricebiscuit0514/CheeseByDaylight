@@ -232,7 +232,7 @@
 .score-flare {
   position: absolute;
   top: 50%;
-  right: -0.8rem;
+  right: calc(-0.8rem - 5px);
   transform: translateY(-50%) scale(1.15);
   height: 125%;
   width: auto;
@@ -243,7 +243,7 @@
 }
 .score-sanctum-right .score-flare {
   right: auto;
-  left: -0.8rem;
+  left: calc(-0.8rem - 5px);
   transform: translateY(-50%) scale(1.15);
 }
 .score-sanctum.is-lit .score-energy { opacity: 1; filter: saturate(1.15); }

@@ -191,10 +191,11 @@ function buildPlateMotion(prevKills: number, kills: number, fourKill: boolean, i
   }
 }
 
-export function PlayerRow({ player, team, active, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd }: {
-  player: Player; team: Team; active: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean
+export function PlayerRow({ player, team, active, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, tabIndex, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd, onNameKeyDown }: {
+  player: Player; team: Team; active: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean; tabIndex?: number
   onRemove?: () => void; onScore: (newKills: number) => void; onZeroKill: () => void; onCancel: () => void; onNameChange: (name: string) => void
   onNameCommit: (name: string) => void; onKillerChange: (killer: string) => void; onDragStart: () => void; onDragEnter: () => void; onDragEnd: () => void
+  onNameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
 }) {
   const isThomas = team === "thomas"
   const interactionsDisabled = readOnly || removeMode
@@ -258,7 +259,25 @@ export function PlayerRow({ player, team, active, animId, prevKills, dragging, r
     }} />
   })
 
-  const nameInput = <input value={player.name} placeholder="이름을 입력해주세요" readOnly={interactionsDisabled} onChange={(event) => onNameChange(event.target.value)} onBlur={(event) => onNameCommit(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing && event.keyCode !== 229) event.currentTarget.blur() }} aria-label="플레이어 이름" className={cn("player-name-input", isThomas ? "text-left" : "text-right", interactionsDisabled && "cursor-default")} />
+  const nameInput = (
+    <input
+      value={player.name}
+      placeholder="이름을 입력해주세요"
+      readOnly={interactionsDisabled}
+      tabIndex={tabIndex}
+      onChange={(event) => onNameChange(event.target.value)}
+      onFocus={(event) => event.currentTarget.select()}
+      onBlur={(event) => onNameCommit(event.target.value)}
+      onKeyDown={(event) => {
+        onNameKeyDown?.(event)
+        if (event.key === "Enter" && !event.nativeEvent.isComposing && event.keyCode !== 229) {
+          event.currentTarget.blur()
+        }
+      }}
+      aria-label="플레이어 이름"
+      className={cn("player-name-input", isThomas ? "text-left" : "text-right", interactionsDisabled && "cursor-default")}
+    />
+  )
   const skullGroup = <div className="skull-group" onMouseLeave={() => setHover(null)}>{skulls}</div>
 
   return (

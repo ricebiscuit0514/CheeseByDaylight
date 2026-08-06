@@ -125,10 +125,10 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
     : "rgba(255, 255, 255, 0.30)"
 
   const companionBg = teamColor === "thomas" 
-    ? "rgba(249, 115, 22, 0.15)" 
+    ? "rgba(249, 115, 22, 0.075)" 
     : teamColor === "ada" 
-    ? "rgba(59, 130, 246, 0.15)" 
-    : "rgba(255, 255, 255, 0.12)"
+    ? "rgba(59, 130, 246, 0.075)" 
+    : "rgba(255, 255, 255, 0.06)"
   
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden pointer-events-none">
@@ -174,7 +174,7 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
                   duration: 1.8 + i * 0.4,
                   ease: "easeInOut",
                 }}
-                className="absolute top-0 h-full pointer-events-none border-x border-white/20 shadow-lg"
+                className="absolute top-0 h-full pointer-events-none border-x border-white/10 shadow-lg"
                 style={{
                   width: `${16 + i * 6}%`,
                   backgroundColor: companionBg,

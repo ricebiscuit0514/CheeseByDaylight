@@ -205,8 +205,7 @@ export function FivePlayerMode() {
     }
   }
 
-  const updateConfig = (isReceiving: boolean, killCount: number, value: string) => {
-    const numValue = parseInt(value) || 0
+  const updateConfig = (isReceiving: boolean, killCount: number, numValue: number) => {
     if (isReceiving) {
       const newConfig = [...receivingConfig]
       newConfig[killCount] = numValue
@@ -347,12 +346,19 @@ export function FivePlayerMode() {
                   + 버튼을 눌러 플레이어를 추가해주세요
                 </button>
               ) : (
-                players.map((p) => (
+                players.map((p, index) => (
                   <div key={p.id} className="relative">
                     <PlayerRow
                       player={p}
                       team="thomas"
                       active={false}
+                      tabIndex={1 + index}
+                      onNameKeyDown={(e) => {
+                        if (index === players.length - 1 && e.key === "Tab" && !e.shiftKey) {
+                          e.preventDefault()
+                          e.currentTarget.blur()
+                        }
+                      }}
                       animId={anim[p.id] ?? 0}
                       prevKills={prevKillsMap[p.id] ?? 0}
                       dragging={draggingId === p.id}
@@ -420,15 +426,11 @@ export function FivePlayerMode() {
                 {[0, 1, 2, 3, 4].map((k) => (
                   <div key={`rec-${k}`} className="flex items-center justify-between bg-black/60 px-2 py-1.5 rounded border border-neutral-800 w-full max-w-[145px] mx-auto">
                     <span className="font-bold text-xs text-neutral-400" style={{ fontFamily: "var(--font-godo)" }}>{k}킬</span>
-                    <input
-                      type="number"
+                    <PinballNumberInput
                       value={receivingConfig[k]}
-                      readOnly={!isEditingPinball}
-                      onChange={(e) => isEditingPinball && updateConfig(true, k, e.target.value)}
-                      className={cn(
-                        "w-9 bg-neutral-900/90 text-white font-bold text-center py-0.5 text-sm rounded border border-neutral-700 focus:border-emerald-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all",
-                        !isEditingPinball && "cursor-default border-neutral-800"
-                      )}
+                      disabled={!isEditingPinball}
+                      color="emerald"
+                      onChange={(newVal) => updateConfig(true, k, newVal)}
                     />
                     <span className="text-neutral-500 text-xs">개</span>
                     <div className="flex items-center gap-1">
@@ -463,15 +465,11 @@ export function FivePlayerMode() {
                 {[0, 1, 2, 3, 4].map((k) => (
                   <div key={`giv-${k}`} className="flex items-center justify-between bg-black/60 px-2 py-1.5 rounded border border-neutral-800 w-full max-w-[145px] mx-auto">
                     <span className="font-bold text-xs text-neutral-400" style={{ fontFamily: "var(--font-godo)" }}>{k}킬</span>
-                    <input
-                      type="number"
+                    <PinballNumberInput
                       value={givingConfig[k]}
-                      readOnly={!isEditingPinball}
-                      onChange={(e) => isEditingPinball && updateConfig(false, k, e.target.value)}
-                      className={cn(
-                        "w-9 bg-neutral-900/90 text-white font-bold text-center py-0.5 text-sm rounded border border-neutral-700 focus:border-dbd-orange focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all",
-                        !isEditingPinball && "cursor-default border-neutral-800"
-                      )}
+                      disabled={!isEditingPinball}
+                      color="orange"
+                      onChange={(newVal) => updateConfig(false, k, newVal)}
                     />
                     <span className="text-neutral-500 text-xs">개</span>
                     <div className="flex items-center gap-1">
@@ -770,5 +768,68 @@ export function FivePlayerMode() {
 
       </div>
     </main>
+  )
+}
+
+function PinballNumberInput({
+  value,
+  disabled,
+  color,
+  onChange,
+}: {
+  value: number
+  disabled: boolean
+  color: "emerald" | "orange"
+  onChange: (newVal: number) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const displayValue = draft !== null ? draft : String(value)
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      value={displayValue}
+      readOnly={disabled}
+      onFocus={(e) => {
+        if (disabled) return
+        setDraft(String(value))
+        e.currentTarget.select()
+      }}
+      onChange={(e) => {
+        if (disabled) return
+        const raw = e.target.value
+        if (raw === "" || /^\d+$/.test(raw)) {
+          setDraft(raw)
+          if (raw !== "") {
+            const parsed = parseInt(raw, 10)
+            if (!isNaN(parsed)) {
+              onChange(parsed)
+            }
+          }
+        }
+      }}
+      onBlur={() => {
+        if (disabled) return
+        if (draft === "" || draft === null || isNaN(Number(draft))) {
+          setDraft(null)
+        } else {
+          const parsed = parseInt(draft, 10)
+          onChange(parsed)
+          setDraft(null)
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.currentTarget.blur()
+        }
+      }}
+      className={cn(
+        "w-9 bg-neutral-900/90 text-white font-bold text-center py-0.5 text-sm rounded border border-neutral-700 focus:outline-none transition-all",
+        color === "emerald" ? "focus:border-emerald-500" : "focus:border-dbd-orange",
+        disabled && "cursor-default border-neutral-800"
+      )}
+    />
   )
 }

@@ -41,40 +41,111 @@ function ScoreNumber({ value, side, lit, close, bump = 0 }: { value: number; sid
       className={cn("score-sanctum", `score-sanctum-${side}`, lit && "is-lit", close && "is-clutch")}
     >
       <span className="score-energy" aria-hidden="true" />
+      {/* 1. Base Idle Flare: 박빙/유리 시 전기 발광/플리커, 불리한 팀은 플랙스 최소화 및 딤 처리 */}
       <motion.img
-        key={`flare-${value}-${bump}`}
         src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
         alt=""
         className="score-flare"
         aria-hidden="true"
-        initial={{ y: "-50%", scaleY: 1.15, scaleX: 1.15, opacity: 0.8, filter: "brightness(1) drop-shadow(0 0 10px var(--team))" }}
-        animate={{
+        style={{
           y: "-50%",
-          scaleY: [1.15, 1.85, 1.12, 1.25, 1.15],
-          scaleX: [1.15, 1.48, 1.12, 1.20, 1.15],
-          opacity: [0.8, 1, 0.75, 0.95, 0.8],
-          filter: [
-            "brightness(1) drop-shadow(0 0 10px var(--team))",
-            "brightness(2.6) drop-shadow(0 0 45px var(--team))",
-            "brightness(1) drop-shadow(0 0 12px var(--team))",
-            "brightness(1.5) drop-shadow(0 0 25px var(--team))",
-            "brightness(1) drop-shadow(0 0 10px var(--team))",
-          ],
+          scale: 1.15,
         }}
-        transition={{
-          duration: 0.75,
-          ease: [0.16, 1, 0.3, 1],
-        }}
+        animate={
+          lit
+            ? side === "left"
+              ? {
+                  opacity: [0.78, 0.90, 0.70, 0.95, 0.75, 0.88, 0.78],
+                  filter: [
+                    "brightness(0.85) drop-shadow(0 0 8px var(--team))",
+                    "brightness(1.20) drop-shadow(0 0 16px var(--team))",
+                    "brightness(0.78) drop-shadow(0 0 6px var(--team))",
+                    "brightness(1.30) drop-shadow(0 0 18px var(--team))",
+                    "brightness(0.82) drop-shadow(0 0 7px var(--team))",
+                    "brightness(1.18) drop-shadow(0 0 14px var(--team))",
+                    "brightness(0.85) drop-shadow(0 0 8px var(--team))",
+                  ],
+                }
+              : {
+                  opacity: [0.85, 0.70, 0.92, 0.76, 0.88, 0.68, 0.85],
+                  filter: [
+                    "brightness(0.95) drop-shadow(0 0 10px var(--team))",
+                    "brightness(0.75) drop-shadow(0 0 5px var(--team))",
+                    "brightness(1.25) drop-shadow(0 0 16px var(--team))",
+                    "brightness(0.82) drop-shadow(0 0 7px var(--team))",
+                    "brightness(1.15) drop-shadow(0 0 13px var(--team))",
+                    "brightness(0.78) drop-shadow(0 0 6px var(--team))",
+                    "brightness(0.95) drop-shadow(0 0 10px var(--team))",
+                  ],
+                }
+            : {
+                // 불리한 팀: 선명함을 유지하되, 약간 감소된 은은한 발광과 정적인 분위기
+                opacity: [0.75, 0.78, 0.75],
+                filter: [
+                  "brightness(0.85) drop-shadow(0 0 6px var(--team))",
+                  "brightness(0.90) drop-shadow(0 0 8px var(--team))",
+                  "brightness(0.85) drop-shadow(0 0 6px var(--team))",
+                ],
+              }
+        }
+        transition={
+          lit
+            ? {
+                duration: side === "left" ? 0.38 : 0.44,
+                delay: side === "left" ? 0 : 0.17,
+                repeat: Infinity,
+                ease: "linear",
+              }
+            : {
+                duration: 3.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }
+        }
       />
-      <span className="score-scratch" aria-hidden="true" />
+      {/* 2. Score Increase Burst: 점수 상승 시 터지는 원래 0.75s 부드러운 폭발 애니메이션 */}
       <AnimatePresence>
         {!reducedMotion && (value > 0 || bump > 0) && (
+          <motion.img
+            key={`flare-burst-${value}-${bump}`}
+            src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
+            alt=""
+            className="score-flare"
+            aria-hidden="true"
+            style={{
+              y: "-50%",
+            }}
+            initial={{
+              scaleY: 1.85,
+              scaleX: 1.45,
+              opacity: 1,
+              filter: "brightness(2.6) drop-shadow(0 0 45px var(--team))",
+            }}
+            animate={{
+              scaleY: 1.15,
+              scaleX: 1.15,
+              opacity: 0,
+              filter: "brightness(1) drop-shadow(0 0 10px var(--team))",
+            }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: 0.75,
+              ease: [0.16, 1, 0.3, 1],
+            }}
+          />
+        )}
+      </AnimatePresence>
+      <span className="score-scratch" aria-hidden="true" />
+      {/* 3. Continuous Ember Particles Stream: 박빙/유리 시 파티클 지속 분사, 불리한 팀은 소멸 */}
+      <AnimatePresence>
+        {!reducedMotion && lit && (
           <motion.span
-            key={`burst-${value}-${bump}`}
+            key="continuous-particle-stream"
             className="score-particle-field"
             aria-hidden="true"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0 } }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }}
           >
             {PARTICLES.map((particle, index) => (
               <motion.i
@@ -89,25 +160,30 @@ function ScoreNumber({ value, side, lit, close, bump = 0 }: { value: number; sid
                 }}
                 initial={{ x: 0, y: 0, opacity: 0, scaleX: 0 }}
                 animate={{
-                  x: direction * particle.travelX,
+                  x: [0, direction * particle.travelX],
                   y: particle.wave,
-                  opacity: [0, 1, 0.85, 0],
-                  scaleX: [0, 1, 1, 0.3],
+                  opacity: [0, 1, 0.6, 0.15, 0, 0],
+                  scaleX: [0, 1.2, 0.8, 0.2, 0, 0],
                 }}
                 transition={{
-                  duration: particle.dur,
-                  delay: particle.delay,
-                  ease: [0.1, 0.6, 0.25, 1],
-                  y: { duration: particle.dur, ease: "easeInOut" },
-                  opacity: { times: [0, 0.1, 0.5, 1] },
-                  scaleX:  { times: [0, 0.1, 0.6, 1] },
+                  duration: particle.dur * 0.7,
+                  delay: particle.delay * 0.4,
+                  repeat: Infinity,
+                  repeatDelay: particle.delay * 0.25 + 0.1,
+                  ease: "linear",
                 }}
               />
             ))}
           </motion.span>
         )}
       </AnimatePresence>
-      <span className="score-value-wrap">
+      <span
+        className="score-value-wrap"
+        style={{
+          transform: side === "left" && !hasHalf ? "translateX(-12px)" : undefined,
+          transition: "transform 0.3s ease-out",
+        }}
+      >
         <motion.span
           key={`${whole}-${bump}`}
           className="score-whole"
@@ -122,6 +198,9 @@ function ScoreNumber({ value, side, lit, close, bump = 0 }: { value: number; sid
             <motion.span
               key={`half-${value}`}
               className="score-half"
+              style={{
+                marginLeft: String(whole).endsWith("7") ? "-0.22em" : undefined,
+              }}
               initial={reducedMotion ? false : { y: -20, opacity: 0, filter: "blur(8px)", scale: 0.8 }}
               animate={{ y: 0, opacity: 1, filter: "blur(0px)", scale: 1 }}
               exit={{ y: 12, opacity: 0, filter: "blur(6px)", scale: 0.85, transition: { duration: 0.2 } }}
