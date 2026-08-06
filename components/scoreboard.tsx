@@ -257,6 +257,7 @@ function loadFromStorage() {
       ada: Player[]
       thomasName: string
       adaName: string
+      firstAttackerId?: string | null
       updatedAt?: number
     }
     if (parsed.updatedAt && Date.now() - parsed.updatedAt > EXPIRATION_TIME_MS) {
@@ -432,6 +433,7 @@ export function Scoreboard() {
       if (Array.isArray(saved.ada)) setAda(saved.ada)
       if (saved.thomasName) setThomasName(saved.thomasName)
       if (saved.adaName) setAdaName(saved.adaName)
+      if (saved.firstAttackerId !== undefined) setFirstAttackerId(saved.firstAttackerId)
     }
     setIsLoaded(true)
   }, [])
@@ -443,14 +445,14 @@ export function Scoreboard() {
       const now = Date.now()
       localStorage.setItem(
         LS_KEY,
-        JSON.stringify({ thomas, ada, thomasName, adaName, updatedAt: now })
+        JSON.stringify({ thomas, ada, thomasName, adaName, firstAttackerId, updatedAt: now })
       )
       localStorage.setItem("dbd-last-mode", "4v4")
       localStorage.setItem("dbd-last-mode-time", now.toString())
     } catch {
       // 저장 실패 시 무시
     }
-  }, [isLoaded, thomas, ada, thomasName, adaName])
+  }, [isLoaded, thomas, ada, thomasName, adaName, firstAttackerId])
 
   // "다음 플레이어" 계산: 선공 팀을 기준으로 교대 순서를 파악한다.
   // 선공 팀이 결정되면, 총 플레이 횟수의 홀짝으로 다음 차례 팀을 정한다.
@@ -494,18 +496,18 @@ export function Scoreboard() {
   const leftScore = useCountUp(leftTarget)
   const rightScore = useCountUp(rightTarget)
 
-  // Flare & Particle logic: 양 팀 모두 최소 1명 이상 경기를 치른 후(bothTeamsPlayed) 이펙트 연동 시스템 가동.
-  // 가동 후: 박빙(2점 차이까지) 양 팀 활성화, 3점 차 이상은 유리한 팀만 활성화
-  const diff = leftTarget - rightTarget
-  const bothTeamsPlayed = thomas.some((p) => p.played) && ada.some((p) => p.played)
-  const close = Math.abs(diff) <= 2
-  const orangeLit = bothTeamsPlayed && (close || diff > 0)
-  const blueLit = bothTeamsPlayed && (close || diff < 0)
-
   const cold = useMemo(
     () => computeCold(thomas, ada, turn, thomasName, adaName),
     [thomas, ada, turn, thomasName, adaName],
   )
+
+  const diff = leftTarget - rightTarget
+  const bothTeamsPlayed = thomas.some((p) => p.played) && ada.some((p) => p.played)
+  const isGameOver = cold.status === "cold" || cold.status === "gameover"
+  const isTie = isGameOver && diff === 0
+  const close = (!isGameOver || isTie) && Math.abs(diff) <= 2
+  const orangeLit = isGameOver ? (isTie || diff > 0) : bothTeamsPlayed && (close || diff > 0)
+  const blueLit = isGameOver ? (isTie || diff < 0) : bothTeamsPlayed && (close || diff < 0)
 
   const [showOverlay, setShowOverlay] = useState(false)
   const [lastScoredKills, setLastScoredKills] = useState<number | null>(null)
@@ -965,6 +967,7 @@ export function Scoreboard() {
             orangeLit={orangeLit}
             blueLit={blueLit}
             close={close}
+            isGameOver={isGameOver}
           />
         </div>
 
@@ -1261,7 +1264,7 @@ export function Scoreboard() {
       {/* Mode Switcher Floating Button & Popover */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1">
         <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider select-none pr-1">
-          v1.0.3
+          v1.0.5
         </span>
         <button
           type="button"

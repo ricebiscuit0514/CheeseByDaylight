@@ -25,7 +25,7 @@ const PARTICLES: { startY: number; travelX: number; wave: number[]; w: number; h
   { startY: 92, travelX: 350, wave: [0, -5,  9, -3,  7, -6],  w:  7, h: 0.8, delay: 0.06, dur: 0.83 },
 ]
 
-function ScoreNumber({ value, side, lit, close, bump = 0 }: { value: number; side: Side; lit: boolean; close: boolean; bump?: number }) {
+function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: { value: number; side: Side; lit: boolean; close: boolean; bump?: number; isGameOver?: boolean }) {
   const reducedMotionRaw = useReducedMotion()
   const [mounted, setMounted] = useState(false)
   useEffect(() => { setMounted(true) }, [])
@@ -34,75 +34,78 @@ function ScoreNumber({ value, side, lit, close, bump = 0 }: { value: number; sid
   const hasHalf = value % 1 !== 0
   // 왼팀: 왼쪽(-1), 오른팀: 오른쪽(+1)
   const direction = side === "left" ? -1 : 1
+  const hideFlare = isGameOver && !lit
 
   return (
     <section
       aria-label={`${side === "left" ? "왼쪽" : "오른쪽"} 팀 ${value}점`}
       className={cn("score-sanctum", `score-sanctum-${side}`, lit && "is-lit", close && "is-clutch")}
     >
-      <span className="score-energy" aria-hidden="true" />
-      {/* 1. Base Idle Flare: 박빙/유리 시 전기 발광/플리커, 불리한 팀은 플랙스 최소화 및 딤 처리 */}
-      <motion.img
-        src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
-        alt=""
-        className="score-flare"
-        aria-hidden="true"
-        style={{
-          y: "-50%",
-          scale: 1.15,
-        }}
-        animate={
-          lit
-            ? side === "left"
-              ? {
-                  opacity: [0.78, 0.90, 0.70, 0.95, 0.75, 0.88, 0.78],
+      {!hideFlare && <span className="score-energy" aria-hidden="true" />}
+      {/* 1. Base Idle Flare: 박빙/유리 시 전기 발광/플리커, 게임종료 시 진 팀은 배경 그라데이션 및 플레어 완전히 꺼짐 */}
+      {!hideFlare && (
+        <motion.img
+          src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
+          alt=""
+          className="score-flare"
+          aria-hidden="true"
+          style={{
+            y: "-50%",
+            scale: 1.15,
+          }}
+          animate={
+            lit
+              ? side === "left"
+                ? {
+                    opacity: [0.78, 0.90, 0.70, 0.95, 0.75, 0.88, 0.78],
+                    filter: [
+                      "brightness(0.85) drop-shadow(0 0 8px var(--team))",
+                      "brightness(1.20) drop-shadow(0 0 16px var(--team))",
+                      "brightness(0.78) drop-shadow(0 0 6px var(--team))",
+                      "brightness(1.30) drop-shadow(0 0 18px var(--team))",
+                      "brightness(0.82) drop-shadow(0 0 7px var(--team))",
+                      "brightness(1.18) drop-shadow(0 0 14px var(--team))",
+                      "brightness(0.85) drop-shadow(0 0 8px var(--team))",
+                    ],
+                  }
+                : {
+                    opacity: [0.85, 0.70, 0.92, 0.76, 0.88, 0.68, 0.85],
+                    filter: [
+                      "brightness(0.95) drop-shadow(0 0 10px var(--team))",
+                      "brightness(0.75) drop-shadow(0 0 5px var(--team))",
+                      "brightness(1.25) drop-shadow(0 0 16px var(--team))",
+                      "brightness(0.82) drop-shadow(0 0 7px var(--team))",
+                      "brightness(1.15) drop-shadow(0 0 13px var(--team))",
+                      "brightness(0.78) drop-shadow(0 0 6px var(--team))",
+                      "brightness(0.95) drop-shadow(0 0 10px var(--team))",
+                    ],
+                  }
+              : {
+                  // 불리한 팀: 선명함을 유지하되, 약간 감소된 은은한 발광과 정적인 분위기
+                  opacity: [0.75, 0.78, 0.75],
                   filter: [
-                    "brightness(0.85) drop-shadow(0 0 8px var(--team))",
-                    "brightness(1.20) drop-shadow(0 0 16px var(--team))",
-                    "brightness(0.78) drop-shadow(0 0 6px var(--team))",
-                    "brightness(1.30) drop-shadow(0 0 18px var(--team))",
-                    "brightness(0.82) drop-shadow(0 0 7px var(--team))",
-                    "brightness(1.18) drop-shadow(0 0 14px var(--team))",
-                    "brightness(0.85) drop-shadow(0 0 8px var(--team))",
+                    "brightness(0.85) drop-shadow(0 0 6px var(--team))",
+                    "brightness(0.90) drop-shadow(0 0 8px var(--team))",
+                    "brightness(0.85) drop-shadow(0 0 6px var(--team))",
                   ],
+                }
+          }
+          transition={
+            lit
+              ? {
+                  duration: side === "left" ? 0.38 : 0.44,
+                  delay: side === "left" ? 0 : 0.17,
+                  repeat: Infinity,
+                  ease: "linear",
                 }
               : {
-                  opacity: [0.85, 0.70, 0.92, 0.76, 0.88, 0.68, 0.85],
-                  filter: [
-                    "brightness(0.95) drop-shadow(0 0 10px var(--team))",
-                    "brightness(0.75) drop-shadow(0 0 5px var(--team))",
-                    "brightness(1.25) drop-shadow(0 0 16px var(--team))",
-                    "brightness(0.82) drop-shadow(0 0 7px var(--team))",
-                    "brightness(1.15) drop-shadow(0 0 13px var(--team))",
-                    "brightness(0.78) drop-shadow(0 0 6px var(--team))",
-                    "brightness(0.95) drop-shadow(0 0 10px var(--team))",
-                  ],
+                  duration: 3.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
                 }
-            : {
-                // 불리한 팀: 선명함을 유지하되, 약간 감소된 은은한 발광과 정적인 분위기
-                opacity: [0.75, 0.78, 0.75],
-                filter: [
-                  "brightness(0.85) drop-shadow(0 0 6px var(--team))",
-                  "brightness(0.90) drop-shadow(0 0 8px var(--team))",
-                  "brightness(0.85) drop-shadow(0 0 6px var(--team))",
-                ],
-              }
-        }
-        transition={
-          lit
-            ? {
-                duration: side === "left" ? 0.38 : 0.44,
-                delay: side === "left" ? 0 : 0.17,
-                repeat: Infinity,
-                ease: "linear",
-              }
-            : {
-                duration: 3.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }
-        }
-      />
+          }
+        />
+      )}
       {/* 2. Score Increase Burst: 점수 상승 시 터지는 원래 0.75s 부드러운 폭발 애니메이션 */}
       <AnimatePresence>
         {!reducedMotion && (value > 0 || bump > 0) && (
@@ -181,7 +184,9 @@ function ScoreNumber({ value, side, lit, close, bump = 0 }: { value: number; sid
         className="score-value-wrap"
         style={{
           transform: side === "left" && !hasHalf ? "translateX(-12px)" : undefined,
-          transition: "transform 0.3s ease-out",
+          opacity: isGameOver && !lit ? 0.35 : 1,
+          filter: isGameOver && !lit ? "brightness(0.5) saturate(0.3)" : undefined,
+          transition: "all 0.4s ease-out",
         }}
       >
         <motion.span
@@ -223,15 +228,15 @@ function ScoreNumber({ value, side, lit, close, bump = 0 }: { value: number; sid
   )
 }
 
-export function TeamScore({ left, right, orangeLit, blueLit, close, leftBump = 0, rightBump = 0 }: { left: number; right: number; orangeLit: boolean; blueLit: boolean; close: boolean; leftBump?: number; rightBump?: number }) {
+export function TeamScore({ left, right, orangeLit, blueLit, close, leftBump = 0, rightBump = 0, isGameOver = false }: { left: number; right: number; orangeLit: boolean; blueLit: boolean; close: boolean; leftBump?: number; rightBump?: number; isGameOver?: boolean }) {
   return (
     <div className="versus-stage">
-      <ScoreNumber value={left} side="left" lit={orangeLit} close={close} bump={leftBump} />
+      <ScoreNumber value={left} side="left" lit={orangeLit} close={close} bump={leftBump} isGameOver={isGameOver} />
       <div className="versus-sigil" aria-label="대">
         <span className="versus-line" aria-hidden="true" />
         <span className="versus-label">VS</span>
       </div>
-      <ScoreNumber value={right} side="right" lit={blueLit} close={close} bump={rightBump} />
+      <ScoreNumber value={right} side="right" lit={blueLit} close={close} bump={rightBump} isGameOver={isGameOver} />
     </div>
   )
 }

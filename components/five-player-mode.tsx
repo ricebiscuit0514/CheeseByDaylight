@@ -252,6 +252,8 @@ export function FivePlayerMode() {
     }, 1500)
   }
 
+  const hasAnyScore = players.some((p) => p.played || p.kills > 0)
+
   return (
     <main
       className="relative min-h-screen w-full overflow-hidden text-foreground"
@@ -300,15 +302,16 @@ export function FivePlayerMode() {
                 <button
                   type="button"
                   onClick={shufflePlayers}
+                  disabled={hasAnyScore}
                   aria-label="팀원 무작위 배치"
-                  title="팀원 무작위 배치"
-                  className="group size-12 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95"
+                  title={hasAnyScore ? "점수 초기화 후 섞기가 가능합니다" : "팀원 무작위 배치"}
+                  className="group size-12 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
                 >
                   <img
                     src="/images/random.png"
                     alt=""
                     draggable={false}
-                    className="size-full object-cover transition-[filter] group-hover:brightness-125"
+                    className="size-full object-cover transition-[filter] group-hover:brightness-125 group-disabled:brightness-75"
                   />
                 </button>
                 <button
@@ -748,7 +751,7 @@ export function FivePlayerMode() {
         {/* Mode Switcher Floating Button & Popover (Bottom-Right) */}
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1">
           <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider select-none pr-1">
-            v1.0.3
+            v1.0.5
           </span>
           <button
             type="button"
