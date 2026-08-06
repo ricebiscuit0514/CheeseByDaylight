@@ -591,6 +591,9 @@ export function Scoreboard() {
       const next = [...prev]
       const [moved] = next.splice(from, 1)
       next.splice(to, 0, moved)
+      if (firstAttackTeam === team && next.length > 0) {
+        setFirstAttackerId(next[0].id)
+      }
       return next
     })
   }
@@ -608,6 +611,9 @@ export function Scoreboard() {
       for (let index = shuffled.length - 1; index > 0; index -= 1) {
         const randomIndex = Math.floor(Math.random() * (index + 1))
         ;[shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]]
+      }
+      if (firstAttackTeam === team && shuffled.length > 0) {
+        setFirstAttackerId(shuffled[0].id)
       }
       return shuffled
     })
@@ -717,7 +723,8 @@ export function Scoreboard() {
 
   const renderRow = (team: Team, p: Player, index: number, nextIndex: number) => {
     const active = turn === team && index === nextIndex && nextIndex !== -1
-    const selgong = p.id === firstAttackerId
+    const selgongPlayerId = firstAttackTeam === "thomas" ? thomas[0]?.id : firstAttackTeam === "ada" ? ada[0]?.id : firstAttackerId
+    const selgong = p.id === selgongPlayerId
     const isThomas = team === "thomas"
     const tabIdx = isThomas ? index + 1 : 5 + index
     const isLastPlayerOverall = team === "ada" && index === ada.length - 1
