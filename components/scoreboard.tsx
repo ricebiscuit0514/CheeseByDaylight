@@ -971,84 +971,11 @@ export function Scoreboard() {
             <>
               {/* 콜드게임 적용 여부에 따라 제목 분기 */}
               <p className="cold-warning-title">
-                {cold.isGeneral ? "알림" : "콜드게임 경고"}
+                {cold.opponentMustSurviveName ? "콜드게임 경고" : cold.isGeneral ? "알림" : "콜드게임 경고"}
               </p>
               <div className="cold-warning-text flex flex-col items-center gap-1">
-                {/* 현재 차례 팀 경고 (need > 0인 경우만) */}
-                {cold.need > 0 && (
-                  <p>
-                    <span className={`cold-team-name ${cold.name === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
-                      {cold.name}
-                    </span>{" "}
-                    팀{" "}
-                    {cold.isEarlyWinNotice
-                      ? cold.need >= MAX_KILLS
-                        ? (
-                          <>
-                            {"이번 경기에서 "}
-                            <span className="cold-kill-count">{"올킬"}</span>
-                            {"하면 콜드게임으로 우승입니다"}
-                          </>
-                        )
-                        : (
-                          <>
-                            {"이번 경기에서 "}
-                            <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                            {" 이상 하면 콜드게임으로 우승입니다"}
-                          </>
-                        )
-                      : cold.isGeneral
-                        ? cold.isWinPossible
-                          ? cold.need >= MAX_KILLS
-                            ? (
-                              <>
-                                {"이번 경기에서 "}
-                                <span className="cold-kill-count">{"올킬"}</span>
-                                {" 해야 우승입니다"}
-                              </>
-                            )
-                            : (
-                              <>
-                                {"이번 경기에서 "}
-                                <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                                {" 이상 해야 우승입니다"}
-                              </>
-                            )
-                          : cold.need >= MAX_KILLS
-                            ? (
-                              <>
-                                {"이번 경기에서 "}
-                                <span className="cold-kill-count">{"올킬"}</span>
-                                {"을 해야 동점입니다"}
-                              </>
-                            )
-                            : (
-                              <>
-                                {"이번 경기에서 "}
-                                <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                                {" 이상 해야 동점입니다"}
-                              </>
-                            )
-                        : cold.need >= MAX_KILLS
-                          ? (
-                            <>
-                              {"이번 경기에서 "}
-                              <span className="cold-kill-count">{"올킬"}</span>
-                              {"을 해야합니다"}
-                            </>
-                          )
-                          : (
-                            <>
-                              {"이번 경기에서 "}
-                              <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                              {" 이상 해야 합니다"}
-                            </>
-                          )
-                    }
-                  </p>
-                )}
-                {/* 상대팀 이번 경기 생존 경고 (현재 차례 팀이 1킬이라도 하면 상대 콜드) */}
-                {cold.opponentMustSurviveName && (
+                {/* 상대팀 생존 경고가 있는 경우 우선 단일 표시 (1킬 시 상대 콜드 상황) */}
+                {cold.opponentMustSurviveName ? (
                   <p>
                     <span className={`cold-team-name ${cold.opponentMustSurviveName === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
                       {cold.opponentMustSurviveName}
@@ -1056,6 +983,79 @@ export function Scoreboard() {
                     팀{" "}
                     {"이번 경기 전부 생존해야 합니다"}
                   </p>
+                ) : (
+                  cold.need > 0 && (
+                    <p>
+                      <span className={`cold-team-name ${cold.name === thomasName ? "cold-team-thomas" : "cold-team-ada"}`}>
+                        {cold.name}
+                      </span>{" "}
+                      팀{" "}
+                      {cold.isEarlyWinNotice
+                        ? cold.need >= MAX_KILLS
+                          ? (
+                            <>
+                              {"이번 경기에서 "}
+                              <span className="cold-kill-count">{"올킬"}</span>
+                              {"하면 콜드게임으로 우승입니다"}
+                            </>
+                          )
+                          : (
+                            <>
+                              {"이번 경기에서 "}
+                              <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                              {" 이상 하면 콜드게임으로 우승입니다"}
+                            </>
+                          )
+                        : cold.isGeneral
+                          ? cold.isWinPossible
+                            ? cold.need >= MAX_KILLS
+                              ? (
+                                <>
+                                  {"이번 경기에서 "}
+                                  <span className="cold-kill-count">{"올킬"}</span>
+                                  {" 하면 우승입니다"}
+                                </>
+                              )
+                              : (
+                                <>
+                                  {"이번 경기에서 "}
+                                  <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                                  {" 이상 하면 우승입니다"}
+                                </>
+                              )
+                            : cold.need >= MAX_KILLS
+                              ? (
+                                <>
+                                  {"이번 경기에서 "}
+                                  <span className="cold-kill-count">{"올킬"}</span>
+                                  {"을 해야 동점입니다"}
+                                </>
+                              )
+                              : (
+                                <>
+                                  {"이번 경기에서 "}
+                                  <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                                  {" 이상 해야 동점입니다"}
+                                </>
+                              )
+                          : cold.need >= MAX_KILLS
+                            ? (
+                              <>
+                                {"이번 경기에서 "}
+                                <span className="cold-kill-count">{"올킬"}</span>
+                                {"을 해야합니다"}
+                              </>
+                            )
+                            : (
+                              <>
+                                {"이번 경기에서 "}
+                                <span className="cold-kill-count">{fmt(cold.need)}킬</span>
+                                {" 이상 해야 합니다"}
+                              </>
+                            )
+                      }
+                    </p>
+                  )
                 )}
               </div>
             </>
