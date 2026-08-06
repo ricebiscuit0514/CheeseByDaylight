@@ -751,7 +751,7 @@ export function FivePlayerMode() {
         {/* Mode Switcher Floating Button & Popover (Bottom-Right) */}
         <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1">
           <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider select-none pr-1">
-            v1.0.5
+            v1.0.6
           </span>
           <button
             type="button"

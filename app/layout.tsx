@@ -7,13 +7,13 @@ import './globals.css'
 const blackHanSans = Black_Han_Sans({ weight: '400', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Cheese By Daylight | 치즈 바이 데이라이트',
+  title: '치즈 바이 데이라이트 | Cheese By Daylight',
   description: '데드 바이 데이라이트 커스텀 게임 진행 보조 프로그램입니다.',
   keywords: ['cheesebydaylight', 'cheese by Daylight', '치즈바이데이라이트', '치즈 바이 데이라이트', '치바데'],
   applicationName: 'Cheese by Daylight',
   authors: [{ name: 'Cheese by Daylight' }],
   openGraph: {
-    title: 'Cheese By Daylight | 치즈 바이 데이라이트',
+    title: '치즈 바이 데이라이트 | Cheese By Daylight',
     description: '데드 바이 데이라이트 커스텀 게임 진행 보조 프로그램입니다.',
     siteName: 'Cheese by Daylight',
     locale: 'ko_KR',
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Cheese By Daylight | 치즈 바이 데이라이트',
+    title: '치즈 바이 데이라이트 | Cheese By Daylight',
     description: '데드 바이 데이라이트 커스텀 게임 진행 보조 프로그램입니다.',
   },
   robots: {

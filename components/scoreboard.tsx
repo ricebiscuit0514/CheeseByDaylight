@@ -270,6 +270,22 @@ function loadFromStorage() {
   }
 }
 
+function CoinIcon({ className = "size-4" }: { className?: string }) {
+  return (
+    <svg className={cn("inline-block shrink-0", className)} viewBox="0 0 24 24" width="16" height="16" fill="none">
+      <circle cx="12" cy="12" r="10" fill="url(#coin-gold-grad)" stroke="#D97706" strokeWidth="1" />
+      <circle cx="12" cy="12" r="7" fill="none" stroke="#FEF08A" strokeWidth="1.2" opacity="0.85" />
+      <defs>
+        <linearGradient id="coin-gold-grad" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FDE047" />
+          <stop offset="50%" stopColor="#EAB308" />
+          <stop offset="100%" stopColor="#CA8A04" />
+        </linearGradient>
+      </defs>
+    </svg>
+  )
+}
+
 function CoinTossWidget({ thomasName, adaName, activeTeam, onTossResult }: { thomasName: string; adaName: string; activeTeam: Team | null; onTossResult?: (winner: "thomas" | "ada") => void }) {
   const [tossing, setTossing] = useState(false)
   const [result, setResult] = useState<"thomas" | "ada" | null>(activeTeam)
@@ -315,9 +331,9 @@ function CoinTossWidget({ thomasName, adaName, activeTeam, onTossResult }: { tho
           <motion.span
             animate={{ rotateY: [0, 1080] }}
             transition={{ duration: 1.1, ease: "easeInOut" }}
-            className="inline-block text-sm"
+            className="inline-flex items-center justify-center"
           >
-            🪙
+            <CoinIcon className="size-4" />
           </motion.span>
           <span className="tracking-widest">선공 결정 중...</span>
         </>
@@ -356,8 +372,8 @@ function CoinTossWidget({ thomasName, adaName, activeTeam, onTossResult }: { tho
       {/* Idle State */}
       {!tossing && result === null && (
         <>
-          <span className="text-sm transition-transform duration-300 group-hover:rotate-180">
-            🪙
+          <span className="inline-flex items-center justify-center transition-transform duration-300 group-hover:rotate-180">
+            <CoinIcon className="size-4" />
           </span>
           <span className="tracking-wider">선공 결정</span>
         </>
@@ -1264,7 +1280,7 @@ export function Scoreboard() {
       {/* Mode Switcher Floating Button & Popover */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1">
         <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider select-none pr-1">
-          v1.0.5
+          v1.0.6
         </span>
         <button
           type="button"
