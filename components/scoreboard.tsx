@@ -269,9 +269,13 @@ function loadFromStorage() {
   }
 }
 
-function CoinTossWidget({ thomasName, adaName, onTossResult }: { thomasName: string; adaName: string; onTossResult?: (winner: "thomas" | "ada") => void }) {
+function CoinTossWidget({ thomasName, adaName, activeTeam, onTossResult }: { thomasName: string; adaName: string; activeTeam: Team | null; onTossResult?: (winner: "thomas" | "ada") => void }) {
   const [tossing, setTossing] = useState(false)
-  const [result, setResult] = useState<"thomas" | "ada" | null>(null)
+  const [result, setResult] = useState<"thomas" | "ada" | null>(activeTeam)
+
+  useEffect(() => {
+    setResult(activeTeam)
+  }, [activeTeam])
 
   const handleToss = () => {
     if (tossing) return
@@ -449,10 +453,9 @@ export function Scoreboard() {
   // 선공 팀이 결정되면, 총 플레이 횟수의 홀짝으로 다음 차례 팀을 정한다.
   // 선공 팀이 없으면 (아직 아무도 안 플레이) null 반환.
   const firstAttackTeam: Team | null = useMemo(() => {
-    const targetId = firstAttackerId ?? thomas[0]?.id
-    if (!targetId) return null
-    if (thomas.some((p) => p.id === targetId)) return "thomas"
-    if (ada.some((p) => p.id === targetId)) return "ada"
+    if (!firstAttackerId) return null
+    if (thomas.some((p) => p.id === firstAttackerId)) return "thomas"
+    if (ada.some((p) => p.id === firstAttackerId)) return "ada"
     return null
   }, [firstAttackerId, thomas, ada])
 
@@ -714,8 +717,7 @@ export function Scoreboard() {
 
   const renderRow = (team: Team, p: Player, index: number, nextIndex: number) => {
     const active = turn === team && index === nextIndex && nextIndex !== -1
-    const effectiveFirstAttacker = firstAttackerId ?? thomas[0]?.id
-    const selgong = p.id === effectiveFirstAttacker
+    const selgong = p.id === firstAttackerId
     const isThomas = team === "thomas"
     const tabIdx = isThomas ? index + 1 : 5 + index
     const isLastPlayerOverall = team === "ada" && index === ada.length - 1
@@ -808,6 +810,7 @@ export function Scoreboard() {
             <CoinTossWidget
               thomasName={thomasName}
               adaName={adaName}
+              activeTeam={firstAttackTeam}
               onTossResult={(winner) => {
                 const roster = winner === "thomas" ? thomas : ada
                 if (roster.length > 0) {
