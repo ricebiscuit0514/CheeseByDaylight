@@ -18,7 +18,7 @@
 
 ---
 
-## 🔗 웹사이트 접속 주소 (Live URL)
+## 접속 주소
 
 > **[https://cheesebydaylight.vercel.app/](https://cheesebydaylight.vercel.app/)**
 
