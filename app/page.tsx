@@ -31,13 +31,20 @@ export default function LandingPage() {
 
     try {
       const lastMode = localStorage.getItem("dbd-last-mode")
-      if (lastMode === "4v4") {
-        router.replace("/4v4")
-        return
-      }
-      if (lastMode === "1v4" || lastMode === "5v1") {
-        router.replace("/1v4")
-        return
+      const lastTimeRaw = localStorage.getItem("dbd-last-mode-time")
+      const lastTime = lastTimeRaw ? parseInt(lastTimeRaw, 10) : 0
+      const EXPIRATION_TIME_MS = 60 * 60 * 1000 // 1시간 만료 쿨타임
+
+      // 1시간 이내에 방문/조작 이력이 있을 때만 이전 개임 모드로 자동 연결
+      if (lastMode && lastTime && Date.now() - lastTime < EXPIRATION_TIME_MS) {
+        if (lastMode === "4v4") {
+          router.replace("/4v4")
+          return
+        }
+        if (lastMode === "1v4" || lastMode === "5v1") {
+          router.replace("/1v4")
+          return
+        }
       }
     } catch {
       // localStorage 불가 시 메인 화면 표시
@@ -48,6 +55,7 @@ export default function LandingPage() {
   const handleSelectMode = (mode: "4v4" | "1v4") => {
     try {
       localStorage.setItem("dbd-last-mode", mode)
+      localStorage.setItem("dbd-last-mode-time", Date.now().toString())
     } catch {
       // 무시
     }
@@ -202,7 +210,7 @@ export default function LandingPage() {
 
         {/* Version Number */}
         <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider pt-0.5">
-          v1.0.2
+          v1.0.3
         </span>
       </footer>
     </main>

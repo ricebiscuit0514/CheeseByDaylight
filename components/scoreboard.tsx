@@ -440,10 +440,13 @@ export function Scoreboard() {
   useEffect(() => {
     if (!isLoaded) return
     try {
+      const now = Date.now()
       localStorage.setItem(
         LS_KEY,
-        JSON.stringify({ thomas, ada, thomasName, adaName, updatedAt: Date.now() })
+        JSON.stringify({ thomas, ada, thomasName, adaName, updatedAt: now })
       )
+      localStorage.setItem("dbd-last-mode", "4v4")
+      localStorage.setItem("dbd-last-mode-time", now.toString())
     } catch {
       // 저장 실패 시 무시
     }
@@ -1256,7 +1259,10 @@ export function Scoreboard() {
       </div>
 
       {/* Mode Switcher Floating Button & Popover */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1">
+        <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider select-none pr-1">
+          v1.0.3
+        </span>
         <button
           type="button"
           onClick={() => setShowModeSwitchConfirm((prev) => !prev)}

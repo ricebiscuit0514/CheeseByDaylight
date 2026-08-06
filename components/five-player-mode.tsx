@@ -87,7 +87,7 @@ export function FivePlayerMode() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        const EXPIRATION_TIME_MS = 30 * 60 * 1000 // 30분 만료
+        const EXPIRATION_TIME_MS = 60 * 60 * 1000 // 1시간 만료
         if (parsed.updatedAt && Date.now() - parsed.updatedAt > EXPIRATION_TIME_MS) {
           localStorage.removeItem("dbd-5p-state-v2")
         } else {
@@ -105,10 +105,13 @@ export function FivePlayerMode() {
   useEffect(() => {
     if (!isLoaded) return
     try {
+      const now = Date.now()
       localStorage.setItem(
         "dbd-5p-state-v2",
-        JSON.stringify({ players, receivingConfig, givingConfig, updatedAt: Date.now() })
+        JSON.stringify({ players, receivingConfig, givingConfig, updatedAt: now })
       )
+      localStorage.setItem("dbd-last-mode", "1v4")
+      localStorage.setItem("dbd-last-mode-time", now.toString())
     } catch {
       // ignore
     }
@@ -743,7 +746,10 @@ export function FivePlayerMode() {
         </div>
 
         {/* Mode Switcher Floating Button & Popover (Bottom-Right) */}
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1">
+          <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider select-none pr-1">
+            v1.0.3
+          </span>
           <button
             type="button"
             onClick={() => setShowModeSwitchConfirm((prev) => !prev)}
