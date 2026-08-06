@@ -2,16 +2,19 @@
   <img src="https://github.com/user-attachments/assets/91153c95-122b-48e0-a9db-2bf907b22aac" width="100%" alt="Cheese by Daylight Banner" />
 </p>
 
-<h1 align="center">🧀 CheeseByDaylight (치즈 바이 데이라이트)</h1>
+<h1 align="center">🧀 Cheese By Daylight | 치즈 바이 데이라이트</h1>
+
 
 <p align="center">
-  <b>데드 바이 데이라이트(Dead by Daylight) 커스텀 게임 및 스트리머 내전 진행 보조 프로그램</b>
+  <b>데드 바이 데이라이트 커스텀 게임 및 스트리머 내전 진행 보조 프로그램</b>
 </p>
 
 <p align="center">
   <a href="https://cheesebydaylight.vercel.app/">
     <img src="https://img.shields.io/badge/🌐_웹사이트_바로가기-https%3A%2F%2Fcheesebydaylight.vercel.app%2F-ffc107?style=for-the-badge&logoColor=black" alt="Live Demo" />
 </p>
+
+<br />
 
 ---
 
@@ -25,9 +28,9 @@
 
 ---
 
-## 프로젝트 소개
+## 프로그램 소개
 
-치즈 바이 데이라이트는 데바데 커스텀 게임 시 점수 집계와 핀볼 계산을 손쉽게 진행할 수 있도록 제작된 진행 보조 프로그램입니다.
+내전 진행시에 점수 집계와 핀볼 계산 등 작업의 번거로움을 덜어드리기 위해 제작된 진행 보조 프로그램입니다.
 
 <br />
 
