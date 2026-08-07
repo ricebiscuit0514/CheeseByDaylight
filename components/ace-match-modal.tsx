@@ -53,16 +53,27 @@ export function AceMatchModal({
     }))
   }
 
-  // Randomize initial slot starting indices so both reels don't start at the same seat position
+  // Helper for cryptographically secure random numbers
+  const getSecureRandomInt = (max: number): number => {
+    if (max <= 1) return 0
+    const array = new Uint32Array(1)
+    crypto.getRandomValues(array)
+    return array[0] % max
+  }
+
+  // Randomize initial slot starting indices among eligible candidates
   const initSlotPositions = () => {
     if (thomas.length === 0 || ada.length === 0) return
-    const randT = Math.floor(Math.random() * thomas.length)
-    let randA = Math.floor(Math.random() * ada.length)
-    if (ada.length > 1 && randA === randT) {
-      randA = (randA + 1) % ada.length
-    }
-    setSlotThomasIdx(randT)
-    setSlotAdaIdx(randA)
+    const eligibleThomas = thomas.filter((p) => !excludedIds[p.id])
+    const eligibleAda = ada.filter((p) => !excludedIds[p.id])
+    const activeThomas = eligibleThomas.length > 0 ? eligibleThomas : thomas
+    const activeAda = eligibleAda.length > 0 ? eligibleAda : ada
+
+    const randTObj = activeThomas[getSecureRandomInt(activeThomas.length)]
+    const randAObj = activeAda[getSecureRandomInt(activeAda.length)]
+
+    setSlotThomasIdx(thomas.findIndex((p) => p.id === randTObj.id))
+    setSlotAdaIdx(ada.findIndex((p) => p.id === randAObj.id))
   }
 
   // Start Slot Machine Animation
@@ -71,9 +82,6 @@ export function AceMatchModal({
     setIsRolling(true)
     setSlotFinished(false)
 
-    const tLen = thomas.length
-    const aLen = ada.length
-
     // Filter eligible candidates (excluding checked excluded players)
     const eligibleThomas = thomas.filter((p) => !excludedIds[p.id])
     const eligibleAda = ada.filter((p) => !excludedIds[p.id])
@@ -81,51 +89,52 @@ export function AceMatchModal({
     const activeThomas = eligibleThomas.length > 0 ? eligibleThomas : thomas
     const activeAda = eligibleAda.length > 0 ? eligibleAda : ada
 
-    let chosenThomasObj = activeThomas[Math.floor(Math.random() * activeThomas.length)]
-    let chosenAdaObj = activeAda[Math.floor(Math.random() * activeAda.length)]
+    // Pure, cryptographically secure 100% independent random target selection
+    const randTIdx = getSecureRandomInt(activeThomas.length)
+    const randAIdx = getSecureRandomInt(activeAda.length)
 
-    let targetThomas = thomas.findIndex((p) => p.id === chosenThomasObj.id)
-    let targetAda = ada.findIndex((p) => p.id === chosenAdaObj.id)
+    const chosenThomasObj = activeThomas[randTIdx]
+    const chosenAdaObj = activeAda[randAIdx]
 
-    // 1. 이전 추첨 결과와 동일한 인덱스가 다시 걸리지 않도록 방지 (리롤 시 중복 방지)
-    if (activeThomas.length > 1 && lastThomasIdx.current !== null && targetThomas === lastThomasIdx.current) {
-      const filtered = activeThomas.filter((p) => p.id !== chosenThomasObj.id)
-      if (filtered.length > 0) {
-        chosenThomasObj = filtered[Math.floor(Math.random() * filtered.length)]
-        targetThomas = thomas.findIndex((p) => p.id === chosenThomasObj.id)
-      }
-    }
-    if (activeAda.length > 1 && lastAdaIdx.current !== null && targetAda === lastAdaIdx.current) {
-      const filtered = activeAda.filter((p) => p.id !== chosenAdaObj.id)
-      if (filtered.length > 0) {
-        chosenAdaObj = filtered[Math.floor(Math.random() * filtered.length)]
-        targetAda = ada.findIndex((p) => p.id === chosenAdaObj.id)
-      }
-    }
+    const targetThomasFullIdx = thomas.findIndex((p) => p.id === chosenThomasObj.id)
+    const targetAdaFullIdx = ada.findIndex((p) => p.id === chosenAdaObj.id)
 
-    lastThomasIdx.current = targetThomas
-    lastAdaIdx.current = targetAda
+    lastThomasIdx.current = targetThomasFullIdx
+    lastAdaIdx.current = targetAdaFullIdx
 
-    // Calculate exact steps to land naturally on target index
-    const tStepsToTarget = (targetThomas - slotThomasIdx + tLen * 10) % tLen
-    const aStepsToTarget = (targetAda - slotAdaIdx + aLen * 10) % aLen
+    // Step ONLY through activeThomas and activeAda candidates during spin
+    const tActiveLen = activeThomas.length
+    const aActiveLen = activeAda.length
 
-    // Reduced total spin duration by ~30%
-    const thomasMaxSteps = (tStepsToTarget === 0 ? tLen : tStepsToTarget) + tLen * (4 + Math.floor(Math.random() * 2))
-    const adaMaxSteps = (aStepsToTarget === 0 ? aLen : aStepsToTarget) + aLen * (5 + Math.floor(Math.random() * 2))
+    let currentTActiveIdx = activeThomas.findIndex((p) => p.id === thomas[slotThomasIdx]?.id)
+    if (currentTActiveIdx === -1) currentTActiveIdx = 0
+
+    let currentAActiveIdx = activeAda.findIndex((p) => p.id === ada[slotAdaIdx]?.id)
+    if (currentAActiveIdx === -1) currentAActiveIdx = 0
+
+    const tStepsToTarget = (randTIdx - currentTActiveIdx + tActiveLen * 10) % tActiveLen
+    const aStepsToTarget = (randAIdx - currentAActiveIdx + aActiveLen * 10) % aActiveLen
+
+    const thomasMaxSteps = (tStepsToTarget === 0 ? tActiveLen : tStepsToTarget) + tActiveLen * (3 + getSecureRandomInt(2))
+    const adaMaxSteps = (aStepsToTarget === 0 ? aActiveLen : aStepsToTarget) + aActiveLen * (4 + getSecureRandomInt(2))
 
     let thomasStep = 0
     let adaStep = 0
     let thomasDone = false
     let adaDone = false
 
-    // Identical roll speed for both reels
-    const BASE_SPEED_MS = 40
-    const DECEL_STEPS = 5 // Decelerate over the last 5 steps
+    const BASE_SPEED_THOMAS = 38
+    const BASE_SPEED_ADA = 44
+    const DECEL_STEPS = 4
+
+    let curTIdx = currentTActiveIdx
+    let curAIdx = currentAActiveIdx
 
     const rollThomas = () => {
       thomasStep += 1
-      setSlotThomasIdx((prev) => (prev + 1) % tLen)
+      curTIdx = (curTIdx + 1) % tActiveLen
+      const nextPlayer = activeThomas[curTIdx]
+      setSlotThomasIdx(thomas.findIndex((p) => p.id === nextPlayer.id))
 
       if (thomasStep >= thomasMaxSteps) {
         thomasDone = true
@@ -135,9 +144,9 @@ export function AceMatchModal({
         }
       } else {
         const remaining = thomasMaxSteps - thomasStep
-        let delay = BASE_SPEED_MS
+        let delay = BASE_SPEED_THOMAS
         if (remaining <= DECEL_STEPS) {
-          delay = BASE_SPEED_MS + Math.pow(DECEL_STEPS - remaining + 1, 2) * 12
+          delay = BASE_SPEED_THOMAS + Math.pow(DECEL_STEPS - remaining + 1, 2) * 14
         }
         setTimeout(rollThomas, delay)
       }
@@ -145,7 +154,9 @@ export function AceMatchModal({
 
     const rollAda = () => {
       adaStep += 1
-      setSlotAdaIdx((prev) => (prev + 1) % aLen)
+      curAIdx = (curAIdx + 1) % aActiveLen
+      const nextPlayer = activeAda[curAIdx]
+      setSlotAdaIdx(ada.findIndex((p) => p.id === nextPlayer.id))
 
       if (adaStep >= adaMaxSteps) {
         adaDone = true
@@ -155,9 +166,9 @@ export function AceMatchModal({
         }
       } else {
         const remaining = adaMaxSteps - adaStep
-        let delay = BASE_SPEED_MS
+        let delay = BASE_SPEED_ADA
         if (remaining <= DECEL_STEPS) {
-          delay = BASE_SPEED_MS + Math.pow(DECEL_STEPS - remaining + 1, 2) * 12
+          delay = BASE_SPEED_ADA + Math.pow(DECEL_STEPS - remaining + 1, 2) * 14
         }
         setTimeout(rollAda, delay)
       }
