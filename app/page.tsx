@@ -166,7 +166,7 @@ export default function LandingPage() {
             </button>
 
             {/* Ace Match Announcement Badge right of 4v4 Button */}
-            <div className="mt-2 sm:mt-0 sm:absolute sm:left-[calc(50%+156px)] md:left-[calc(50%+184px)] whitespace-nowrap px-3 py-1.5 rounded border border-dbd-yellow/60 bg-black/85 text-xs sm:text-sm text-neutral-200 shadow-[0_0_15px_rgba(234,179,8,0.25)]">
+            <div className="mt-2 sm:mt-0 sm:absolute sm:left-[calc(50%+156px)] md:left-[calc(50%+184px)] whitespace-nowrap text-xs sm:text-sm text-neutral-200 drop-shadow-md">
               <span className="text-dbd-yellow font-bold">에이스 결정전</span> 모드가 추가되었습니다
             </div>
           </div>
