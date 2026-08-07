@@ -39,9 +39,19 @@ export function AceMatchModal({
   const [slotThomasIdx, setSlotThomasIdx] = useState(0)
   const [slotAdaIdx, setSlotAdaIdx] = useState(0)
   const [slotFinished, setSlotFinished] = useState(false)
+  const [excludedIds, setExcludedIds] = useState<Record<string, boolean>>({})
+
   // Memory refs to prevent consecutive duplicate draws on re-rolls & suppress same-index pairs
   const lastThomasIdx = useRef<number | null>(null)
   const lastAdaIdx = useRef<number | null>(null)
+
+  const toggleExcludePlayer = (id: string) => {
+    if (isRolling) return
+    setExcludedIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }))
+  }
 
   // Randomize initial slot starting indices so both reels don't start at the same seat position
   const initSlotPositions = () => {
@@ -64,21 +74,32 @@ export function AceMatchModal({
     const tLen = thomas.length
     const aLen = ada.length
 
-    let targetThomas = Math.floor(Math.random() * tLen)
-    let targetAda = Math.floor(Math.random() * aLen)
+    // Filter eligible candidates (excluding checked excluded players)
+    const eligibleThomas = thomas.filter((p) => !excludedIds[p.id])
+    const eligibleAda = ada.filter((p) => !excludedIds[p.id])
+
+    const activeThomas = eligibleThomas.length > 0 ? eligibleThomas : thomas
+    const activeAda = eligibleAda.length > 0 ? eligibleAda : ada
+
+    let chosenThomasObj = activeThomas[Math.floor(Math.random() * activeThomas.length)]
+    let chosenAdaObj = activeAda[Math.floor(Math.random() * activeAda.length)]
+
+    let targetThomas = thomas.findIndex((p) => p.id === chosenThomasObj.id)
+    let targetAda = ada.findIndex((p) => p.id === chosenAdaObj.id)
 
     // 1. 이전 추첨 결과와 동일한 인덱스가 다시 걸리지 않도록 방지 (리롤 시 중복 방지)
-    if (tLen > 1 && lastThomasIdx.current !== null && targetThomas === lastThomasIdx.current) {
-      targetThomas = (targetThomas + 1 + Math.floor(Math.random() * (tLen - 1))) % tLen
+    if (activeThomas.length > 1 && lastThomasIdx.current !== null && targetThomas === lastThomasIdx.current) {
+      const filtered = activeThomas.filter((p) => p.id !== chosenThomasObj.id)
+      if (filtered.length > 0) {
+        chosenThomasObj = filtered[Math.floor(Math.random() * filtered.length)]
+        targetThomas = thomas.findIndex((p) => p.id === chosenThomasObj.id)
+      }
     }
-    if (aLen > 1 && lastAdaIdx.current !== null && targetAda === lastAdaIdx.current) {
-      targetAda = (targetAda + 1 + Math.floor(Math.random() * (aLen - 1))) % aLen
-    }
-
-    // 2. 양 팀이 동시에 똑같은 순번(1번vs1번, 2번vs2번 등)이 뽑히는 확률 보정
-    if (tLen > 1 && aLen > 1 && targetThomas === targetAda) {
-      if (Math.random() < 0.75) {
-        targetAda = (targetAda + 1 + Math.floor(Math.random() * (aLen - 1))) % aLen
+    if (activeAda.length > 1 && lastAdaIdx.current !== null && targetAda === lastAdaIdx.current) {
+      const filtered = activeAda.filter((p) => p.id !== chosenAdaObj.id)
+      if (filtered.length > 0) {
+        chosenAdaObj = filtered[Math.floor(Math.random() * filtered.length)]
+        targetAda = ada.findIndex((p) => p.id === chosenAdaObj.id)
       }
     }
 
@@ -89,16 +110,17 @@ export function AceMatchModal({
     const tStepsToTarget = (targetThomas - slotThomasIdx + tLen * 10) % tLen
     const aStepsToTarget = (targetAda - slotAdaIdx + aLen * 10) % aLen
 
-    const thomasMaxSteps = (tStepsToTarget === 0 ? tLen : tStepsToTarget) + tLen * (7 + Math.floor(Math.random() * 3))
-    const adaMaxSteps = (aStepsToTarget === 0 ? aLen : aStepsToTarget) + aLen * (9 + Math.floor(Math.random() * 3))
+    // Reduced total spin duration by ~30%
+    const thomasMaxSteps = (tStepsToTarget === 0 ? tLen : tStepsToTarget) + tLen * (4 + Math.floor(Math.random() * 2))
+    const adaMaxSteps = (aStepsToTarget === 0 ? aLen : aStepsToTarget) + aLen * (5 + Math.floor(Math.random() * 2))
 
     let thomasStep = 0
     let adaStep = 0
     let thomasDone = false
     let adaDone = false
 
-    const BASE_SPEED_THOMAS = 36 // Slightly different roll speed so reels don't move in sync
-    const BASE_SPEED_ADA = 46
+    // Identical roll speed for both reels
+    const BASE_SPEED_MS = 40
     const DECEL_STEPS = 5 // Decelerate over the last 5 steps
 
     const rollThomas = () => {
@@ -113,9 +135,9 @@ export function AceMatchModal({
         }
       } else {
         const remaining = thomasMaxSteps - thomasStep
-        let delay = BASE_SPEED_THOMAS
+        let delay = BASE_SPEED_MS
         if (remaining <= DECEL_STEPS) {
-          delay = BASE_SPEED_THOMAS + Math.pow(DECEL_STEPS - remaining + 1, 2) * 12
+          delay = BASE_SPEED_MS + Math.pow(DECEL_STEPS - remaining + 1, 2) * 12
         }
         setTimeout(rollThomas, delay)
       }
@@ -133,9 +155,9 @@ export function AceMatchModal({
         }
       } else {
         const remaining = adaMaxSteps - adaStep
-        let delay = BASE_SPEED_ADA
+        let delay = BASE_SPEED_MS
         if (remaining <= DECEL_STEPS) {
-          delay = BASE_SPEED_ADA + Math.pow(DECEL_STEPS - remaining + 1, 2) * 12
+          delay = BASE_SPEED_MS + Math.pow(DECEL_STEPS - remaining + 1, 2) * 12
         }
         setTimeout(rollAda, delay)
       }
@@ -358,17 +380,36 @@ export function AceMatchModal({
                 <div className="flex flex-col gap-2">
                   {thomas.map((p, idx) => {
                     const isPicked = (slotFinished || isRolling) && idx === slotThomasIdx
+                    const isExcluded = Boolean(excludedIds[p.id])
                     return (
                       <div
                         key={p.id}
+                        onClick={() => toggleExcludePlayer(p.id)}
                         className={cn(
-                          "w-full px-4 py-2.5 rounded border text-center justify-center flex items-center transition-all duration-150",
-                          isPicked
+                          "w-full px-3 py-2.5 rounded border flex items-center justify-between transition-all duration-150 cursor-pointer select-none",
+                          isExcluded
+                            ? "border-neutral-900 bg-neutral-950/80 text-neutral-600 opacity-45"
+                            : isPicked
                             ? "border-dbd-yellow bg-dbd-yellow/25 text-dbd-yellow font-extrabold scale-[1.02] shadow-[0_0_20px_rgba(234,179,8,0.5)]"
-                            : "border-neutral-800 bg-neutral-900/50 text-neutral-500 opacity-60"
+                            : "border-neutral-800 bg-neutral-900/50 text-neutral-300 hover:border-neutral-700"
                         )}
                       >
-                        <span>{p.name || "이름 없음"}</span>
+                        <span className={cn("flex-1 text-center font-bold text-sm", isExcluded && "line-through text-neutral-600")}>
+                          {p.name || "이름 없음"}
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-[11px] text-neutral-500 font-mono">
+                            {isExcluded ? "제외" : "포함"}
+                          </span>
+                          <input
+                            type="checkbox"
+                            disabled={isRolling}
+                            checked={!isExcluded}
+                            onChange={() => toggleExcludePlayer(p.id)}
+                            title={isExcluded ? "추첨 대상에 포함" : "추첨에서 제외"}
+                            className="size-3.5 accent-dbd-yellow cursor-pointer"
+                          />
+                        </div>
                       </div>
                     )
                   })}
@@ -383,17 +424,36 @@ export function AceMatchModal({
                 <div className="flex flex-col gap-2">
                   {ada.map((p, idx) => {
                     const isPicked = (slotFinished || isRolling) && idx === slotAdaIdx
+                    const isExcluded = Boolean(excludedIds[p.id])
                     return (
                       <div
                         key={p.id}
+                        onClick={() => toggleExcludePlayer(p.id)}
                         className={cn(
-                          "w-full px-4 py-2.5 rounded border text-center justify-center flex items-center transition-all duration-150",
-                          isPicked
+                          "w-full px-3 py-2.5 rounded border flex items-center justify-between transition-all duration-150 cursor-pointer select-none",
+                          isExcluded
+                            ? "border-neutral-900 bg-neutral-950/80 text-neutral-600 opacity-45"
+                            : isPicked
                             ? "border-dbd-yellow bg-dbd-yellow/25 text-dbd-yellow font-extrabold scale-[1.02] shadow-[0_0_20px_rgba(234,179,8,0.5)]"
-                            : "border-neutral-800 bg-neutral-900/50 text-neutral-500 opacity-60"
+                            : "border-neutral-800 bg-neutral-900/50 text-neutral-300 hover:border-neutral-700"
                         )}
                       >
-                        <span>{p.name || "이름 없음"}</span>
+                        <span className={cn("flex-1 text-center font-bold text-sm", isExcluded && "line-through text-neutral-600")}>
+                          {p.name || "이름 없음"}
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-[11px] text-neutral-500 font-mono">
+                            {isExcluded ? "제외" : "포함"}
+                          </span>
+                          <input
+                            type="checkbox"
+                            disabled={isRolling}
+                            checked={!isExcluded}
+                            onChange={() => toggleExcludePlayer(p.id)}
+                            title={isExcluded ? "추첨 대상에 포함" : "추첨에서 제외"}
+                            className="size-3.5 accent-dbd-yellow cursor-pointer"
+                          />
+                        </div>
                       </div>
                     )
                   })}

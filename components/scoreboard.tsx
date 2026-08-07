@@ -623,42 +623,40 @@ export function Scoreboard() {
     const aPlayer = ada.find((p) => p.id === aceAdaId)
     if (!tPlayer || !aPlayer) return null
 
-    // If Thomas Ace played first and Ada Ace hasn't played yet:
-    if (tPlayer.played && !aPlayer.played) {
-      const k = tPlayer.kills
-      const targetName = aPlayer.name.trim() || adaName
-      if (k < 4) {
+    const getWarningData = (activeP: Player, targetP: Player, targetTeam: Team) => {
+      const k = activeP.kills
+      const targetName = targetP.name.trim() || (targetTeam === "thomas" ? thomasName : adaName)
+
+      if (k < 3) {
         return {
           name: targetName,
-          team: "ada",
-          text: `이번 경기에서 ${k + 1}킬 이상 해야 우승입니다`,
+          team: targetTeam,
+          killText: `${k + 1}킬`,
+          suffix: " 이상 해야 우승입니다",
+        }
+      } else if (k === 3) {
+        return {
+          name: targetName,
+          team: targetTeam,
+          killText: "올킬",
+          suffix: "을 해야 우승입니다",
         }
       } else {
         return {
           name: targetName,
-          team: "ada",
-          text: "이번 경기에서 올킬(4킬)을 해야 동점입니다",
+          team: targetTeam,
+          killText: "올킬",
+          suffix: "을 해야 동점입니다",
         }
       }
     }
 
-    // If Ada Ace played first and Thomas Ace hasn't played yet:
+    if (tPlayer.played && !aPlayer.played) {
+      return getWarningData(tPlayer, aPlayer, "ada")
+    }
+
     if (aPlayer.played && !tPlayer.played) {
-      const k = aPlayer.kills
-      const targetName = tPlayer.name.trim() || thomasName
-      if (k < 4) {
-        return {
-          name: targetName,
-          team: "thomas",
-          text: `이번 경기에서 ${k + 1}킬 이상 해야 우승입니다`,
-        }
-      } else {
-        return {
-          name: targetName,
-          team: "thomas",
-          text: "이번 경기에서 올킬(4킬)을 해야 동점입니다",
-        }
-      }
+      return getWarningData(aPlayer, tPlayer, "thomas")
     }
 
     return null
@@ -1175,7 +1173,7 @@ export function Scoreboard() {
             document.activeElement.blur()
           }
         }
-        if (removeMode) setRemoveMode(false)
+        if (removeMode) setRemoveMode(null)
       }}
     >
       <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-3 pb-12 md:px-8 md:py-4 md:pb-14">
@@ -1402,7 +1400,9 @@ export function Scoreboard() {
                     <span className={`cold-team-name ${aceMatchWarning.team === "thomas" ? "cold-team-thomas" : "cold-team-ada"}`}>
                       {aceMatchWarning.name}
                     </span>{" "}
-                    {aceMatchWarning.text}
+                    {"이번 경기에서 "}
+                    <span className="cold-kill-count">{aceMatchWarning.killText}</span>
+                    {aceMatchWarning.suffix}
                   </p>
                 </div>
               </>
