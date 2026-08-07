@@ -22,7 +22,7 @@
 
 > **[https://cheesebydaylight.vercel.app/](https://cheesebydaylight.vercel.app/)**
 
-별도의 설치나 가입 없이 웹 브라우저에서 바로 접속하여 사용하실 수 있습니다.
+설치나 가입 없이 브라우저에서 바로 사용하실 수 있습니다.
 
 <br />
 
