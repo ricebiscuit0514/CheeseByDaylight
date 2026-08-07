@@ -217,7 +217,7 @@ export default function LandingPage() {
 
         {/* Version Number */}
         <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider pt-0.5">
-          v1.1.0
+          v1.1.1
         </span>
       </footer>
     </main>
