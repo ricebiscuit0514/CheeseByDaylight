@@ -154,15 +154,22 @@ export default function LandingPage() {
 
         {/* Mode Selection Buttons */}
         <div className="flex flex-col items-center space-y-4 w-full">
-          {/* 4 vs 4 Mode Button */}
-          <button
-            type="button"
-            onClick={() => handleSelectMode("4v4")}
-            className="w-56 sm:w-64 md:w-72 py-3 px-6 bg-black/60 hover:bg-black/85 border border-white/40 hover:border-white text-white rounded-none font-bold text-base sm:text-lg tracking-wider shadow-2xl backdrop-blur-md transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center"
-            style={{ fontFamily: "var(--font-godo)" }}
-          >
-            4 vs 4 모드
-          </button>
+          {/* 4 vs 4 Mode Button Row */}
+          <div className="relative flex flex-col sm:flex-row items-center justify-center w-full">
+            <button
+              type="button"
+              onClick={() => handleSelectMode("4v4")}
+              className="w-56 sm:w-64 md:w-72 py-3 px-6 bg-black/60 hover:bg-black/85 border border-white/40 hover:border-white text-white rounded-none font-bold text-base sm:text-lg tracking-wider shadow-2xl backdrop-blur-md transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center"
+              style={{ fontFamily: "var(--font-godo)" }}
+            >
+              4 vs 4 모드
+            </button>
+
+            {/* Ace Match Announcement Badge right of 4v4 Button */}
+            <div className="mt-2 sm:mt-0 sm:absolute sm:left-[calc(50%+156px)] md:left-[calc(50%+184px)] whitespace-nowrap text-xs sm:text-sm text-neutral-200 drop-shadow-md">
+              <span className="text-dbd-yellow font-bold">에이스 결정전</span> 모드가 추가되었습니다
+            </div>
+          </div>
 
           {/* 5-Player Mode Button */}
           <button
@@ -210,7 +217,7 @@ export default function LandingPage() {
 
         {/* Version Number */}
         <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider pt-0.5">
-          v1.0.6
+          v1.1.0
         </span>
       </footer>
     </main>
