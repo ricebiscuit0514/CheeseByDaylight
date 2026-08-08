@@ -259,11 +259,10 @@ export function ScoreboardSyncPanel({
               <StatusLine status={status} />
             </div>
             <p className="mt-1 text-xs leading-relaxed text-neutral-300">
-              연동 시작하기를 누른 뒤, 연동 주소를 복사 하세요.
+              진행자를 맡으실 경우, 시작하기 버튼을 누른 뒤, 주소를 복사하세요.
             </p>
             <p className="mt-1.5 text-xs leading-relaxed text-neutral-400">
-              주소로 접속한 참가자는 방장의 점수판을 실시간으로 확인할 수 있으며,
-              점수판 조작이 제한됩니다.
+              참가자는 공유된 주소로 접속하여 점수판을 확인할 수 있으며, 조작이 제한됩니다.
             </p>
             {role === "host" && (
               <p className="mt-1.5 break-keep text-xs leading-relaxed text-neutral-400">
