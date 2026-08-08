@@ -77,23 +77,6 @@ export const SCOREBOARD_GAME_PATHS: Record<ScoreboardGameMode, string> = {
   "5p": "/1v4",
 }
 
-export const ROOM_QUERY_PARAM = "room"
-
-const ROOM_TOKEN_PATTERN = /^[a-f0-9]{48,128}$/i
-
-export function parseInviteRoomToken(
-  queryRoom: string | null | undefined,
-  hash: string | null | undefined = null,
-): string | null {
-  const fromQuery = queryRoom?.trim()
-  if (fromQuery && ROOM_TOKEN_PATTERN.test(fromQuery)) {
-    return fromQuery.toLowerCase()
-  }
-
-  const hashMatch = hash?.match(/^#room=([a-f0-9]{48,128})$/i)
-  return hashMatch ? hashMatch[1].toLowerCase() : null
-}
-
 const DEFAULT_FOUR_V_FOUR_PLAYERS = (team: "thomas" | "ada"): Player[] =>
   Array.from({ length: 4 }, (_, index) => ({
     id: `${team}-${index + 1}`,
@@ -659,8 +642,7 @@ export function generateRoomToken(byteLength = 24) {
 }
 
 export function buildInviteUrl(token: string, gameMode: ScoreboardGameMode) {
-  const path = SCOREBOARD_GAME_PATHS[gameMode]
-  return `${window.location.origin}${path}?${ROOM_QUERY_PARAM}=${encodeURIComponent(token)}`
+  return `${window.location.origin}${SCOREBOARD_GAME_PATHS[gameMode]}#room=${encodeURIComponent(token)}`
 }
 
 export function buildDiscordInviteMessage(url: string) {
@@ -668,25 +650,15 @@ export function buildDiscordInviteMessage(url: string) {
 }
 
 export function consumeInviteToken(gameMode: ScoreboardGameMode) {
-  if (typeof window === "undefined") return null
+  const match = window.location.hash.match(/^#room=([a-f0-9]{48,128})$/i)
+  if (!match) return null
 
-  const token = parseInviteRoomToken(
-    new URL(window.location.href).searchParams.get(ROOM_QUERY_PARAM),
-    window.location.hash || null,
-  )
-  if (!token) return null
-
-  const url = new URL(window.location.href)
-  url.searchParams.delete(ROOM_QUERY_PARAM)
-  url.hash = ""
-  const cleanPath = SCOREBOARD_GAME_PATHS[gameMode]
-  const cleanSearch = url.searchParams.toString()
   window.history.replaceState(
     window.history.state,
     "",
-    cleanSearch ? `${cleanPath}?${cleanSearch}` : cleanPath,
+    SCOREBOARD_GAME_PATHS[gameMode],
   )
-  return token
+  return match[1].toLowerCase()
 }
 
 export function loadRoomSession(

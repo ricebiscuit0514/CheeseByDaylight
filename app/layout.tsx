@@ -1,14 +1,12 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Black_Han_Sans } from 'next/font/google'
-import { getSiteOrigin } from '@/lib/site-url'
 import './globals.css'
 
 // Black Han Sans는 ALL KILL 워터마크 전용
 const blackHanSans = Black_Han_Sans({ weight: '400', subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(getSiteOrigin()),
   title: '치즈 바이 데이라이트 | Cheese By Daylight',
   description: '데드 바이 데이라이트 커스텀 게임 진행 보조 프로그램입니다.',
   keywords: ['cheesebydaylight', 'cheese by Daylight', '치즈바이데이라이트', '치즈 바이 데이라이트', '치바데'],
