@@ -77,22 +77,13 @@ export const SCOREBOARD_GAME_PATHS: Record<ScoreboardGameMode, string> = {
   "5p": "/1v4",
 }
 
-export const ROOM_QUERY_PARAM = "room"
+export { ROOM_QUERY_PARAM, parseInviteRoomToken, SCOREBOARD_JOIN_PATHS } from "@/lib/scoreboard-invite"
 
-const ROOM_TOKEN_PATTERN = /^[a-f0-9]{48,128}$/i
-
-export function parseInviteRoomToken(
-  queryRoom: string | null | undefined,
-  hash: string | null | undefined = null,
-): string | null {
-  const fromQuery = queryRoom?.trim()
-  if (fromQuery && ROOM_TOKEN_PATTERN.test(fromQuery)) {
-    return fromQuery.toLowerCase()
-  }
-
-  const hashMatch = hash?.match(/^#room=([a-f0-9]{48,128})$/i)
-  return hashMatch ? hashMatch[1].toLowerCase() : null
-}
+import {
+  ROOM_QUERY_PARAM,
+  parseInviteRoomToken,
+  SCOREBOARD_JOIN_PATHS,
+} from "@/lib/scoreboard-invite"
 
 const DEFAULT_FOUR_V_FOUR_PLAYERS = (team: "thomas" | "ada"): Player[] =>
   Array.from({ length: 4 }, (_, index) => ({
@@ -659,8 +650,8 @@ export function generateRoomToken(byteLength = 24) {
 }
 
 export function buildInviteUrl(token: string, gameMode: ScoreboardGameMode) {
-  const path = SCOREBOARD_GAME_PATHS[gameMode]
-  return `${window.location.origin}${path}?${ROOM_QUERY_PARAM}=${encodeURIComponent(token)}`
+  const joinPath = SCOREBOARD_JOIN_PATHS[gameMode]
+  return `${window.location.origin}${joinPath}/${encodeURIComponent(token)}`
 }
 
 export function buildDiscordInviteMessage(url: string) {
