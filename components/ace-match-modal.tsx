@@ -373,7 +373,7 @@ export function AceMatchModal({
               className="text-xl font-bold text-dbd-yellow mb-6"
               style={{ fontFamily: "var(--font-godo)" }}
             >
-              출전 인원을 선택해주세요
+              {readOnly ? "출전 인원 선택중..." : "출전 인원을 선택해주세요"}
             </h2>
 
             <div className="grid grid-cols-2 gap-6 text-left mb-6">
