@@ -108,7 +108,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     setHostDisconnectDeadline(null)
     setTerminalStatus("expired")
     setErrorMessage(
-      "방장 연결이 끊긴 뒤 5분이 지나 공유방이 종료되었습니다. 다시 연동을 시작해 주세요.",
+      "방장 연결이 끊긴 뒤 1시간이 지나 공유방이 종료되었습니다. 다시 연동을 시작해 주세요.",
     )
   }, [])
 
@@ -331,7 +331,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
           hostCanRegisterPresence = true
           await establishHostPresence(true)
         } else {
-          // 5분 경계에서 재접속 갱신과 presence 등록이 갈라지지 않도록
+          // 재접속 유예 경계에서 갱신과 presence 등록이 갈라지지 않도록
           // 먼저 원자적인 presence update로 방을 점유한 뒤 상태를 복원한다.
           hostCanRegisterPresence = true
           await establishHostPresence(true)
@@ -385,7 +385,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
           isPermissionDenied(error)
             ? creating
               ? "공유방을 만들지 못했습니다. Firebase Console의 Realtime Database Rules가 최신인지 확인해 주세요."
-              : "이전 공유방의 5분 재접속 시간이 지나 종료되었습니다. 새 연동을 시작해 주세요."
+              : "이전 공유방의 1시간 재접속 시간이 지나 종료되었습니다. 새 연동을 시작해 주세요."
             : message,
         )
       } finally {
