@@ -7,10 +7,18 @@ import { cn } from "@/lib/utils"
 interface WinnerOverlayProps {
   winnerName: string | "tie"
   teamColor?: "thomas" | "ada"
+  isComeback?: boolean
+  isColdGame?: boolean
   onDismiss: () => void
 }
 
-export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverlayProps) {
+export function WinnerOverlay({
+  winnerName,
+  teamColor,
+  isComeback = false,
+  isColdGame = false,
+  onDismiss,
+}: WinnerOverlayProps) {
   const barControls = useAnimationControls()
   const textControls = useAnimationControls()
   const lineControls = useAnimationControls()
@@ -183,7 +191,7 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
             ))}
           </div>
 
-          <div className="relative flex justify-center items-center z-10">
+          <div className="relative flex flex-col items-center justify-center z-10">
             {/* 메인 텍스트 (이탈릭 적용) */}
             {isTie ? (
                <span 
@@ -193,7 +201,24 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
                   무승부!
                 </span>
             ) : (
-               <span 
+              <>
+                {isColdGame && (
+                  <span
+                    className="mb-1 text-xl md:text-3xl font-black italic text-dbd-red tracking-widest drop-shadow-[0_0_12px_color-mix(in_oklch,var(--dbd-red),transparent_35%)]"
+                    style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
+                  >
+                    콜드게임!
+                  </span>
+                )}
+                {isComeback && (
+                  <span
+                    className="mb-1 text-xl md:text-3xl font-black italic text-dbd-yellow tracking-widest drop-shadow-[0_0_12px_color-mix(in_oklch,var(--dbd-yellow),transparent_35%)]"
+                    style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
+                  >
+                    역전승!
+                  </span>
+                )}
+                <span 
                   className="text-6xl md:text-[8rem] font-black italic drop-shadow-[0_0_40px_rgba(0,0,0,0.5)]"
                   style={{ fontFamily: "var(--font-godo)", whiteSpace: "nowrap", letterSpacing: "-0.02em" }}
                 >
@@ -202,6 +227,7 @@ export function WinnerOverlay({ winnerName, teamColor, onDismiss }: WinnerOverla
                   </span>
                   <span className="text-neutral-100">팀 우승!</span>
                 </span>
+              </>
             )}
           </div>
         </motion.div>
