@@ -1,12 +1,26 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AceMatchModal } from "@/components/ace-match-modal"
+import {
+  aceModalSyncToSetup,
+  aceSetupToModalSync,
+  DEFAULT_ACE_MODAL_SYNC,
+  type AceModalSyncState,
+} from "@/lib/ace-modal-sync"
 import { AceMatchOverlay } from "@/components/ace-match-overlay"
 import { HoldButton } from "@/components/hold-button"
 import { MAX_KILLS, PlayerRow, type Player } from "@/components/player-row"
+import { AppVersionCorner } from "@/components/app-version"
+import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
 import { TeamScore } from "@/components/team-score"
+import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { WinnerOverlay } from "@/components/winner-overlay"
+import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
+import type { FourVFourSyncState, ScoreboardSyncState } from "@/lib/firebase/scoreboard-room"
+import { CLOSED_ACE_SETUP } from "@/lib/firebase/scoreboard-room"
+import { consumeViewerLinkExpiredNotice } from "@/lib/viewer-session-notice"
+import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { cn } from "@/lib/utils"
 import { motion } from "motion/react"
 import { useRouter } from "next/navigation"
@@ -255,12 +269,7 @@ function loadFromStorage() {
   try {
     const raw = localStorage.getItem(LS_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as {
-      thomas: Player[]
-      ada: Player[]
-      thomasName: string
-      adaName: string
-      firstAttackerId?: string | null
+    const parsed = JSON.parse(raw) as Partial<FourVFourSyncState> & {
       updatedAt?: number
     }
     if (parsed.updatedAt && Date.now() - parsed.updatedAt > EXPIRATION_TIME_MS) {
@@ -296,6 +305,7 @@ function CoinTossWidget({
   onTossResult,
   thomasDisplayName,
   adaDisplayName,
+  disabled = false,
 }: {
   thomasName: string
   adaName: string
@@ -303,6 +313,7 @@ function CoinTossWidget({
   onTossResult?: (winner: "thomas" | "ada") => void
   thomasDisplayName?: string
   adaDisplayName?: string
+  disabled?: boolean
 }) {
   const [tossing, setTossing] = useState(false)
   const [result, setResult] = useState<"thomas" | "ada" | null>(activeTeam)
@@ -312,7 +323,7 @@ function CoinTossWidget({
   }, [activeTeam])
 
   const handleToss = () => {
-    if (tossing) return
+    if (tossing || disabled) return
     setTossing(true)
     setResult(null)
 
@@ -334,11 +345,11 @@ function CoinTossWidget({
   return (
     <button
       type="button"
-      disabled={tossing}
+      disabled={tossing || disabled}
       onClick={handleToss}
       title={result ? "클릭 시 다시 추첨합니다" : "클릭 시 선공 팀을 무작위로 추첨합니다"}
       className={cn(
-        "group relative flex items-center justify-center gap-2 px-4 py-1.5 rounded-full text-xs font-black backdrop-blur-md border transition-all duration-300 cursor-pointer select-none active:scale-95",
+        "group relative flex items-center justify-center gap-2 px-4 py-1.5 rounded-full text-xs font-black backdrop-blur-md border transition-all duration-300 cursor-pointer select-none active:scale-95 disabled:cursor-default disabled:opacity-70 disabled:active:scale-100",
         tossing
           ? "bg-black/90 text-dbd-yellow border-dbd-yellow"
           : result === "thomas"
@@ -422,6 +433,20 @@ export function Scoreboard() {
   const [anim, setAnim] = useState<Record<string, number>>({})
   // previous kills snapshot per player id — used to animate only newly added skulls
   const [prevKillsMap, setPrevKillsMap] = useState<Record<string, number>>({})
+  const animRef = useRef(anim)
+  const prevKillsRef = useRef(prevKillsMap)
+  const remotePlayersRef = useRef<{ thomas: Player[]; ada: Player[] } | null>(
+    null,
+  )
+
+  useEffect(() => {
+    animRef.current = anim
+  }, [anim])
+
+  useEffect(() => {
+    prevKillsRef.current = prevKillsMap
+  }, [prevKillsMap])
+
   const [leftBump, setLeftBump] = useState(0)
   const [rightBump, setRightBump] = useState(0)
   // 선공: first player (any team) to take their turn
@@ -456,8 +481,138 @@ export function Scoreboard() {
   const [showAceRematchPrompt, setShowAceRematchPrompt] = useState(false)
   const [showAceProceedButton, setShowAceProceedButton] = useState(false)
   const [aceModalInitialStep, setAceModalInitialStep] = useState<"prompt" | "method_select">("prompt")
+  const [aceModalStep, setAceModalStep] = useState<
+    "prompt" | "method_select" | "manual_select" | "random_slot"
+  >("prompt")
+  const [aceModalSync, setAceModalSync] = useState<AceModalSyncState>(
+    DEFAULT_ACE_MODAL_SYNC,
+  )
+  const [viewerAceModalSync, setViewerAceModalSync] =
+    useState<AceModalSyncState | null>(null)
 
   const [isLoaded, setIsLoaded] = useState(false)
+  const [showViewerLinkExpiredNotice, setShowViewerLinkExpiredNotice] =
+    useState(false)
+
+  useEffect(() => {
+    if (consumeViewerLinkExpiredNotice()) {
+      setShowViewerLinkExpiredNotice(true)
+    }
+  }, [])
+
+  const syncState = useMemo<ScoreboardSyncState>(
+    () => ({
+      mode: "4v4",
+      thomas,
+      ada,
+      thomasName,
+      adaName,
+      firstAttackerId,
+      ace: {
+        isActive: isAceMatchMode,
+        hasCompleted: hasCompletedAceMatch,
+        thomasId: aceThomasId,
+        adaId: aceAdaId,
+        thomasBackup: aceThomasBackup,
+        adaBackup: aceAdaBackup,
+        firstAttackerBackup: aceFirstAttackerBackup,
+        winnerTeam: aceWinnerTeam,
+        winnersMap: aceWinnersMap,
+        showProceedButton: showAceProceedButton,
+        ...(showAcePromptModal
+          ? aceModalSyncToSetup(aceModalSync)
+          : CLOSED_ACE_SETUP),
+      },
+    }),
+    [
+      aceAdaBackup,
+      aceAdaId,
+      aceFirstAttackerBackup,
+      aceModalSync,
+      aceThomasBackup,
+      aceThomasId,
+      aceWinnerTeam,
+      aceWinnersMap,
+      ada,
+      adaName,
+      firstAttackerId,
+      hasCompletedAceMatch,
+      isAceMatchMode,
+      showAceProceedButton,
+      showAcePromptModal,
+      thomas,
+      thomasName,
+    ],
+  )
+
+  const applyRemoteState = useCallback((remote: ScoreboardSyncState) => {
+    if (remote.mode !== "4v4") return
+
+    const previous = remotePlayersRef.current
+    if (previous) {
+      const patch = buildScoreAnimationPatch(
+        [...previous.thomas, ...previous.ada],
+        [...remote.thomas, ...remote.ada],
+        animRef.current,
+        prevKillsRef.current,
+        "four-v-four",
+      )
+      animRef.current = patch.anim
+      prevKillsRef.current = patch.prevKillsMap
+      setAnim(patch.anim)
+      setPrevKillsMap(patch.prevKillsMap)
+    } else {
+      animRef.current = {}
+      prevKillsRef.current = {}
+      setAnim({})
+      setPrevKillsMap({})
+    }
+
+    remotePlayersRef.current = {
+      thomas: remote.thomas,
+      ada: remote.ada,
+    }
+    setThomas(remote.thomas)
+    setAda(remote.ada)
+    setThomasName(remote.thomasName)
+    setAdaName(remote.adaName)
+    setFirstAttackerId(remote.firstAttackerId)
+    setIsAceMatchMode(remote.ace.isActive)
+    setHasCompletedAceMatch(remote.ace.hasCompleted)
+    setAceThomasId(remote.ace.thomasId)
+    setAceAdaId(remote.ace.adaId)
+    setAceThomasBackup(remote.ace.thomasBackup)
+    setAceAdaBackup(remote.ace.adaBackup)
+    setAceFirstAttackerBackup(remote.ace.firstAttackerBackup)
+    setAceWinnerTeam(remote.ace.winnerTeam)
+    setAceWinnersMap(remote.ace.winnersMap)
+    setShowAceProceedButton(remote.ace.showProceedButton)
+    setViewerAceModalSync(aceSetupToModalSync(remote.ace))
+    setRemoveMode(null)
+  }, [])
+
+  useEffect(() => {
+    if (!showAcePromptModal) {
+      setAceModalSync(DEFAULT_ACE_MODAL_SYNC)
+      return
+    }
+    setAceModalSync({
+      ...DEFAULT_ACE_MODAL_SYNC,
+      step: aceModalInitialStep,
+    })
+  }, [aceModalInitialStep, showAcePromptModal])
+
+  const sync = useScoreboardRoom({
+    gameMode: "4v4",
+    enabled: isLoaded,
+    state: syncState,
+    onRemoteState: applyRemoteState,
+  })
+  const isViewer = sync.role === "viewer"
+
+  useEffect(() => {
+    if (!isViewer) remotePlayersRef.current = null
+  }, [isViewer])
 
   // 최초 접속 시 설명서 유도 팝업/글로우 표시 여부
   const [hasSeenGuide, setHasSeenGuide] = useState(true)
@@ -494,25 +649,37 @@ export function Scoreboard() {
       if (saved.thomasName) setThomasName(saved.thomasName)
       if (saved.adaName) setAdaName(saved.adaName)
       if (saved.firstAttackerId !== undefined) setFirstAttackerId(saved.firstAttackerId)
+      if (saved.ace) {
+        setIsAceMatchMode(saved.ace.isActive)
+        setHasCompletedAceMatch(saved.ace.hasCompleted)
+        setAceThomasId(saved.ace.thomasId)
+        setAceAdaId(saved.ace.adaId)
+        setAceThomasBackup(saved.ace.thomasBackup)
+        setAceAdaBackup(saved.ace.adaBackup)
+        setAceFirstAttackerBackup(saved.ace.firstAttackerBackup)
+        setAceWinnerTeam(saved.ace.winnerTeam)
+        setAceWinnersMap(saved.ace.winnersMap)
+        setShowAceProceedButton(saved.ace.showProceedButton)
+      }
     }
     setIsLoaded(true)
   }, [])
 
   // localStorage 자동 저장 — 복원이 완료(isLoaded === true)된 이후에만 동기화
   useEffect(() => {
-    if (!isLoaded) return
+    if (!isLoaded || isViewer) return
     try {
       const now = Date.now()
       localStorage.setItem(
         LS_KEY,
-        JSON.stringify({ thomas, ada, thomasName, adaName, firstAttackerId, updatedAt: now })
+        JSON.stringify({ ...syncState, updatedAt: now })
       )
       localStorage.setItem("dbd-last-mode", "4v4")
       localStorage.setItem("dbd-last-mode-time", now.toString())
     } catch {
       // 저장 실패 시 무시
     }
-  }, [isLoaded, thomas, ada, thomasName, adaName, firstAttackerId])
+  }, [isLoaded, isViewer, syncState])
 
   // "다음 플레이어" 계산: 선공 팀을 기준으로 교대 순서를 파악한다.
   // 선공 팀이 결정되면, 총 플레이 횟수의 홀짝으로 다음 차례 팀을 정한다.
@@ -989,7 +1156,8 @@ export function Scoreboard() {
           animId={anim[p.id] ?? 0}
           prevKills={prevKillsMap[p.id] ?? 0}
           dragging={draggingId === p.id}
-          removeMode={removeMode === team}
+          readOnly={isViewer}
+          removeMode={!isViewer && removeMode === team}
           onRemove={() => removePlayer(team, p.id)}
           onScore={(nk) => handleScore(team, p.id, nk)}
           onZeroKill={() => handleZeroKill(team, p.id)}
@@ -1176,6 +1344,7 @@ export function Scoreboard() {
         if (removeMode) setRemoveMode(null)
       }}
     >
+      <AppVersionCorner />
       <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-3 pb-12 md:px-8 md:py-4 md:pb-14">
         {/* editable team titles & floating coin toss widget */}
         <div className="relative border-b border-foreground/10 pb-4">
@@ -1185,6 +1354,7 @@ export function Scoreboard() {
                 thomasName={thomasName}
                 adaName={adaName}
                 activeTeam={firstAttackTeam}
+                disabled={isViewer}
                 onTossResult={(winner) => {
                   const roster = winner === "thomas" ? thomas : ada
                   if (roster.length > 0) {
@@ -1205,10 +1375,11 @@ export function Scoreboard() {
               >{thomasName || " "}</span>
               <input
                 value={thomasName}
+                readOnly={isViewer}
                 onChange={(e) => setThomasName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
                 aria-label="왼쪽 팀 이름"
-                className="absolute inset-0 w-full bg-transparent text-right font-bold italic outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-orange),transparent_55%)] focus:opacity-80 text-dbd-orange pr-[0.35em]"
+                className={cn("absolute inset-0 w-full bg-transparent text-right font-bold italic outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-orange),transparent_55%)] focus:opacity-80 text-dbd-orange pr-[0.35em]", isViewer && "cursor-default")}
                 style={{ fontFamily: "var(--font-aldrich)" }}
               />
             </span>
@@ -1223,10 +1394,11 @@ export function Scoreboard() {
               >{adaName || " "}</span>
               <input
                 value={adaName}
+                readOnly={isViewer}
                 onChange={(e) => setAdaName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
                 aria-label="오른쪽 팀 이름"
-                className="absolute inset-0 w-full bg-transparent text-right font-bold italic outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-blue),transparent_55%)] focus:opacity-80 text-dbd-blue pr-[0.35em]"
+                className={cn("absolute inset-0 w-full bg-transparent text-right font-bold italic outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-blue),transparent_55%)] focus:opacity-80 text-dbd-blue pr-[0.35em]", isViewer && "cursor-default")}
                 style={{ fontFamily: "var(--font-aldrich)" }}
               />
             </span>
@@ -1251,6 +1423,7 @@ export function Scoreboard() {
                 thomasDisplayName={thomas.find((p) => p.id === aceThomasId)?.name.trim() || undefined}
                 adaDisplayName={ada.find((p) => p.id === aceAdaId)?.name.trim() || undefined}
                 activeTeam={firstAttackTeam}
+                disabled={isViewer}
                 onTossResult={(winner) => {
                   const aceId = winner === "thomas" ? aceThomasId : aceAdaId
                   if (aceId) {
@@ -1293,11 +1466,11 @@ export function Scoreboard() {
           <div className="mt-1 grid grid-cols-1 gap-5 md:h-96 md:grid-cols-2 md:gap-12 lg:gap-20">
             <div className="flex w-full max-w-xl flex-col justify-self-end gap-2">
               <div className="flex items-center gap-1 text-neutral-400">
-                <ShuffleButton teamName={thomasName} onClick={() => shuffleTeam("thomas")} disabled={hasAnyScore} />
+                <ShuffleButton teamName={thomasName} onClick={() => shuffleTeam("thomas")} disabled={hasAnyScore || isViewer} />
                 <button
                   type="button"
                   onClick={() => addPlayer("thomas")}
-                  disabled={thomas.length >= MAX_PLAYERS_PER_TEAM}
+                  disabled={isViewer || thomas.length >= MAX_PLAYERS_PER_TEAM}
                   aria-label="왼쪽 팀원 추가"
                   title={thomas.length >= MAX_PLAYERS_PER_TEAM ? "최대 4명까지 추가할 수 있습니다" : "팀원 추가"}
                   className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
@@ -1312,6 +1485,7 @@ export function Scoreboard() {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setRemoveMode((current) => current === "thomas" ? null : "thomas") }}
+                  disabled={isViewer}
                   aria-label="왼쪽 팀원 제거 선택"
                   title={removeMode === "thomas" ? "제거 모드 취소" : "팀원 제거"}
                   aria-pressed={removeMode === "thomas"}
@@ -1328,7 +1502,7 @@ export function Scoreboard() {
               <div className="flex min-h-36 flex-col gap-3" onClick={(event) => {
                 if (event.target === event.currentTarget && removeMode === "thomas") setRemoveMode(null)
               }}>
-                {displayThomas.length === 0 ? <EmptyRoster onClick={() => removeMode === "thomas" ? setRemoveMode(null) : addPlayer("thomas")} /> : displayThomas.map((p, i) => renderRow("thomas", p, i, thomasNext))}
+                {displayThomas.length === 0 ? <EmptyRoster disabled={isViewer} onClick={() => removeMode === "thomas" ? setRemoveMode(null) : addPlayer("thomas")} /> : displayThomas.map((p, i) => renderRow("thomas", p, i, thomasNext))}
               </div>
             </div>
 
@@ -1337,6 +1511,7 @@ export function Scoreboard() {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setRemoveMode((current) => current === "ada" ? null : "ada") }}
+                  disabled={isViewer}
                   aria-label="오른쪽 팀원 제거 선택"
                   title={removeMode === "ada" ? "제거 모드 취소" : "팀원 제거"}
                   aria-pressed={removeMode === "ada"}
@@ -1352,7 +1527,7 @@ export function Scoreboard() {
                 <button
                   type="button"
                   onClick={() => addPlayer("ada")}
-                  disabled={ada.length >= MAX_PLAYERS_PER_TEAM}
+                  disabled={isViewer || ada.length >= MAX_PLAYERS_PER_TEAM}
                   aria-label="오른쪽 팀원 추가"
                   title={ada.length >= MAX_PLAYERS_PER_TEAM ? "최대 4명까지 추가할 수 있습니다" : "팀원 추가"}
                   className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
@@ -1364,12 +1539,12 @@ export function Scoreboard() {
                     className="size-full object-cover transition-[filter] group-hover:brightness-125"
                   />
                 </button>
-                <ShuffleButton teamName={adaName} onClick={() => shuffleTeam("ada")} disabled={hasAnyScore} />
+                <ShuffleButton teamName={adaName} onClick={() => shuffleTeam("ada")} disabled={hasAnyScore || isViewer} />
               </div>
               <div className="flex min-h-36 flex-col gap-3" onClick={(event) => {
                 if (event.target === event.currentTarget && removeMode === "ada") setRemoveMode(null)
               }}>
-                {displayAda.length === 0 ? <EmptyRoster onClick={() => removeMode === "ada" ? setRemoveMode(null) : addPlayer("ada")} /> : displayAda.map((p, i) => renderRow("ada", p, i, adaNext))}
+                {displayAda.length === 0 ? <EmptyRoster disabled={isViewer} onClick={() => removeMode === "ada" ? setRemoveMode(null) : addPlayer("ada")} /> : displayAda.map((p, i) => renderRow("ada", p, i, adaNext))}
               </div>
             </div>
           </div>
@@ -1637,8 +1812,10 @@ export function Scoreboard() {
               </motion.div>
             )}
           </div>
-          {/* 점수 초기화 */}
-          <div className="relative">
+          {!isViewer && (
+            <>
+            {/* 점수 초기화 */}
+            <div className="relative">
             <button
               type="button"
               onClick={handleResetClick}
@@ -1670,9 +1847,9 @@ export function Scoreboard() {
                 </div>
               </div>
             )}
-          </div>
-          {/* 모두 초기화 */}
-          <div className="relative">
+            </div>
+            {/* 모두 초기화 */}
+            <div className="relative">
             <button
               type="button"
               onClick={() => {
@@ -1712,7 +1889,9 @@ export function Scoreboard() {
                 </div>
               </div>
             )}
-          </div>
+            </div>
+            </>
+          )}
         </div>
 
         {/* 우승 오버레이 */}
@@ -1737,18 +1916,34 @@ export function Scoreboard() {
         )}
 
         {/* 에이스 결정전 선택 모달 */}
-        {showAcePromptModal && (
+        {showAcePromptModal && !isViewer && (
           <AceMatchModal
             thomas={thomas}
             ada={ada}
             thomasName={thomasName}
             adaName={adaName}
             initialStep={aceModalInitialStep}
+            onStepChange={setAceModalStep}
+            onSyncState={setAceModalSync}
             onCancel={() => {
               setShowAcePromptModal(false)
+              setAceModalSync(DEFAULT_ACE_MODAL_SYNC)
               setShowAceProceedButton(true)
             }}
             onConfirmAceMatch={handleConfirmAceMatch}
+          />
+        )}
+
+        {isViewer && viewerAceModalSync && (
+          <AceMatchModal
+            thomas={thomas}
+            ada={ada}
+            thomasName={thomasName}
+            adaName={adaName}
+            readOnly
+            syncState={viewerAceModalSync}
+            onCancel={() => undefined}
+            onConfirmAceMatch={() => undefined}
           />
         )}
 
@@ -1763,7 +1958,7 @@ export function Scoreboard() {
         )}
 
         {/* 에이스 결정전 2차 무승부 리매치 팝업 — 흐림/어두움 배경 제거 및 직각 플레이어 이름표 스타일 적용 */}
-        {showAceRematchPrompt && (
+        {showAceRematchPrompt && !isViewer && (
           <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto p-4">
             <div className="w-full max-w-md rounded-lg border border-neutral-600 bg-black/95 p-6 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]">
               <h2 className="text-xl font-bold text-dbd-yellow mb-3" style={{ fontFamily: "var(--font-godo)" }}>
@@ -1828,68 +2023,111 @@ export function Scoreboard() {
         )}
 
         {/* 에이스 결정전 진행 중: 종료하기 버튼 / 모달 닫힘 상태: 진행하기 버튼 */}
-        {isAceMatchMode ? (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-            <HoldButton
-              onConfirm={handleExitAceMatch}
-              className="rounded border border-red-600/80 bg-black/90 px-6 py-2.5 text-xs font-bold text-red-400 hover:bg-red-950/80 transition-all uppercase tracking-wider"
-            >
-              에이스 결정전 종료하기 (꾹 누르기)
-            </HoldButton>
-          </div>
-        ) : (
-          showAceProceedButton && !showAcePromptModal && (
+        {!isViewer && (
+          isAceMatchMode ? (
             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
               <HoldButton
-                onConfirm={() => {
-                  setShowAceProceedButton(false)
-                  setAceModalInitialStep("prompt")
-                  setShowAcePromptModal(true)
-                }}
-                className="rounded border border-dbd-yellow/90 bg-black/90 px-6 py-2.5 text-xs font-bold text-dbd-yellow hover:bg-dbd-yellow/20 shadow-[0_0_15px_rgba(234,179,8,0.3)] transition-all uppercase tracking-wider"
+                onConfirm={handleExitAceMatch}
+                className="rounded border border-red-600/80 bg-black/90 px-6 py-2.5 text-xs font-bold text-red-400 hover:bg-red-950/80 transition-all uppercase tracking-wider"
               >
-                에이스 결정전 진행하기 (꾹 누르기)
+                에이스 결정전 종료하기 (꾹 누르기)
               </HoldButton>
             </div>
+          ) : (
+            showAceProceedButton && !showAcePromptModal && (
+              <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                <HoldButton
+                  onConfirm={() => {
+                    setShowAceProceedButton(false)
+                    setAceModalInitialStep("prompt")
+                    setShowAcePromptModal(true)
+                  }}
+                  className="rounded border border-dbd-yellow/90 bg-black/90 px-6 py-2.5 text-xs font-bold text-dbd-yellow hover:bg-dbd-yellow/20 shadow-[0_0_15px_rgba(234,179,8,0.3)] transition-all uppercase tracking-wider"
+                >
+                  에이스 결정전 진행하기 (꾹 누르기)
+                </HoldButton>
+              </div>
+            )
           )
         )}
       </div>
 
-      {/* Mode Switcher Floating Button & Popover */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1">
-        <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider select-none pr-1">
-          v1.1.1
-        </span>
-        <button
-          type="button"
-          onClick={() => setShowModeSwitchConfirm((prev) => !prev)}
-          className="rounded border border-dbd-yellow/70 bg-black/80 px-4 py-2 text-sm text-dbd-yellow backdrop-blur-sm transition-colors hover:bg-dbd-yellow/10 shadow-lg cursor-pointer flex items-center space-x-2"
-          style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-        >
-          <span>5인 내전 모드로 전환</span>
-        </button>
-        {showModeSwitchConfirm && (
-          <div className="absolute right-0 bottom-full mb-2 z-50 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap shadow-2xl">
-            <p className="text-xs text-neutral-200">5인 내전 모드로 넘어가시겠습니까?</p>
-            <div className="flex gap-2 justify-end">
-              <button
-                type="button"
-                onClick={() => router.push("/1v4")}
-                className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20 cursor-pointer"
-                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-              >
-                예
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowModeSwitchConfirm(false)}
-                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white cursor-pointer"
-                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-              >
-                아니오
-              </button>
-            </div>
+      {showViewerLinkExpiredNotice && (
+        <ViewerLinkExpiredNotice
+          onDismiss={() => setShowViewerLinkExpiredNotice(false)}
+        />
+      )}
+
+      {sync.tabSuperseded && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <div
+            className="w-full max-w-md rounded-md border border-dbd-yellow/70 bg-neutral-950/95 p-6 text-center shadow-[0_0_40px_rgba(234,179,8,0.2)]"
+            style={{ fontFamily: "var(--font-godo)" }}
+          >
+            <h2 className="text-lg font-bold text-dbd-yellow">
+              다른 탭에서 연동 중입니다
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-neutral-300">
+              같은 브라우저에서는 가장 최근에 연 탭 하나만 Firebase에
+              연결됩니다. 이 탭의 연결은 자동으로 종료되었습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-5 rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-4 py-2 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/20"
+            >
+              이 탭에서 다시 연결
+            </button>
           </div>
+        </div>
+      )}
+
+      {/* Mode Switcher Floating Button & Popover */}
+      <div className="fixed bottom-5 right-4 z-50 flex flex-col items-end gap-2 md:bottom-6 md:right-8">
+        <ScoreboardSyncPanel
+          role={sync.role}
+          status={sync.status}
+          busy={sync.busy}
+          inviteUrl={sync.inviteUrl}
+          errorMessage={sync.errorMessage}
+          onStart={sync.startSharing}
+          onStopSharing={sync.stopSharing}
+          onStopViewing={sync.stopViewing}
+        />
+        {!isViewer && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowModeSwitchConfirm((prev) => !prev)}
+              className="rounded border border-dbd-yellow/70 bg-black/80 px-4 py-2 text-sm text-dbd-yellow backdrop-blur-sm transition-colors hover:bg-dbd-yellow/10 shadow-lg cursor-pointer flex items-center space-x-2"
+              style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+            >
+              <span>5인 내전 모드로 전환</span>
+            </button>
+            {showModeSwitchConfirm && (
+              <div className="absolute right-0 bottom-full mb-2 z-50 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap shadow-2xl">
+                <p className="text-xs text-neutral-200">5인 내전 모드로 넘어가시겠습니까?</p>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/1v4")}
+                    className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20 cursor-pointer"
+                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                  >
+                    예
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowModeSwitchConfirm(false)}
+                    className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white cursor-pointer"
+                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                  >
+                    아니오
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -1897,12 +2135,13 @@ export function Scoreboard() {
   )
 }
 
-function EmptyRoster({ onClick }: { onClick: () => void }) {
+function EmptyRoster({ onClick, disabled = false }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex min-h-36 w-full items-center justify-center rounded-md border border-dashed border-neutral-700 bg-black/25 px-4 text-center text-sm leading-relaxed text-neutral-400 transition-colors hover:border-neutral-500 hover:bg-black/40 hover:text-neutral-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue"
+      disabled={disabled}
+      className="flex min-h-36 w-full items-center justify-center rounded-md border border-dashed border-neutral-700 bg-black/25 px-4 text-center text-sm leading-relaxed text-neutral-400 transition-colors hover:border-neutral-500 hover:bg-black/40 hover:text-neutral-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-default disabled:opacity-60 disabled:hover:border-neutral-700 disabled:hover:bg-black/25 disabled:hover:text-neutral-400"
     >
       + 버튼을 눌러 플레이어를 추가해주세요
     </button>

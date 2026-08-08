@@ -1,10 +1,17 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Copy } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { useRouter } from "next/navigation"
 import { PlayerRow, type Player } from "@/components/player-row"
+import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
+import { AppVersionCorner } from "@/components/app-version"
+import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
+import type { FivePlayerSyncState } from "@/lib/firebase/scoreboard-room"
+import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
+import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
+import { consumeViewerLinkExpiredNotice } from "@/lib/viewer-session-notice"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_RECEIVING = [5, 8, 10, 12, 15]
@@ -35,6 +42,17 @@ export function FivePlayerMode() {
   const [removeMode, setRemoveMode] = useState<boolean>(false)
   const [anim, setAnim] = useState<Record<string, number>>({})
   const [prevKillsMap, setPrevKillsMap] = useState<Record<string, number>>({})
+  const animRef = useRef(anim)
+  const prevKillsRef = useRef(prevKillsMap)
+  const remotePlayersRef = useRef<Player[] | null>(null)
+
+  useEffect(() => {
+    animRef.current = anim
+  }, [anim])
+
+  useEffect(() => {
+    prevKillsRef.current = prevKillsMap
+  }, [prevKillsMap])
 
   // Auto-increment ID generator
   const playerIdCounter = useRef(6)
@@ -57,6 +75,14 @@ export function FivePlayerMode() {
 
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasSeenGuide, setHasSeenGuide] = useState(true)
+  const [showViewerLinkExpiredNotice, setShowViewerLinkExpiredNotice] =
+    useState(false)
+
+  useEffect(() => {
+    if (consumeViewerLinkExpiredNotice()) {
+      setShowViewerLinkExpiredNotice(true)
+    }
+  }, [])
 
   useEffect(() => {
     try {
@@ -102,8 +128,66 @@ export function FivePlayerMode() {
     setIsLoaded(true)
   }, [])
 
+  const syncState = useMemo<FivePlayerSyncState>(
+    () => ({
+      mode: "5p",
+      players,
+      receivingConfig,
+      givingConfig,
+    }),
+    [players, receivingConfig, givingConfig],
+  )
+
+  const applyRemoteState = useCallback((remote: FivePlayerSyncState) => {
+    if (remote.mode !== "5p") return
+
+    const previous = remotePlayersRef.current
+    if (previous) {
+      const patch = buildScoreAnimationPatch(
+        previous,
+        remote.players,
+        animRef.current,
+        prevKillsRef.current,
+        "five-player",
+      )
+      animRef.current = patch.anim
+      prevKillsRef.current = patch.prevKillsMap
+      setAnim(patch.anim)
+      setPrevKillsMap(patch.prevKillsMap)
+    } else {
+      animRef.current = {}
+      prevKillsRef.current = {}
+      setAnim({})
+      setPrevKillsMap({})
+    }
+
+    remotePlayersRef.current = remote.players
+    setPlayers(remote.players)
+    setReceivingConfig(remote.receivingConfig)
+    setGivingConfig(remote.givingConfig)
+    setRemoveMode(false)
+    setIsEditingPinball(false)
+    const maxId = remote.players.reduce((max, player) => {
+      const parsed = Number.parseInt(player.id, 10)
+      return Number.isFinite(parsed) ? Math.max(max, parsed) : max
+    }, 5)
+    playerIdCounter.current = maxId + 1
+  }, [])
+
+  const sync = useScoreboardRoom({
+    gameMode: "5p",
+    enabled: isLoaded,
+    state: syncState,
+    onRemoteState: applyRemoteState,
+  })
+  const isViewer = sync.role === "viewer"
+
   useEffect(() => {
-    if (!isLoaded) return
+    if (!isViewer) remotePlayersRef.current = null
+  }, [isViewer])
+
+  useEffect(() => {
+    if (!isLoaded || isViewer) return
     try {
       const now = Date.now()
       localStorage.setItem(
@@ -115,7 +199,7 @@ export function FivePlayerMode() {
     } catch {
       // ignore
     }
-  }, [players, receivingConfig, givingConfig, isLoaded])
+  }, [players, receivingConfig, givingConfig, isLoaded, isViewer])
 
   // Player handlers
   const handleScore = (id: string, newKills: number) => {
@@ -273,6 +357,7 @@ export function FivePlayerMode() {
         if (isEditingPinball) setIsEditingPinball(false)
       }}
     >
+      <AppVersionCorner />
 
       <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-3 pb-12 md:px-6 md:py-4 md:pb-12">
         
@@ -302,7 +387,7 @@ export function FivePlayerMode() {
                 <button
                   type="button"
                   onClick={shufflePlayers}
-                  disabled={hasAnyScore}
+                  disabled={hasAnyScore || isViewer}
                   aria-label="팀원 무작위 배치"
                   title={hasAnyScore ? "점수 초기화 후 섞기가 가능합니다" : "팀원 무작위 배치"}
                   className="group size-12 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
@@ -320,7 +405,7 @@ export function FivePlayerMode() {
                     e.stopPropagation()
                     addPlayer()
                   }}
-                  disabled={players.length >= 5}
+                  disabled={players.length >= 5 || isViewer}
                   aria-label="플레이어 추가"
                   className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
                 >
@@ -335,10 +420,13 @@ export function FivePlayerMode() {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation()
+                    if (isViewer) return
                     setRemoveMode((prev) => !prev)
                   }}
                   aria-label="플레이어 삭제 모드"
                   className={`group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 ${
+                    isViewer ? "cursor-not-allowed opacity-35" : ""
+                  } ${
                     removeMode ? "ring-2 ring-red-500 drop-shadow-[0_0_8px_var(--dbd-red)]" : ""
                   }`}
                 >
@@ -358,7 +446,8 @@ export function FivePlayerMode() {
                 <button
                   type="button"
                   onClick={addPlayer}
-                  className="flex min-h-36 w-full items-center justify-center rounded-md border border-dashed border-neutral-700 bg-black/25 px-4 text-center text-sm leading-relaxed text-neutral-400 transition-colors hover:border-neutral-500 hover:bg-black/40 hover:text-neutral-200"
+                  disabled={isViewer}
+                  className="flex min-h-36 w-full items-center justify-center rounded-md border border-dashed border-neutral-700 bg-black/25 px-4 text-center text-sm leading-relaxed text-neutral-400 transition-colors hover:border-neutral-500 hover:bg-black/40 hover:text-neutral-200 disabled:cursor-default disabled:opacity-60"
                 >
                   + 버튼을 눌러 플레이어를 추가해주세요
                 </button>
@@ -380,6 +469,7 @@ export function FivePlayerMode() {
                       prevKills={prevKillsMap[p.id] ?? 0}
                       dragging={draggingId === p.id}
                       allowHalf={false}
+                      readOnly={isViewer}
                       removeMode={removeMode}
                       onRemove={() => removePlayer(p.id)}
                       onScore={(nk) => handleScore(p.id, nk)}
@@ -420,8 +510,10 @@ export function FivePlayerMode() {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation()
+                  if (isViewer) return
                   setIsEditingPinball((prev) => !prev)
                 }}
+                disabled={isViewer}
                 className={cn(
                   "absolute right-0 px-2 py-0.5 text-xs font-bold rounded transition-all duration-200 cursor-pointer select-none",
                   isEditingPinball
@@ -445,7 +537,7 @@ export function FivePlayerMode() {
                     <span className="font-bold text-xs text-neutral-400" style={{ fontFamily: "var(--font-godo)" }}>{k}킬</span>
                     <PinballNumberInput
                       value={receivingConfig[k]}
-                      disabled={!isEditingPinball}
+                      disabled={!isEditingPinball || isViewer}
                       color="emerald"
                       onChange={(newVal) => updateConfig(true, k, newVal)}
                     />
@@ -453,7 +545,7 @@ export function FivePlayerMode() {
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        disabled={!isEditingPinball}
+                        disabled={!isEditingPinball || isViewer}
                         onClick={() => updateConfig(true, k, receivingConfig[k] + 1)}
                         className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-emerald-600 hover:text-white font-bold text-xs transition-colors cursor-pointer select-none disabled:opacity-20 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed"
                         title="1 증가"
@@ -462,7 +554,7 @@ export function FivePlayerMode() {
                       </button>
                       <button
                         type="button"
-                        disabled={!isEditingPinball}
+                        disabled={!isEditingPinball || isViewer}
                         onClick={() => updateConfig(true, k, Math.max(0, receivingConfig[k] - 1))}
                         className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-red-600 hover:text-white font-bold text-xs transition-colors cursor-pointer select-none disabled:opacity-20 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed"
                         title="1 감소"
@@ -484,7 +576,7 @@ export function FivePlayerMode() {
                     <span className="font-bold text-xs text-neutral-400" style={{ fontFamily: "var(--font-godo)" }}>{k}킬</span>
                     <PinballNumberInput
                       value={givingConfig[k]}
-                      disabled={!isEditingPinball}
+                      disabled={!isEditingPinball || isViewer}
                       color="orange"
                       onChange={(newVal) => updateConfig(false, k, newVal)}
                     />
@@ -492,7 +584,7 @@ export function FivePlayerMode() {
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        disabled={!isEditingPinball}
+                        disabled={!isEditingPinball || isViewer}
                         onClick={() => updateConfig(false, k, givingConfig[k] + 1)}
                         className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-dbd-orange hover:text-white font-bold text-xs transition-colors cursor-pointer select-none disabled:opacity-20 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed"
                         title="1 증가"
@@ -501,7 +593,7 @@ export function FivePlayerMode() {
                       </button>
                       <button
                         type="button"
-                        disabled={!isEditingPinball}
+                        disabled={!isEditingPinball || isViewer}
                         onClick={() => updateConfig(false, k, Math.max(0, givingConfig[k] - 1))}
                         className="size-5 flex items-center justify-center rounded bg-neutral-800 text-neutral-200 hover:bg-red-600 hover:text-white font-bold text-xs transition-colors cursor-pointer select-none disabled:opacity-20 disabled:hover:bg-neutral-800 disabled:cursor-not-allowed"
                         title="1 감소"
@@ -663,6 +755,8 @@ export function FivePlayerMode() {
             )}
           </div>
           
+          {!isViewer && (
+            <>
           {/* 점수 초기화 */}
           <div className="relative">
             <button
@@ -746,13 +840,25 @@ export function FivePlayerMode() {
               </div>
             )}
           </div>
+            </>
+          )}
         </div>
 
         {/* Mode Switcher Floating Button & Popover (Bottom-Right) */}
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-1">
-          <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider select-none pr-1">
-            v1.1.1
-          </span>
+        <div className="fixed bottom-5 right-4 z-50 flex flex-col items-end gap-2 md:bottom-6 md:right-8">
+          <ScoreboardSyncPanel
+            role={sync.role}
+            status={sync.status}
+            busy={sync.busy}
+            inviteUrl={sync.inviteUrl}
+            errorMessage={sync.errorMessage}
+            guideStorageKey="dbd-sync-guide-seen-1v4"
+            onStart={sync.startSharing}
+            onStopSharing={sync.stopSharing}
+            onStopViewing={sync.stopViewing}
+          />
+          {!isViewer && (
+            <>
           <button
             type="button"
             onClick={() => setShowModeSwitchConfirm((prev) => !prev)}
@@ -784,9 +890,41 @@ export function FivePlayerMode() {
               </div>
             </div>
           )}
+            </>
+          )}
         </div>
 
       </div>
+
+      {showViewerLinkExpiredNotice && (
+        <ViewerLinkExpiredNotice
+          onDismiss={() => setShowViewerLinkExpiredNotice(false)}
+        />
+      )}
+
+      {sync.tabSuperseded && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <div
+            className="w-full max-w-md rounded-md border border-dbd-yellow/70 bg-neutral-950/95 p-6 text-center shadow-[0_0_40px_rgba(234,179,8,0.2)]"
+            style={{ fontFamily: "var(--font-godo)" }}
+          >
+            <h2 className="text-lg font-bold text-dbd-yellow">
+              다른 탭에서 연동 중입니다
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-neutral-300">
+              같은 브라우저에서는 가장 최근에 연 탭 하나만 Firebase에
+              연결됩니다. 이 탭의 연결은 자동으로 종료되었습니다.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-5 rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-4 py-2 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/20"
+            >
+              이 탭에서 다시 연결
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

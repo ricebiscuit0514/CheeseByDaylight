@@ -1,0 +1,278 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "scoreboardRooms": {
+      "$roomId": {
+        ".read": "auth != null && data.child('status').val() === 'active' && (data.child('hostConnections').exists() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 300000 > now))",
+        ".write": "auth != null && $roomId.matches(/^[a-f0-9]{48,128}$/) && ((data.exists() && data.child('ownerUid').val() === auth.uid && (!newData.exists() || !data.child('hostConnections').exists() || data.child('hostConnections').hasChildren() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 300000 > now))) || (!data.exists() && newData.exists() && newData.child('ownerUid').val() === auth.uid))",
+        ".validate": "!newData.exists() || newData.hasChildren(['version', 'ownerUid', 'status', 'createdAt', 'updatedAt', 'expiresAt', 'scoreboard'])",
+        "version": {
+          ".validate": "newData.val() === 1"
+        },
+        "ownerUid": {
+          ".validate": "newData.isString() && newData.val() === auth.uid && (!data.exists() || newData.val() === data.val())"
+        },
+        "status": {
+          ".validate": "newData.val() === 'active'"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber() && newData.val() <= now + 5000 && (!data.exists() || newData.val() === data.val())"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber() && newData.val() <= now + 5000 && newData.val() >= newData.parent().child('createdAt').val()"
+        },
+        "expiresAt": {
+          ".validate": "newData.isNumber() && newData.val() > now && newData.val() <= now + 3605000"
+        },
+        "hostDisconnectedAt": {
+          ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('createdAt').val() && newData.val() <= now + 5000"
+        },
+        "hostConnections": {
+          "$connectionId": {
+            ".validate": "$connectionId.matches(/^[a-f0-9]{24}$/) && newData.val() === true"
+          }
+        },
+        "scoreboard": {
+          ".validate": "newData.hasChildren(['mode']) && ((newData.child('mode').val() === '4v4' && newData.hasChildren(['thomasCount', 'adaCount', 'thomasName', 'adaName', 'ace'])) || (newData.child('mode').val() === '5p' && newData.hasChildren(['playerCount', 'players', 'receivingConfig', 'givingConfig'])))",
+          "mode": {
+            ".validate": "newData.val() === '4v4' || newData.val() === '5p'"
+          },
+          "thomasCount": {
+            ".validate": "newData.isNumber() && ((newData.val() === 0 && !newData.parent().child('thomas').exists()) || (newData.val() === 1 && newData.parent().child('thomas').child('0').exists() && !newData.parent().child('thomas').child('1').exists() && !newData.parent().child('thomas').child('2').exists() && !newData.parent().child('thomas').child('3').exists()) || (newData.val() === 2 && newData.parent().child('thomas').child('0').exists() && newData.parent().child('thomas').child('1').exists() && !newData.parent().child('thomas').child('2').exists() && !newData.parent().child('thomas').child('3').exists()) || (newData.val() === 3 && newData.parent().child('thomas').child('0').exists() && newData.parent().child('thomas').child('1').exists() && newData.parent().child('thomas').child('2').exists() && !newData.parent().child('thomas').child('3').exists()) || (newData.val() === 4 && newData.parent().child('thomas').child('0').exists() && newData.parent().child('thomas').child('1').exists() && newData.parent().child('thomas').child('2').exists() && newData.parent().child('thomas').child('3').exists()))"
+          },
+          "adaCount": {
+            ".validate": "newData.isNumber() && ((newData.val() === 0 && !newData.parent().child('ada').exists()) || (newData.val() === 1 && newData.parent().child('ada').child('0').exists() && !newData.parent().child('ada').child('1').exists() && !newData.parent().child('ada').child('2').exists() && !newData.parent().child('ada').child('3').exists()) || (newData.val() === 2 && newData.parent().child('ada').child('0').exists() && newData.parent().child('ada').child('1').exists() && !newData.parent().child('ada').child('2').exists() && !newData.parent().child('ada').child('3').exists()) || (newData.val() === 3 && newData.parent().child('ada').child('0').exists() && newData.parent().child('ada').child('1').exists() && newData.parent().child('ada').child('2').exists() && !newData.parent().child('ada').child('3').exists()) || (newData.val() === 4 && newData.parent().child('ada').child('0').exists() && newData.parent().child('ada').child('1').exists() && newData.parent().child('ada').child('2').exists() && newData.parent().child('ada').child('3').exists()))"
+          },
+          "thomasName": {
+            ".validate": "newData.isString() && newData.val().length <= 24"
+          },
+          "adaName": {
+            ".validate": "newData.isString() && newData.val().length <= 24"
+          },
+          "firstAttackerId": {
+            ".validate": "newData.isString() && newData.val().length <= 80"
+          },
+          "thomas": {
+            "$index": {
+              ".validate": "$index.matches(/^[0-3]$/) && newData.hasChildren(['id', 'name', 'kills', 'played'])",
+              "id": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+              },
+              "name": {
+                ".validate": "newData.isString() && newData.val().length <= 40"
+              },
+              "kills": {
+                ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1 || newData.val() === 2 || newData.val() === 3 || newData.val() === 3.5 || newData.val() === 4)"
+              },
+              "played": {
+                ".validate": "newData.isBoolean()"
+              },
+              "killer": {
+                ".validate": "newData.isString() && newData.val().length <= 30"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "ada": {
+            "$index": {
+              ".validate": "$index.matches(/^[0-3]$/) && newData.hasChildren(['id', 'name', 'kills', 'played'])",
+              "id": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+              },
+              "name": {
+                ".validate": "newData.isString() && newData.val().length <= 40"
+              },
+              "kills": {
+                ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1 || newData.val() === 2 || newData.val() === 3 || newData.val() === 3.5 || newData.val() === 4)"
+              },
+              "played": {
+                ".validate": "newData.isBoolean()"
+              },
+              "killer": {
+                ".validate": "newData.isString() && newData.val().length <= 30"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "ace": {
+            ".validate": "newData.hasChildren(['isActive', 'hasCompleted', 'showProceedButton'])",
+            "isActive": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hasCompleted": {
+              ".validate": "newData.isBoolean()"
+            },
+            "thomasId": {
+              ".validate": "newData.isString() && newData.val().length <= 80"
+            },
+            "adaId": {
+              ".validate": "newData.isString() && newData.val().length <= 80"
+            },
+            "firstAttackerBackup": {
+              ".validate": "newData.isString() && newData.val().length <= 80"
+            },
+            "winnerTeam": {
+              ".validate": "newData.val() === 'thomas' || newData.val() === 'ada'"
+            },
+            "winnersMap": {
+              "$playerId": {
+                ".validate": "(newData.val() === 'win' || newData.val() === 'lose') && (newData.parent().parent().parent().child('thomas').child('0').child('id').val() === $playerId || newData.parent().parent().parent().child('thomas').child('1').child('id').val() === $playerId || newData.parent().parent().parent().child('thomas').child('2').child('id').val() === $playerId || newData.parent().parent().parent().child('thomas').child('3').child('id').val() === $playerId || newData.parent().parent().parent().child('ada').child('0').child('id').val() === $playerId || newData.parent().parent().parent().child('ada').child('1').child('id').val() === $playerId || newData.parent().parent().parent().child('ada').child('2').child('id').val() === $playerId || newData.parent().parent().parent().child('ada').child('3').child('id').val() === $playerId)"
+              }
+            },
+            "thomasBackup": {
+              ".validate": "!newData.exists() || newData.hasChildren(['id', 'name', 'kills', 'played'])",
+              "id": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+              },
+              "name": {
+                ".validate": "newData.isString() && newData.val().length <= 40"
+              },
+              "kills": {
+                ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1 || newData.val() === 2 || newData.val() === 3 || newData.val() === 3.5 || newData.val() === 4)"
+              },
+              "played": {
+                ".validate": "newData.isBoolean()"
+              },
+              "killer": {
+                ".validate": "newData.isString() && newData.val().length <= 30"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "adaBackup": {
+              ".validate": "!newData.exists() || newData.hasChildren(['id', 'name', 'kills', 'played'])",
+              "id": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+              },
+              "name": {
+                ".validate": "newData.isString() && newData.val().length <= 40"
+              },
+              "kills": {
+                ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1 || newData.val() === 2 || newData.val() === 3 || newData.val() === 3.5 || newData.val() === 4)"
+              },
+              "played": {
+                ".validate": "newData.isBoolean()"
+              },
+              "killer": {
+                ".validate": "newData.isString() && newData.val().length <= 30"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "showProceedButton": {
+              ".validate": "newData.isBoolean()"
+            },
+            "setupStep": {
+              ".validate": "newData.val() === 'prompt' || newData.val() === 'method_select' || newData.val() === 'manual_select' || newData.val() === 'random_slot'"
+            },
+            "setupSelectedThomasId": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "setupSelectedAdaId": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+            },
+            "setupSlotThomasIdx": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+            },
+            "setupSlotAdaIdx": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+            },
+            "setupSlotRolling": {
+              ".validate": "newData.isBoolean()"
+            },
+            "setupSlotFinished": {
+              ".validate": "newData.isBoolean()"
+            },
+            "setupSlotExcludedIds": {
+              "$playerId": {
+                ".validate": "newData.val() === true"
+              }
+            },
+            "setupSlotSpinToken": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
+            "setupSlotSpinPlan": {
+              ".validate": "newData.hasChildren(['targetThomasIdx', 'targetAdaIdx', 'thomasMaxSteps', 'adaMaxSteps', 'startThomasActiveIdx', 'startAdaActiveIdx', 'spinToken'])",
+              "targetThomasIdx": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+              },
+              "targetAdaIdx": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+              },
+              "thomasMaxSteps": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200"
+              },
+              "adaMaxSteps": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200"
+              },
+              "startThomasActiveIdx": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+              },
+              "startAdaActiveIdx": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3"
+              },
+              "spinToken": {
+                ".validate": "newData.isNumber() && newData.val() >= 0"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "playerCount": {
+            ".validate": "newData.parent().child('mode').val() === '5p' && newData.isNumber() && ((newData.val() === 0 && !newData.parent().child('players').exists()) || (newData.val() === 1 && newData.parent().child('players').child('0').exists() && !newData.parent().child('players').child('1').exists() && !newData.parent().child('players').child('2').exists() && !newData.parent().child('players').child('3').exists() && !newData.parent().child('players').child('4').exists()) || (newData.val() === 2 && newData.parent().child('players').child('0').exists() && newData.parent().child('players').child('1').exists() && !newData.parent().child('players').child('2').exists() && !newData.parent().child('players').child('3').exists() && !newData.parent().child('players').child('4').exists()) || (newData.val() === 3 && newData.parent().child('players').child('0').exists() && newData.parent().child('players').child('1').exists() && newData.parent().child('players').child('2').exists() && !newData.parent().child('players').child('3').exists() && !newData.parent().child('players').child('4').exists()) || (newData.val() === 4 && newData.parent().child('players').child('0').exists() && newData.parent().child('players').child('1').exists() && newData.parent().child('players').child('2').exists() && newData.parent().child('players').child('3').exists() && !newData.parent().child('players').child('4').exists()) || (newData.val() === 5 && newData.parent().child('players').child('0').exists() && newData.parent().child('players').child('1').exists() && newData.parent().child('players').child('2').exists() && newData.parent().child('players').child('3').exists() && newData.parent().child('players').child('4').exists()))"
+          },
+          "players": {
+            "$index": {
+              ".validate": "newData.parent().parent().child('mode').val() === '5p' && $index.matches(/^[0-4]$/) && newData.hasChildren(['id', 'name', 'kills', 'played'])",
+              "id": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80"
+              },
+              "name": {
+                ".validate": "newData.isString() && newData.val().length <= 40"
+              },
+              "kills": {
+                ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1 || newData.val() === 2 || newData.val() === 3 || newData.val() === 4)"
+              },
+              "played": {
+                ".validate": "newData.isBoolean()"
+              },
+              "killer": {
+                ".validate": "newData.isString() && newData.val().length <= 30"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          },
+          "receivingConfig": {
+            "$index": {
+              ".validate": "newData.parent().parent().child('mode').val() === '5p' && $index.matches(/^[0-4]$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
+            }
+          },
+          "givingConfig": {
+            "$index": {
+              ".validate": "newData.parent().parent().child('mode').val() === '5p' && $index.matches(/^[0-4]$/) && newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

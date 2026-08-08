@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { motion, AnimatePresence } from "motion/react"
+import { AppVersion } from "@/components/app-version"
 
 interface CheeseParticle {
   id: number
@@ -165,9 +166,14 @@ export default function LandingPage() {
               4 vs 4 모드
             </button>
 
-            {/* Ace Match Announcement Badge right of 4v4 Button */}
-            <div className="mt-2 sm:mt-0 sm:absolute sm:left-[calc(50%+156px)] md:left-[calc(50%+184px)] whitespace-nowrap text-xs sm:text-sm text-neutral-200 drop-shadow-md">
-              <span className="text-dbd-yellow font-bold">에이스 결정전</span> 모드가 추가되었습니다
+            {/* Scoreboard sync announcement beside 4v4 button */}
+            <div className="mt-2 sm:mt-0 sm:absolute sm:left-[calc(50%+156px)] md:left-[calc(50%+184px)] text-xs sm:text-sm drop-shadow-md">
+              <p className="whitespace-nowrap font-bold text-emerald-300" style={{ fontFamily: "var(--font-godo)" }}>
+                점수판 연동 모드가 추가되었습니다!
+              </p>
+              <p className="mt-0.5 whitespace-nowrap text-neutral-400" style={{ fontFamily: "var(--font-godo)" }}>
+                진행자의 점수판과 연동하여 같은 화면을 보며 플레이하세요!
+              </p>
             </div>
           </div>
 
@@ -215,10 +221,7 @@ export default function LandingPage() {
           />
         </a>
 
-        {/* Version Number */}
-        <span className="text-xs sm:text-sm text-neutral-400/90 font-mono tracking-wider pt-0.5">
-          v1.1.1
-        </span>
+        <AppVersion className="pt-0.5" />
       </footer>
     </main>
   )
