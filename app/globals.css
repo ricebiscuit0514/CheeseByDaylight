@@ -206,6 +206,8 @@
   align-items: center;
   width: min(100%, 58rem);
   gap: 1rem;
+  pointer-events: none;
+  user-select: none;
 }
 
 .score-sanctum {

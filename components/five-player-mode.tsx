@@ -9,6 +9,7 @@ import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
 import { AppVersionCorner } from "@/components/app-version"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
 import type { FivePlayerSyncState } from "@/lib/firebase/scoreboard-room"
+import { MODE_SWITCH_SESSION_KEY } from "@/lib/firebase/scoreboard-room"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { consumeViewerLinkExpiredNotice } from "@/lib/viewer-session-notice"
@@ -109,6 +110,16 @@ export function FivePlayerMode() {
 
   // Load/Save state from localStorage to maintain data when navigating away
   useEffect(() => {
+    try {
+      if (sessionStorage.getItem(MODE_SWITCH_SESSION_KEY)) {
+        sessionStorage.removeItem(MODE_SWITCH_SESSION_KEY)
+        setIsLoaded(true)
+        return
+      }
+    } catch {
+      // ignore
+    }
+
     const saved = localStorage.getItem("dbd-5p-state-v2")
     if (saved) {
       try {
@@ -873,7 +884,14 @@ export function FivePlayerMode() {
               <div className="flex gap-2 justify-end">
                 <button
                   type="button"
-                  onClick={() => router.push("/4v4")}
+                  onClick={() => {
+                    setShowModeSwitchConfirm(false)
+                    if (sync.role === "host") {
+                      void sync.switchGameMode("4v4")
+                      return
+                    }
+                    router.push("/4v4")
+                  }}
                   className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20 cursor-pointer"
                   style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                 >

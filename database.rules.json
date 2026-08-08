@@ -169,6 +169,9 @@
             "showProceedButton": {
               ".validate": "newData.isBoolean()"
             },
+            "showRematchPrompt": {
+              ".validate": "newData.isBoolean()"
+            },
             "setupStep": {
               ".validate": "newData.val() === 'prompt' || newData.val() === 'method_select' || newData.val() === 'manual_select' || newData.val() === 'random_slot'"
             },

@@ -36,6 +36,32 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
   const direction = side === "left" ? -1 : 1
   const hideFlare = isGameOver && !lit
 
+  const leftWholeNudgeX =
+    side === "left" && hasHalf
+      ? whole === 12
+        ? -4
+        : whole === 11
+          ? 4
+          : whole === 8
+            ? -4
+            : whole === 7
+              ? 11
+              : 0
+      : 0
+
+  const halfMarginLeft =
+    side === "left"
+      ? String(whole).length >= 2
+        ? "0.02em"
+        : String(whole).endsWith("7")
+          ? "-0.06em"
+          : "-0.02em"
+      : whole === 11
+        ? "-0.1em"
+        : String(whole).endsWith("7")
+          ? "-0.22em"
+          : undefined
+
   return (
     <section
       aria-label={`${side === "left" ? "왼쪽" : "오른쪽"} 팀 ${value}점`}
@@ -47,6 +73,7 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
         <motion.img
           src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
           alt=""
+          draggable={false}
           className="score-flare"
           aria-hidden="true"
           style={{
@@ -113,6 +140,7 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
             key={`flare-burst-${value}-${bump}`}
             src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
             alt=""
+            draggable={false}
             className="score-flare"
             aria-hidden="true"
             style={{
@@ -183,7 +211,7 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
       <span
         className="score-value-wrap"
         style={{
-          transform: side === "left" && !hasHalf ? "translateX(-12px)" : undefined,
+          transform: side === "left" ? "translateX(-22px)" : undefined,
           opacity: isGameOver && !lit ? 0.35 : 1,
           filter: isGameOver && !lit ? "brightness(0.5) saturate(0.3)" : undefined,
           transition: "all 0.4s ease-out",
@@ -193,7 +221,7 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
           key={`${whole}-${bump}`}
           className="score-whole"
           initial={reducedMotion ? false : { y: -28, opacity: 0, filter: "blur(10px)", scale: 0.85 }}
-          animate={{ y: 0, opacity: 1, filter: "blur(0px)", scale: 1 }}
+          animate={{ y: 0, x: leftWholeNudgeX, opacity: 1, filter: "blur(0px)", scale: 1 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
           {whole}
@@ -204,7 +232,7 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
               key={`half-${value}`}
               className="score-half"
               style={{
-                marginLeft: String(whole).endsWith("7") ? "-0.22em" : undefined,
+                marginLeft: halfMarginLeft,
               }}
               initial={reducedMotion ? false : { y: -20, opacity: 0, filter: "blur(8px)", scale: 0.8 }}
               animate={{ y: 0, opacity: 1, filter: "blur(0px)", scale: 1 }}

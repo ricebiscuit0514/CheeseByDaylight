@@ -10,6 +10,10 @@ import type {
   ScoreboardRoomStatus,
 } from "@/hooks/use-scoreboard-room"
 
+const DISCORD_BUTTON =
+  "border-[#5865F2] bg-[#5865F2] font-bold text-white hover:border-[#4752C4] hover:bg-[#4752C4]"
+const DISCORD_BUTTON_COPIED =
+  "border-[#4752C4] bg-[#5865F2] font-bold text-white"
 const CHZZK_GREEN_BUTTON =
   "border-emerald-500/80 text-emerald-300 hover:bg-emerald-950/40"
 const CHZZK_GREEN_GUIDE =
@@ -245,26 +249,26 @@ export function ScoreboardSyncPanel({
             )}
           >
           <div>
-            <p
-              className={cn("text-sm font-bold", CHZZK_GREEN_ACCENT)}
-              style={{ fontFamily: "var(--font-godo)" }}
-            >
-              실시간 점수판 연동
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p
+                className={cn("text-sm font-bold", CHZZK_GREEN_ACCENT)}
+                style={{ fontFamily: "var(--font-godo)" }}
+              >
+                실시간 점수판 연동
+              </p>
+              <StatusLine status={status} />
+            </div>
             <p className="mt-1 text-xs leading-relaxed text-neutral-300">
               연동 시작하기를 누른 뒤, 연동 주소를 복사 하세요.
             </p>
             <p className="mt-1.5 text-xs leading-relaxed text-neutral-400">
-              주소로 접속한 참가자는 방장의 점수판을 실시간으로 확인할 수
-              있습니다, 점수판 조작이 제한됩니다.
+              주소로 접속한 참가자는 방장의 점수판을 실시간으로 확인할 수 있으며,
+              점수판 조작이 제한됩니다.
             </p>
-          </div>
-
-          <div className="rounded border border-emerald-900/50 bg-emerald-950/20 px-3 py-2">
-            <StatusLine status={status} />
             {role === "host" && (
-              <p className="mt-1 text-[11px] text-neutral-500">
-                연결이 끊겨도 5분 안에 돌아오면 같은 방으로 복구됩니다.
+              <p className="mt-1.5 break-keep text-xs leading-relaxed text-neutral-400">
+                연결이 끊겨도 5분 안에 돌아오면 같은 방으로{" "}
+                <span className="whitespace-nowrap">복구됩니다.</span>
               </p>
             )}
           </div>
@@ -298,10 +302,10 @@ export function ScoreboardSyncPanel({
                   className={cn(
                     "flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded border px-2.5 py-2 text-xs transition-colors disabled:cursor-wait disabled:opacity-50",
                     copiedTarget === "discord"
-                      ? "border-emerald-500 bg-emerald-500/20 font-bold text-emerald-300"
+                      ? DISCORD_BUTTON_COPIED
                       : copyFailedTarget === "discord"
                         ? "border-red-700 bg-red-950/30 font-bold text-red-300"
-                        : "border-neutral-600 bg-black/80 text-neutral-300 hover:border-neutral-400 hover:text-white",
+                        : DISCORD_BUTTON,
                   )}
                   style={{ fontFamily: "var(--font-godo)" }}
                 >
@@ -373,7 +377,7 @@ export function ScoreboardSyncPanel({
 function StatusLine({ status }: { status: ScoreboardRoomStatus }) {
   const copy = STATUS_COPY[status]
   return (
-    <div className="mt-1 flex items-center justify-end gap-1.5 text-xs">
+    <div className="flex shrink-0 items-center gap-1.5 text-[11px]">
       <span className="text-neutral-500">연결 상태:</span>
       <span className={cn("size-2 rounded-full", copy.dot)} aria-hidden />
       <span className={copy.text}>{copy.label}</span>

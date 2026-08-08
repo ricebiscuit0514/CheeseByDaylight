@@ -283,7 +283,11 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
         }
       }}
       aria-label="플레이어 이름"
-      className={cn("player-name-input", isThomas ? "text-left" : "text-right", interactionsDisabled && "cursor-default")}
+      className={cn(
+        "player-name-input",
+        isThomas ? "text-left" : "text-right",
+        interactionsDisabled && "cursor-default",
+      )}
     />
   )
   const skullGroup = <div className="skull-group" onMouseLeave={() => setHover(null)}>{skulls}</div>

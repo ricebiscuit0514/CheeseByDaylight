@@ -19,6 +19,7 @@ export const ROOM_TTL_MS = 60 * 60 * 1000
 export const HOST_DISCONNECT_GRACE_MS = 5 * 60 * 1000
 export const HOST_SESSION_KEY = "dbd-scoreboard-host-room-v1"
 export const VIEWER_SESSION_KEY = "dbd-scoreboard-viewer-room-v1"
+export const MODE_SWITCH_SESSION_KEY = "dbd-sync-mode-switch"
 
 export type AceSyncState = {
   isActive: boolean
@@ -31,6 +32,7 @@ export type AceSyncState = {
   winnerTeam: "thomas" | "ada" | null
   winnersMap: Record<string, "win" | "lose">
   showProceedButton: boolean
+  showRematchPrompt: boolean
   setupStep: AceModalStep
   setupSelectedThomasId: string | null
   setupSelectedAdaId: string | null
@@ -75,6 +77,59 @@ export const SCOREBOARD_GAME_PATHS: Record<ScoreboardGameMode, string> = {
   "5p": "/1v4",
 }
 
+const DEFAULT_FOUR_V_FOUR_PLAYERS = (team: "thomas" | "ada"): Player[] =>
+  Array.from({ length: 4 }, (_, index) => ({
+    id: `${team}-${index + 1}`,
+    name: "",
+    kills: 0,
+    played: false,
+  }))
+
+const DEFAULT_FIVE_PLAYER_ROSTER = (): Player[] =>
+  Array.from({ length: 5 }, (_, index) => ({
+    id: String(index + 1),
+    name: "",
+    kills: 0,
+    played: false,
+    killer: "",
+  }))
+
+export function createDefaultScoreboardState(
+  gameMode: ScoreboardGameMode,
+): ScoreboardSyncState {
+  if (gameMode === "5p") {
+    return {
+      mode: "5p",
+      players: DEFAULT_FIVE_PLAYER_ROSTER(),
+      receivingConfig: [5, 8, 10, 12, 15],
+      givingConfig: [15, 12, 10, 8, 5],
+    }
+  }
+
+  return {
+    mode: "4v4",
+    thomas: DEFAULT_FOUR_V_FOUR_PLAYERS("thomas"),
+    ada: DEFAULT_FOUR_V_FOUR_PLAYERS("ada"),
+    thomasName: "",
+    adaName: "",
+    firstAttackerId: null,
+    ace: {
+      isActive: false,
+      hasCompleted: false,
+      thomasId: null,
+      adaId: null,
+      thomasBackup: null,
+      adaBackup: null,
+      firstAttackerBackup: null,
+      winnerTeam: null,
+      winnersMap: {},
+      showProceedButton: false,
+      showRematchPrompt: false,
+      ...CLOSED_ACE_SETUP,
+    },
+  }
+}
+
 export type FourVFourSyncState = {
   mode: "4v4"
   thomas: Player[]
@@ -110,6 +165,7 @@ type WireAceState = {
   isActive: boolean
   hasCompleted: boolean
   showProceedButton: boolean
+  showRematchPrompt?: boolean
   setupStep?: AceModalStep
   setupSelectedThomasId?: string
   setupSelectedAdaId?: string
@@ -213,6 +269,8 @@ function isAceState(value: unknown): value is AceSyncState {
       ace.winnerTeam === "ada") &&
     validWinners &&
     typeof ace.showProceedButton === "boolean" &&
+    (ace.showRematchPrompt === undefined ||
+      typeof ace.showRematchPrompt === "boolean") &&
     (ace.setupStep === undefined ||
       ace.setupStep === null ||
       ace.setupStep === "prompt" ||
@@ -424,6 +482,7 @@ function toWireAce(ace: AceSyncState): WireAceState {
     isActive: ace.isActive,
     hasCompleted: ace.hasCompleted,
     showProceedButton: ace.showProceedButton,
+    showRematchPrompt: ace.showRematchPrompt,
   }
 
   if (ace.setupStep) {
@@ -516,6 +575,7 @@ function fromWireFourVFourState(
       winnerTeam: wire.ace?.winnerTeam ?? null,
       winnersMap: wire.ace?.winnersMap ?? {},
       showProceedButton: wire.ace?.showProceedButton ?? false,
+      showRematchPrompt: wire.ace?.showRematchPrompt ?? false,
       ...CLOSED_ACE_SETUP,
       ...(wire.ace?.setupStep
         ? {

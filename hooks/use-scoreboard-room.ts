@@ -6,11 +6,13 @@ import { getAnonymousUser } from "@/lib/firebase/client"
 import {
   HOST_DISCONNECT_GRACE_MS,
   HOST_SESSION_KEY,
+  MODE_SWITCH_SESSION_KEY,
   VIEWER_SESSION_KEY,
   SCOREBOARD_GAME_PATHS,
   buildInviteUrl,
   consumeInviteToken,
   createScoreboardRoom,
+  createDefaultScoreboardState,
   deleteScoreboardRoom,
   generateRoomToken,
   loadRoomSession,
@@ -82,6 +84,19 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     if (databaseRef.current) goOffline(databaseRef.current)
     window.location.replace(SCOREBOARD_GAME_PATHS[gameMode])
   }, [gameMode])
+
+  const redirectViewerToGameMode = useCallback(
+    (targetMode: ScoreboardGameMode, roomToken: string, expiresAt: number) => {
+      saveRoomSession(sessionStorage, VIEWER_SESSION_KEY, {
+        token: roomToken,
+        expiresAt,
+        gameMode: targetMode,
+      })
+      if (databaseRef.current) goOffline(databaseRef.current)
+      window.location.replace(SCOREBOARD_GAME_PATHS[targetMode])
+    },
+    [],
+  )
 
   const expireHostSession = useCallback(() => {
     localStorage.removeItem(HOST_SESSION_KEY)
@@ -257,6 +272,18 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
             (room) => {
               if (disposed) return
               if (!room || room.scoreboard.mode !== gameMode) {
+                if (
+                  room &&
+                  room.scoreboard.mode &&
+                  room.scoreboard.mode !== gameMode
+                ) {
+                  redirectViewerToGameMode(
+                    room.scoreboard.mode,
+                    token,
+                    room.expiresAt,
+                  )
+                  return
+                }
                 returnViewerToLocal({ expired: true })
                 return
               }
@@ -384,6 +411,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     gameMode,
     enabled,
     initialized,
+    redirectViewerToGameMode,
     returnViewerToLocal,
     role,
     tabSuperseded,
@@ -512,6 +540,39 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     returnViewerToLocal()
   }, [returnViewerToLocal])
 
+  const switchGameMode = useCallback(
+    async (targetMode: ScoreboardGameMode) => {
+      if (busy || role !== "host" || !token || targetMode === gameMode) return
+      setBusy(true)
+      setTerminalStatus(null)
+      setErrorMessage(null)
+      try {
+        const { database } = await getAnonymousUser()
+        goOnline(database)
+        const expiresAt = await writeScoreboardState(
+          database,
+          token,
+          createDefaultScoreboardState(targetMode),
+        )
+        saveRoomSession(localStorage, HOST_SESSION_KEY, {
+          token,
+          expiresAt,
+          gameMode: targetMode,
+        })
+        sessionStorage.setItem(MODE_SWITCH_SESSION_KEY, "1")
+        window.location.replace(SCOREBOARD_GAME_PATHS[targetMode])
+      } catch (error) {
+        if (databaseRef.current) goOffline(databaseRef.current)
+        setTerminalStatus("error")
+        setErrorMessage(
+          `모드 전환에 실패했습니다. 다시 시도해 주세요. ${toErrorMessage(error)}`,
+        )
+        setBusy(false)
+      }
+    },
+    [busy, gameMode, role, token],
+  )
+
   const inviteUrl = useMemo(
     () => (role === "host" && token && roomReady ? buildInviteUrl(token, gameMode) : null),
     [gameMode, role, roomReady, token],
@@ -536,6 +597,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     startSharing,
     stopSharing,
     stopViewing,
+    switchGameMode,
   }
 }
 

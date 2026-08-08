@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AceMatchModal } from "@/components/ace-match-modal"
+import { AuctionOrderModal } from "@/components/auction-order-modal"
+import { CoinTossWidget } from "@/components/coin-toss-widget"
 import {
   aceModalSyncToSetup,
   aceSetupToModalSync,
@@ -18,7 +20,10 @@ import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice
 import { WinnerOverlay } from "@/components/winner-overlay"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
 import type { FourVFourSyncState, ScoreboardSyncState } from "@/lib/firebase/scoreboard-room"
-import { CLOSED_ACE_SETUP } from "@/lib/firebase/scoreboard-room"
+import {
+  CLOSED_ACE_SETUP,
+  MODE_SWITCH_SESSION_KEY,
+} from "@/lib/firebase/scoreboard-room"
 import { consumeViewerLinkExpiredNotice } from "@/lib/viewer-session-notice"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { cn } from "@/lib/utils"
@@ -75,6 +80,37 @@ type ColdState =
     }
   | { status: "cold"; name: string }
   | { status: "gameover"; winnerName: string | "tie"; isCold?: boolean }
+
+/** 마지막 남은 플레이어가 뒤지고 있던 점수를 역전해 정규 종료로 이긴 경우 */
+function detectComebackWin(
+  thomas: Player[],
+  ada: Player[],
+  lastScoredPlayerId: string | null,
+): boolean {
+  if (!lastScoredPlayerId) return false
+
+  const allPlayed = thomas.every((p) => p.played) && ada.every((p) => p.played)
+  if (!allPlayed) return false
+
+  const thomasPlayer = thomas.find((p) => p.id === lastScoredPlayerId)
+  const adaPlayer = ada.find((p) => p.id === lastScoredPlayerId)
+  const lastPlayer = thomasPlayer ?? adaPlayer
+  if (!lastPlayer?.played) return false
+
+  const playerTeam: Team = thomasPlayer ? "thomas" : "ada"
+  const thomasScore = teamScore(thomas)
+  const adaScore = teamScore(ada)
+  if (thomasScore === adaScore) return false
+
+  const winnerTeam: Team = thomasScore > adaScore ? "thomas" : "ada"
+  if (playerTeam !== winnerTeam) return false
+
+  const myScoreAfter = playerTeam === "thomas" ? thomasScore : adaScore
+  const oppScore = playerTeam === "thomas" ? adaScore : thomasScore
+  const myScoreBefore = myScoreAfter - lastPlayer.kills
+
+  return myScoreBefore < oppScore
+}
 
 /** 4v4 모드에서 실제 득점 가능한 킬 수 단위: 1, 2, 3, 3.5, 4킬만 올림 계산 */
 function toValid4v4Step(rawNeed: number): number {
@@ -282,141 +318,6 @@ function loadFromStorage() {
   }
 }
 
-function CoinIcon({ className = "size-4" }: { className?: string }) {
-  return (
-    <svg className={cn("inline-block shrink-0", className)} viewBox="0 0 24 24" width="16" height="16" fill="none">
-      <circle cx="12" cy="12" r="10" fill="url(#coin-gold-grad)" stroke="#D97706" strokeWidth="1" />
-      <circle cx="12" cy="12" r="7" fill="none" stroke="#FEF08A" strokeWidth="1.2" opacity="0.85" />
-      <defs>
-        <linearGradient id="coin-gold-grad" x1="4" y1="4" x2="20" y2="20" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#FDE047" />
-          <stop offset="50%" stopColor="#EAB308" />
-          <stop offset="100%" stopColor="#CA8A04" />
-        </linearGradient>
-      </defs>
-    </svg>
-  )
-}
-
-function CoinTossWidget({
-  thomasName,
-  adaName,
-  activeTeam,
-  onTossResult,
-  thomasDisplayName,
-  adaDisplayName,
-  disabled = false,
-}: {
-  thomasName: string
-  adaName: string
-  activeTeam: Team | null
-  onTossResult?: (winner: "thomas" | "ada") => void
-  thomasDisplayName?: string
-  adaDisplayName?: string
-  disabled?: boolean
-}) {
-  const [tossing, setTossing] = useState(false)
-  const [result, setResult] = useState<"thomas" | "ada" | null>(activeTeam)
-
-  useEffect(() => {
-    setResult(activeTeam)
-  }, [activeTeam])
-
-  const handleToss = () => {
-    if (tossing || disabled) return
-    setTossing(true)
-    setResult(null)
-
-    setTimeout(() => {
-      const winner: Team = Math.random() < 0.5 ? "thomas" : "ada"
-      setResult(winner)
-      setTossing(false)
-      onTossResult?.(winner)
-    }, 1100)
-  }
-
-  const getWinnerLabel = (winner: "thomas" | "ada") => {
-    if (winner === "thomas") {
-      return thomasDisplayName || `${thomasName} 팀`
-    }
-    return adaDisplayName || `${adaName} 팀`
-  }
-
-  return (
-    <button
-      type="button"
-      disabled={tossing || disabled}
-      onClick={handleToss}
-      title={result ? "클릭 시 다시 추첨합니다" : "클릭 시 선공 팀을 무작위로 추첨합니다"}
-      className={cn(
-        "group relative flex items-center justify-center gap-2 px-4 py-1.5 rounded-full text-xs font-black backdrop-blur-md border transition-all duration-300 cursor-pointer select-none active:scale-95 disabled:cursor-default disabled:opacity-70 disabled:active:scale-100",
-        tossing
-          ? "bg-black/90 text-dbd-yellow border-dbd-yellow"
-          : result === "thomas"
-          ? "bg-black/90 text-dbd-orange border-dbd-orange hover:brightness-125"
-          : result === "ada"
-          ? "bg-black/90 text-dbd-blue border-dbd-blue hover:brightness-125"
-          : "bg-black/85 text-dbd-yellow border-dbd-yellow/70 hover:border-dbd-yellow hover:bg-black"
-      )}
-      style={{ fontFamily: "var(--font-godo)" }}
-    >
-      {/* Tossing State */}
-      {tossing && (
-        <>
-          <motion.span
-            animate={{ rotateY: [0, 1080] }}
-            transition={{ duration: 1.1, ease: "easeInOut" }}
-            className="inline-flex items-center justify-center"
-          >
-            <CoinIcon className="size-4" />
-          </motion.span>
-          <span className="tracking-widest">선공 결정 중...</span>
-        </>
-      )}
-
-      {/* Result State */}
-      {!tossing && result !== null && (
-        <>
-          {result === "thomas" && (
-            <motion.span
-              animate={{ x: [-4, 0, -4] }}
-              transition={{ repeat: Infinity, duration: 0.8 }}
-              className="text-sm text-dbd-orange font-black"
-            >
-              ◄
-            </motion.span>
-          )}
-          <span className="tracking-wide">
-            {getWinnerLabel(result)} 선공!
-          </span>
-          {result === "ada" && (
-            <motion.span
-              animate={{ x: [0, 4, 0] }}
-              transition={{ repeat: Infinity, duration: 0.8 }}
-              className="text-sm text-dbd-blue font-black"
-            >
-              ►
-            </motion.span>
-          )}
-          <span className="ml-1 text-[10px] opacity-70 group-hover:opacity-100 transition-opacity">
-            (재추첨)
-          </span>
-        </>
-      )}
-
-      {/* Idle State */}
-      {!tossing && result === null && (
-        <>
-          <span className="inline-flex items-center justify-center transition-transform duration-300 group-hover:rotate-180">
-            <CoinIcon className="size-4" />
-          </span>
-          <span className="tracking-wider">선공 결정</span>
-        </>
-      )}
-    </button>
-  )
-}
-
 export function Scoreboard() {
   const router = useRouter()
   // SSR/CSR hydration mismatch 방지: 초기값은 항상 서버와 동일한 기본값으로 시작하고,
@@ -452,9 +353,17 @@ export function Scoreboard() {
   // 선공: first player (any team) to take their turn
   const [firstAttackerId, setFirstAttackerId] = useState<string | null>(null)
   // 점수 초기화 확인 프롬프트
+  const [showResetMenu, setShowResetMenu] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  // 살인마 초기화 확인 프롬프트
+  const [showKillerResetConfirm, setShowKillerResetConfirm] = useState(false)
   // 모두 초기화 확인 프롬프트
   const [showFullResetConfirm, setShowFullResetConfirm] = useState(false)
+  // 경매순서 정하기
+  const [showAuctionModal, setShowAuctionModal] = useState(false)
+  const [auctionDraftThomas, setAuctionDraftThomas] = useState("")
+  const [auctionDraftAda, setAuctionDraftAda] = useState("")
+  const [auctionWinnerTeam, setAuctionWinnerTeam] = useState<Team | null>(null)
   // 설명서 모달
   const [showGuide, setShowGuide] = useState(false)
   // 우승 결과 오버레이 닫힘 여부
@@ -519,6 +428,7 @@ export function Scoreboard() {
         winnerTeam: aceWinnerTeam,
         winnersMap: aceWinnersMap,
         showProceedButton: showAceProceedButton,
+        showRematchPrompt: showAceRematchPrompt,
         ...(showAcePromptModal
           ? aceModalSyncToSetup(aceModalSync)
           : CLOSED_ACE_SETUP),
@@ -539,6 +449,7 @@ export function Scoreboard() {
       hasCompletedAceMatch,
       isAceMatchMode,
       showAceProceedButton,
+      showAceRematchPrompt,
       showAcePromptModal,
       thomas,
       thomasName,
@@ -550,6 +461,17 @@ export function Scoreboard() {
 
     const previous = remotePlayersRef.current
     if (previous) {
+      const previousById = new Map(
+        [...previous.thomas, ...previous.ada].map((player) => [player.id, player]),
+      )
+      for (const next of [...remote.thomas, ...remote.ada]) {
+        const prev = previousById.get(next.id)
+        if (prev && !prev.played && next.played) {
+          setLastScoredPlayerId(next.id)
+          setLastScoredKills(next.kills)
+        }
+      }
+
       const patch = buildScoreAnimationPatch(
         [...previous.thomas, ...previous.ada],
         [...remote.thomas, ...remote.ada],
@@ -587,6 +509,7 @@ export function Scoreboard() {
     setAceWinnerTeam(remote.ace.winnerTeam)
     setAceWinnersMap(remote.ace.winnersMap)
     setShowAceProceedButton(remote.ace.showProceedButton)
+    setShowAceRematchPrompt(remote.ace.showRematchPrompt)
     setViewerAceModalSync(aceSetupToModalSync(remote.ace))
     setRemoveMode(null)
   }, [])
@@ -642,6 +565,16 @@ export function Scoreboard() {
 
   // 마운트 후 localStorage에서 저장된 점수 복원 (hydration 이후에만 실행)
   useEffect(() => {
+    try {
+      if (sessionStorage.getItem(MODE_SWITCH_SESSION_KEY)) {
+        sessionStorage.removeItem(MODE_SWITCH_SESSION_KEY)
+        setIsLoaded(true)
+        return
+      }
+    } catch {
+      // ignore
+    }
+
     const saved = loadFromStorage()
     if (saved) {
       if (Array.isArray(saved.thomas)) setThomas(saved.thomas)
@@ -695,7 +628,8 @@ export function Scoreboard() {
     const thomasPlayed = thomas.filter((p) => p.played).length
     const adaPlayed = ada.filter((p) => p.played).length
     const totalPlayed = thomasPlayed + adaPlayed
-    if (totalPlayed === 0) return null
+    // 선공이 정해졌으면 첫 경기 전에도 선공 팀 차례로 간주한다.
+    if (totalPlayed === 0) return firstAttackTeam
 
     // 선공 팀을 기준으로 홀짝 판단:
     // 총 플레이 횟수가 짝수이면 선공 팀 차례, 홀수이면 상대 팀 차례
@@ -764,6 +698,7 @@ export function Scoreboard() {
   const diff = leftTarget - rightTarget
   const bothTeamsPlayed = thomas.some((p) => p.played) && ada.some((p) => p.played)
   const isGameOver = cold.status === "cold" || cold.status === "gameover"
+
   const isTie = isGameOver && diff === 0
   const close = (!isGameOver || isTie) && Math.abs(diff) <= 2
   const orangeLit = isGameOver ? (isTie || diff > 0) : bothTeamsPlayed && (close || diff > 0)
@@ -782,6 +717,13 @@ export function Scoreboard() {
 
   const [showOverlay, setShowOverlay] = useState(false)
   const [lastScoredKills, setLastScoredKills] = useState<number | null>(null)
+  const [lastScoredPlayerId, setLastScoredPlayerId] = useState<string | null>(null)
+
+  const isComebackWin = useMemo(() => {
+    if (isAceMatchMode) return false
+    if (cold.status !== "gameover" || cold.isCold || cold.winnerName === "tie") return false
+    return detectComebackWin(thomas, ada, lastScoredPlayerId)
+  }, [cold, thomas, ada, lastScoredPlayerId, isAceMatchMode])
 
   // 1:1 Ace Match Notification Warning Logic
   const aceMatchWarning = useMemo(() => {
@@ -960,9 +902,32 @@ export function Scoreboard() {
     }
   }, [cold.status, lastScoredKills, isAceMatchMode])
 
-  // 현재 turn 팀에만 "다음 플레이어" 태그를 표시한다.
-  const thomasNext = turn === "thomas" ? thomas.findIndex((p) => !p.played) : -1
-  const adaNext = turn === "ada" ? ada.findIndex((p) => !p.played) : -1
+  // 현재 turn 팀의 다음 플레이어 ID (roster 순서 + 선공 첫 출전 보정)
+  const nextPlayerId = useMemo(() => {
+    const resolve = (team: Team): string | null => {
+      if (turn !== team) return null
+      const roster = team === "thomas" ? thomas : ada
+      const unplayed = roster.filter((p) => !p.played)
+      if (unplayed.length === 0) return null
+
+      const teamPlayedCount = roster.filter((p) => p.played).length
+      if (
+        teamPlayedCount === 0 &&
+        firstAttackerId &&
+        firstAttackTeam === team &&
+        roster.some((p) => p.id === firstAttackerId && !p.played)
+      ) {
+        return firstAttackerId
+      }
+
+      return unplayed[0]?.id ?? null
+    }
+
+    return {
+      thomas: resolve("thomas"),
+      ada: resolve("ada"),
+    }
+  }, [turn, thomas, ada, firstAttackerId, firstAttackTeam])
 
   const dragItem = useRef<{ team: Team; id: string } | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -970,8 +935,13 @@ export function Scoreboard() {
   // 점수가 한 명이라도 입력된 경우 셔플 버튼 잠금
   const hasAnyScore = thomas.some((p) => p.played) || ada.some((p) => p.played)
 
+  useEffect(() => {
+    if (hasAnyScore) setShowAuctionModal(false)
+  }, [hasAnyScore])
+
   function record(team: Team, playerId: string, newKills: number, animate: boolean) {
     setLastScoredKills(newKills)
+    setLastScoredPlayerId(playerId)
     const roster = team === "thomas" ? thomas : ada
     const setTeam = team === "thomas" ? setThomas : setAda
     const current = roster.find((p) => p.id === playerId)?.kills ?? 0
@@ -1091,20 +1061,16 @@ export function Scoreboard() {
     setRemoveMode(null)
   }
 
-  const renderRow = (team: Team, p: Player, index: number, nextIndex: number) => {
+  const renderRow = (team: Team, p: Player, index: number) => {
     const isThomas = team === "thomas"
     const isAcePlayer = isAceMatchMode && (isThomas ? p.id === aceThomasId : p.id === aceAdaId)
     const isNonAcePlayer = isAceMatchMode && !isAcePlayer
 
+    const nextId = team === "thomas" ? nextPlayerId.thomas : nextPlayerId.ada
     const active = isAceMatchMode
       ? (firstAttackerId || firstAttackTeam ? isAcePlayer && turn === team : false)
-      : turn === team && index === nextIndex && nextIndex !== -1
-    const selgongPlayerId = firstAttackTeam === "thomas"
-      ? (isAceMatchMode ? aceThomasId : thomas[0]?.id)
-      : firstAttackTeam === "ada"
-      ? (isAceMatchMode ? aceAdaId : ada[0]?.id)
-      : firstAttackerId
-    const selgong = p.id === selgongPlayerId
+      : turn === team && p.id === nextId
+    const selgong = firstAttackerId != null && p.id === firstAttackerId
     const tabIdx = isThomas ? index + 1 : 5 + index
     const isLastPlayerOverall = team === "ada" && index === ada.length - 1
 
@@ -1175,7 +1141,7 @@ export function Scoreboard() {
             setDraggingId(null)
           }}
         />
-        {selgong && !p.played && removeMode !== team && (
+        {selgong && removeMode !== team && (
           <motion.span
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -1258,12 +1224,71 @@ export function Scoreboard() {
     else setAdaName(cleanName)
   }
 
+  function openAuctionModal() {
+    setAuctionDraftThomas(thomas[0]?.name ?? "")
+    setAuctionDraftAda(ada[0]?.name ?? "")
+    setAuctionWinnerTeam(null)
+    setShowAuctionModal(true)
+  }
+
+  function syncAuctionThomasName(name: string) {
+    setAuctionDraftThomas(name)
+    setThomas((prev) =>
+      prev.map((player, index) => (index === 0 ? { ...player, name } : player)),
+    )
+    const cleanName = name.trim()
+    if (cleanName) {
+      setThomasName(cleanName)
+      teamNameLinked.current.thomas = true
+    }
+  }
+
+  function syncAuctionAdaName(name: string) {
+    setAuctionDraftAda(name)
+    setAda((prev) =>
+      prev.map((player, index) => (index === 0 ? { ...player, name } : player)),
+    )
+    const cleanName = name.trim()
+    if (cleanName) {
+      setAdaName(cleanName)
+      teamNameLinked.current.ada = true
+    }
+  }
+
+  function handleAuctionResult(winner: Team, thomasPlayerName: string, adaPlayerName: string) {
+    syncAuctionThomasName(thomasPlayerName)
+    syncAuctionAdaName(adaPlayerName)
+    setAuctionWinnerTeam(winner)
+  }
+
+  function closeAllResetUI() {
+    setShowResetMenu(false)
+    setShowResetConfirm(false)
+    setShowKillerResetConfirm(false)
+    setShowFullResetConfirm(false)
+  }
+
+  function openResetConfirm(type: "score" | "killer" | "full") {
+    setShowResetConfirm(type === "score")
+    setShowKillerResetConfirm(type === "killer")
+    setShowFullResetConfirm(type === "full")
+  }
+
+  function resetKillers() {
+    setThomas((prev) => prev.map((p) => ({ ...p, killer: "" })))
+    setAda((prev) => prev.map((p) => ({ ...p, killer: "" })))
+    setShowKillerResetConfirm(false)
+  }
+
   function reset() {
-    setThomas((prev) => prev.map((p) => ({ ...p, kills: 0, played: false, killer: "" })))
-    setAda((prev) => prev.map((p) => ({ ...p, kills: 0, played: false, killer: "" })))
+    setThomas((prev) => prev.map((p) => ({ ...p, kills: 0, played: false })))
+    setAda((prev) => prev.map((p) => ({ ...p, kills: 0, played: false })))
     setAnim({})
     setPrevKillsMap({})
     setFirstAttackerId(null)
+    setLastScoredKills(null)
+    setLastScoredPlayerId(null)
+    setAuctionWinnerTeam(null)
     setShowResetConfirm(false)
     setOverlayDismissed(false)
     setIsAceMatchMode(false)
@@ -1283,13 +1308,10 @@ export function Scoreboard() {
   }
 
   function handleResetClick() {
-    // 이미 확인 프롬프트가 열려있으면 닫기, 아니면 열기
-    if (showResetConfirm) {
-      setShowResetConfirm(false)
-    } else {
-      setShowFullResetConfirm(false)
-      setShowResetConfirm(true)
-    }
+    setShowResetConfirm(false)
+    setShowKillerResetConfirm(false)
+    setShowFullResetConfirm(false)
+    setShowResetMenu((open) => !open)
   }
 
   function handleResetConfirm() {
@@ -1300,6 +1322,10 @@ export function Scoreboard() {
     setShowResetConfirm(false)
   }
 
+  function handleKillerResetCancel() {
+    setShowKillerResetConfirm(false)
+  }
+
   function fullReset() {
     setThomas(INITIAL_THOMAS)
     setAda(INITIAL_ADA)
@@ -1308,6 +1334,9 @@ export function Scoreboard() {
     setAnim({})
     setPrevKillsMap({})
     setFirstAttackerId(null)
+    setLastScoredKills(null)
+    setLastScoredPlayerId(null)
+    setAuctionWinnerTeam(null)
     setShowFullResetConfirm(false)
     setOverlayDismissed(false)
     setIsAceMatchMode(false)
@@ -1345,11 +1374,33 @@ export function Scoreboard() {
       }}
     >
       <AppVersionCorner />
+
+      <AuctionOrderModal
+        open={showAuctionModal}
+        thomasPlayerName={auctionDraftThomas}
+        adaPlayerName={auctionDraftAda}
+        auctionWinner={auctionWinnerTeam}
+        onClose={() => setShowAuctionModal(false)}
+        onThomasPlayerNameChange={syncAuctionThomasName}
+        onAdaPlayerNameChange={syncAuctionAdaName}
+        onAuctionResult={handleAuctionResult}
+      />
+
       <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-3 pb-12 md:px-8 md:py-4 md:pb-14">
         {/* editable team titles & floating coin toss widget */}
         <div className="relative border-b border-foreground/10 pb-4">
           {!isAceMatchMode && (
-            <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 z-30">
+            <div className="absolute top-[calc(50%-0.75rem)] left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
+              {!isViewer && !hasAnyScore && (
+                <button
+                  type="button"
+                  onClick={openAuctionModal}
+                  className="rounded-full border border-violet-500/80 bg-black/85 px-4 py-1.5 text-xs font-black text-violet-400 backdrop-blur-md transition-all hover:border-violet-400 hover:text-violet-300 active:scale-95"
+                  style={{ fontFamily: "var(--font-godo)" }}
+                >
+                  경매 순서 결정
+                </button>
+              )}
               <CoinTossWidget
                 thomasName={thomasName}
                 adaName={adaName}
@@ -1370,7 +1421,7 @@ export function Scoreboard() {
             <span className="relative inline-block pr-[0.35em]">
               <span
                 aria-hidden="true"
-                className="invisible whitespace-pre font-bold italic text-dbd-orange pr-[0.35em]"
+                className="invisible whitespace-pre font-bold text-dbd-orange pr-[0.35em]"
                 style={{ fontFamily: "var(--font-aldrich)" }}
               >{thomasName || " "}</span>
               <input
@@ -1379,17 +1430,17 @@ export function Scoreboard() {
                 onChange={(e) => setThomasName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
                 aria-label="왼쪽 팀 이름"
-                className={cn("absolute inset-0 w-full bg-transparent text-right font-bold italic outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-orange),transparent_55%)] focus:opacity-80 text-dbd-orange pr-[0.35em]", isViewer && "cursor-default")}
+                className={cn("absolute inset-0 w-full bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-orange),transparent_55%)] focus:opacity-80 text-dbd-orange pr-[0.35em]", isViewer && "cursor-default")}
                 style={{ fontFamily: "var(--font-aldrich)" }}
               />
             </span>
-            <span className="font-bold italic text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
+            <span className="font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
           </h1>
           <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
             <span className="relative inline-block pr-[0.35em]">
               <span
                 aria-hidden="true"
-                className="invisible whitespace-pre font-bold italic text-dbd-blue pr-[0.35em]"
+                className="invisible whitespace-pre font-bold text-dbd-blue pr-[0.35em]"
                 style={{ fontFamily: "var(--font-aldrich)" }}
               >{adaName || " "}</span>
               <input
@@ -1398,11 +1449,11 @@ export function Scoreboard() {
                 onChange={(e) => setAdaName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
                 aria-label="오른쪽 팀 이름"
-                className={cn("absolute inset-0 w-full bg-transparent text-right font-bold italic outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-blue),transparent_55%)] focus:opacity-80 text-dbd-blue pr-[0.35em]", isViewer && "cursor-default")}
+                className={cn("absolute inset-0 w-full bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-blue),transparent_55%)] focus:opacity-80 text-dbd-blue pr-[0.35em]", isViewer && "cursor-default")}
                 style={{ fontFamily: "var(--font-aldrich)" }}
               />
             </span>
-            <span className="font-bold italic text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
+            <span className="font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
           </h1>
         </div>
       </div>
@@ -1443,7 +1494,7 @@ export function Scoreboard() {
               >
                 {thomas.find((p) => p.id === aceThomasId) && (
                   <div className="w-full max-w-xl">
-                    {renderRow("thomas", thomas.find((p) => p.id === aceThomasId)!, 0, 0)}
+                    {renderRow("thomas", thomas.find((p) => p.id === aceThomasId)!, 0)}
                   </div>
                 )}
               </motion.div>
@@ -1456,7 +1507,7 @@ export function Scoreboard() {
               >
                 {ada.find((p) => p.id === aceAdaId) && (
                   <div className="w-full max-w-xl">
-                    {renderRow("ada", ada.find((p) => p.id === aceAdaId)!, 0, 0)}
+                    {renderRow("ada", ada.find((p) => p.id === aceAdaId)!, 0)}
                   </div>
                 )}
               </motion.div>
@@ -1502,7 +1553,7 @@ export function Scoreboard() {
               <div className="flex min-h-36 flex-col gap-3" onClick={(event) => {
                 if (event.target === event.currentTarget && removeMode === "thomas") setRemoveMode(null)
               }}>
-                {displayThomas.length === 0 ? <EmptyRoster disabled={isViewer} onClick={() => removeMode === "thomas" ? setRemoveMode(null) : addPlayer("thomas")} /> : displayThomas.map((p, i) => renderRow("thomas", p, i, thomasNext))}
+                {displayThomas.length === 0 ? <EmptyRoster disabled={isViewer} onClick={() => removeMode === "thomas" ? setRemoveMode(null) : addPlayer("thomas")} /> : displayThomas.map((p, i) => renderRow("thomas", p, i))}
               </div>
             </div>
 
@@ -1544,7 +1595,7 @@ export function Scoreboard() {
               <div className="flex min-h-36 flex-col gap-3" onClick={(event) => {
                 if (event.target === event.currentTarget && removeMode === "ada") setRemoveMode(null)
               }}>
-                {displayAda.length === 0 ? <EmptyRoster disabled={isViewer} onClick={() => removeMode === "ada" ? setRemoveMode(null) : addPlayer("ada")} /> : displayAda.map((p, i) => renderRow("ada", p, i, adaNext))}
+                {displayAda.length === 0 ? <EmptyRoster disabled={isViewer} onClick={() => removeMode === "ada" ? setRemoveMode(null) : addPlayer("ada")} /> : displayAda.map((p, i) => renderRow("ada", p, i))}
               </div>
             </div>
           </div>
@@ -1742,7 +1793,7 @@ export function Scoreboard() {
                     <span className={`cold-team-name ${cold.winnerName === thomasName ? 'cold-team-thomas text-dbd-orange' : 'cold-team-ada text-dbd-blue'}`}>
                       {cold.winnerName}
                     </span>{" "}
-                    <span className="text-white">팀 우승!</span>
+                    <span className="text-white">{isComebackWin ? "팀 역전승!" : "팀 우승!"}</span>
                   </>
                 )}
               </p>
@@ -1778,13 +1829,10 @@ export function Scoreboard() {
         )}
 
         {/* backdrop for closing prompts on background click */}
-        {(showResetConfirm || showFullResetConfirm) && (
+        {(showResetMenu || showResetConfirm || showKillerResetConfirm || showFullResetConfirm) && (
           <div
             className="fixed inset-0 z-40 cursor-default bg-transparent"
-            onClick={() => {
-              setShowResetConfirm(false)
-              setShowFullResetConfirm(false)
-            }}
+            onClick={closeAllResetUI}
           />
         )}
 
@@ -1813,84 +1861,129 @@ export function Scoreboard() {
             )}
           </div>
           {!isViewer && (
-            <>
-            {/* 점수 초기화 */}
             <div className="relative">
-            <button
-              type="button"
-              onClick={handleResetClick}
-              className="rounded border border-dbd-yellow/70 bg-black/80 px-3 py-1 text-sm text-dbd-yellow backdrop-blur-sm transition-colors hover:bg-dbd-yellow/10"
-              style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-            >
-              점수 초기화
-            </button>
-            {showResetConfirm && (
-              <div className="absolute left-full bottom-0 ml-2 z-50 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
-                <p className="text-xs text-neutral-200">점수를 초기화하시겠습니까?</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleResetConfirm}
-                    className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20"
-                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-                  >
-                    예
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResetCancel}
-                    className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
-                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-                  >
-                    아니오
-                  </button>
+              <button
+                type="button"
+                onClick={handleResetClick}
+                className="rounded border border-neutral-500/70 bg-black/80 px-3 py-1 text-sm text-neutral-200 backdrop-blur-sm transition-colors hover:border-neutral-300 hover:text-white"
+                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+              >
+                초기화
+              </button>
+
+              {showResetMenu && (
+                <div className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2">
+                  <div className="flex flex-col gap-1.5 rounded border border-neutral-600/70 bg-black/95 p-2 backdrop-blur-sm whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => openResetConfirm("score")}
+                      className="h-8 rounded border border-dbd-yellow/70 bg-black/80 px-3 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/10"
+                      style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                    >
+                      점수 초기화
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openResetConfirm("killer")}
+                      className="h-8 rounded border border-dbd-yellow/70 bg-black/80 px-3 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/10"
+                      style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                    >
+                      살인마 초기화
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openResetConfirm("full")}
+                      className="h-8 rounded border border-red-700/70 bg-black/80 px-3 text-sm text-red-400 transition-colors hover:bg-red-900/20"
+                      style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                    >
+                      모두 초기화
+                    </button>
+                  </div>
+
+                  {(showResetConfirm || showKillerResetConfirm || showFullResetConfirm) && (
+                    <div className="flex flex-col gap-1.5 py-2">
+                      <div className="flex h-8 items-center">
+                        {showResetConfirm && (
+                          <div className="flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                            <p className="text-xs text-neutral-200">점수를 초기화하시겠습니까?</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={handleResetConfirm}
+                                className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                예
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleResetCancel}
+                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                아니오
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex h-8 items-center">
+                        {showKillerResetConfirm && (
+                          <div className="flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                            <p className="text-xs text-neutral-200">살인마를 초기화하시겠습니까?</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={resetKillers}
+                                className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                예
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleKillerResetCancel}
+                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                아니오
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex h-8 items-center">
+                        {showFullResetConfirm && (
+                          <div className="flex flex-col gap-2 rounded border border-red-700/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                            <p className="text-xs text-neutral-200">모두 초기화하시겠습니까?</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={fullReset}
+                                className="rounded border border-red-700/70 bg-red-900/20 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-900/40"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                예
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowFullResetConfirm(false)}
+                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                아니오
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
             </div>
-            {/* 모두 초기화 */}
-            <div className="relative">
-            <button
-              type="button"
-              onClick={() => {
-                // 이미 확인 프롬프트가 열려있으면 닫기, 아니면 열기
-                if (showFullResetConfirm) {
-                  setShowFullResetConfirm(false)
-                } else {
-                  setShowResetConfirm(false)
-                  setShowFullResetConfirm(true)
-                }
-              }}
-              className="rounded border border-red-700/70 bg-black/80 px-3 py-1 text-sm text-red-400 backdrop-blur-sm transition-colors hover:bg-red-900/20"
-              style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-            >
-              모두 초기화
-            </button>
-            {showFullResetConfirm && (
-              <div className="absolute left-full bottom-0 ml-2 z-50 flex flex-col gap-2 rounded border border-red-700/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
-                <p className="text-xs text-neutral-200">모두 초기화하시겠습니까?</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={fullReset}
-                    className="rounded border border-red-700/70 bg-red-900/20 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-900/40"
-                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-                  >
-                    예
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowFullResetConfirm(false)}
-                    className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
-                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-                  >
-                    아니오
-                  </button>
-                </div>
-              </div>
-            )}
-            </div>
-            </>
           )}
         </div>
 
@@ -1899,6 +1992,7 @@ export function Scoreboard() {
           <WinnerOverlay 
             winnerName={cold.name === thomasName ? adaName : thomasName} 
             teamColor={cold.name === thomasName ? "ada" : "thomas"} 
+            isColdGame
             onDismiss={() => setOverlayDismissed(true)} 
           />
         )}
@@ -1906,6 +2000,8 @@ export function Scoreboard() {
           <WinnerOverlay 
             winnerName={cold.winnerName === "tie" ? "tie" : cold.winnerName} 
             teamColor={cold.winnerName === "tie" ? undefined : (cold.winnerName === thomasName ? "thomas" : "ada")} 
+            isComeback={isComebackWin}
+            isColdGame={Boolean(cold.isCold)}
             onDismiss={() => {
               setOverlayDismissed(true)
               if (cold.winnerName === "tie" && !hasCompletedAceMatch) {
@@ -1945,6 +2041,27 @@ export function Scoreboard() {
             onCancel={() => undefined}
             onConfirmAceMatch={() => undefined}
           />
+        )}
+
+        {showAceRematchPrompt && isViewer && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto p-4">
+            <div className="w-full max-w-md rounded-lg border border-neutral-600 bg-black/95 p-6 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]">
+              <h2
+                className="text-xl font-bold text-dbd-yellow mb-3"
+                style={{ fontFamily: "var(--font-godo)" }}
+              >
+                에이스 결정전 무승부
+              </h2>
+              <p
+                className="text-sm text-neutral-300 leading-relaxed"
+                style={{ fontFamily: "var(--font-godo)" }}
+              >
+                결정전 재경기 여부를
+                <br />
+                확인하고 있습니다.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* 에이스 결정전 승리 오버레이 */}
@@ -2110,7 +2227,14 @@ export function Scoreboard() {
                 <div className="flex gap-2 justify-end">
                   <button
                     type="button"
-                    onClick={() => router.push("/1v4")}
+                    onClick={() => {
+                      setShowModeSwitchConfirm(false)
+                      if (sync.role === "host") {
+                        void sync.switchGameMode("5p")
+                        return
+                      }
+                      router.push("/1v4")
+                    }}
                     className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20 cursor-pointer"
                     style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                   >
