@@ -166,10 +166,16 @@ export default function LandingPage() {
               4 vs 4 모드
             </button>
 
-            {/* Scoreboard sync announcement beside 4v4 button */}
+            {/* Update announcements beside 4v4 button */}
             <div className="mt-2 sm:mt-0 sm:absolute sm:left-[calc(50%+156px)] md:left-[calc(50%+184px)] text-xs sm:text-sm drop-shadow-md">
-              <p className="whitespace-nowrap font-bold text-emerald-300" style={{ fontFamily: "var(--font-godo)" }}>
-                점수판 연동 모드가 추가되었습니다!
+              <p className="whitespace-nowrap text-sm font-bold text-dbd-yellow sm:text-base md:text-lg" style={{ fontFamily: "var(--font-godo)" }}>
+                에이스 결정전 모드가 추가되었습니다
+              </p>
+              <p className="mt-0.5 whitespace-nowrap text-neutral-400" style={{ fontFamily: "var(--font-godo)" }}>
+                점수를 무승부로 입력하면 결정전 모드를 시작할 수 있습니다!
+              </p>
+              <p className="mt-4 whitespace-nowrap text-sm font-bold text-emerald-300 sm:text-base md:text-lg" style={{ fontFamily: "var(--font-godo)" }}>
+                점수판 연동 모드가 추가되었습니다
               </p>
               <p className="mt-0.5 whitespace-nowrap text-neutral-400" style={{ fontFamily: "var(--font-godo)" }}>
                 진행자의 점수판과 연동하여 같은 화면을 보며 플레이하세요!

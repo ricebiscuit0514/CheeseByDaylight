@@ -264,12 +264,6 @@ export function ScoreboardSyncPanel({
             <p className="mt-1.5 text-xs leading-relaxed text-neutral-400">
               참가자는 공유된 주소로 접속하여 점수판을 확인할 수 있으며, 조작이 제한됩니다.
             </p>
-            {role === "host" && (
-              <p className="mt-1.5 break-keep text-xs leading-relaxed text-neutral-400">
-                연결이 끊겨도 1시간 안에 돌아오면 같은 방으로{" "}
-                <span className="whitespace-nowrap">복구됩니다.</span>
-              </p>
-            )}
           </div>
 
           {errorMessage && (
