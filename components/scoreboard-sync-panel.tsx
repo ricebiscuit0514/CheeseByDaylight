@@ -266,7 +266,7 @@ export function ScoreboardSyncPanel({
             </p>
             {role === "host" && (
               <p className="mt-1.5 break-keep text-xs leading-relaxed text-neutral-400">
-                연결이 끊겨도 5분 안에 돌아오면 같은 방으로{" "}
+                연결이 끊겨도 1시간 안에 돌아오면 같은 방으로{" "}
                 <span className="whitespace-nowrap">복구됩니다.</span>
               </p>
             )}

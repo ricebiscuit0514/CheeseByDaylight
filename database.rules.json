@@ -4,8 +4,8 @@
     ".write": false,
     "scoreboardRooms": {
       "$roomId": {
-        ".read": "auth != null && data.child('status').val() === 'active' && (data.child('hostConnections').exists() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 300000 > now))",
-        ".write": "auth != null && $roomId.matches(/^[a-f0-9]{48,128}$/) && ((data.exists() && data.child('ownerUid').val() === auth.uid && (!newData.exists() || !data.child('hostConnections').exists() || data.child('hostConnections').hasChildren() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 300000 > now))) || (!data.exists() && newData.exists() && newData.child('ownerUid').val() === auth.uid))",
+        ".read": "auth != null && data.child('status').val() === 'active' && (data.child('hostConnections').exists() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 3600000 > now))",
+        ".write": "auth != null && $roomId.matches(/^[a-f0-9]{48,128}$/) && ((data.exists() && data.child('ownerUid').val() === auth.uid && (!newData.exists() || !data.child('hostConnections').exists() || data.child('hostConnections').hasChildren() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 3600000 > now))) || (!data.exists() && newData.exists() && newData.child('ownerUid').val() === auth.uid))",
         ".validate": "!newData.exists() || newData.hasChildren(['version', 'ownerUid', 'status', 'createdAt', 'updatedAt', 'expiresAt', 'scoreboard'])",
         "version": {
           ".validate": "newData.val() === 1"

@@ -16,7 +16,7 @@ import {
 } from "firebase/database"
 
 export const ROOM_TTL_MS = 60 * 60 * 1000
-export const HOST_DISCONNECT_GRACE_MS = 5 * 60 * 1000
+export const HOST_DISCONNECT_GRACE_MS = 60 * 60 * 1000
 export const HOST_SESSION_KEY = "dbd-scoreboard-host-room-v1"
 export const VIEWER_SESSION_KEY = "dbd-scoreboard-viewer-room-v1"
 export const MODE_SWITCH_SESSION_KEY = "dbd-sync-mode-switch"
