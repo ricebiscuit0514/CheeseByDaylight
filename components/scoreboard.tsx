@@ -1990,14 +1990,14 @@ export function Scoreboard() {
                                   <>
                                     {"이번 경기에서 "}
                                     <span className="cold-kill-count">{"올킬"}</span>
-                                    {" 하면 역전승입니다"}
+                                    {" 하면 우승입니다"}
                                   </>
                                 )
                                 : (
                                   <>
                                     {"이번 경기에서 "}
                                     <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                                    {" 이상 하면 역전승입니다"}
+                                    {" 이상 하면 우승입니다"}
                                   </>
                                 )
                               : cold.need >= MAX_KILLS
