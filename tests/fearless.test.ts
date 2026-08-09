@@ -3,15 +3,20 @@ import {
   cancelPlayerKillerPick,
   filterVisiblePicks,
   flattenFearlessPicks,
+  formatFearlessPickSlotLabel,
   getFearlessRowSlots,
   getPickerCellState,
+  hangulToSearchJamo,
+  normalizeFearlessSearchText,
   playerOwnsKillerPick,
   searchKillers,
   setPlayerKillerPick,
+  stripSearchWhitespace,
   toggleKillerBan,
   type FearlessKillerSearchItem,
   type FearlessPlayer,
 } from "../lib/fearless"
+import { KILLERS, resolveKillerId } from "../lib/killer-catalog"
 
 function player(
   id: string,
@@ -133,7 +138,11 @@ describe("fearless pick and ban updates", () => {
 
     expect(setPlayerKillerPick(original, "not-in-catalog", null)).toBe(original)
     expect(setPlayerKillerPick(original, "artist", -1)).toBe(original)
-    expect(setPlayerKillerPick(original, "artist", 1)).toBe(original)
+    expect(setPlayerKillerPick(original, "artist", 2)).toBe(original)
+    expect(setPlayerKillerPick(original, "artist", 1).killerPicks).toEqual([
+      "nurse",
+      "artist",
+    ])
     expect(cancelPlayerKillerPick(original, 2)).toBe(original)
     expect(toggleKillerBan(["nurse"], "not-in-catalog")).toEqual(["nurse"])
   })
@@ -179,6 +188,51 @@ describe("fearless killer search", () => {
     expect(searchKillers("DRAC", catalog)).toEqual([catalog[1]])
     expect(searchKillers("dark_lord", catalog)).toEqual([catalog[1]])
   })
+
+  it("matches names without requiring spaces in the query or catalog text", () => {
+    expect(stripSearchWhitespace("착한 아이")).toBe("착한아이")
+    expect(normalizeFearlessSearchText("Ghost Face")).toBe("ghostface")
+    expect(normalizeFearlessSearchText("고 스 트 페 이 스")).toBe("고스트페이스")
+
+    expect(searchKillers("고스트페이스", KILLERS).map((killer) => killer.id)).toEqual([
+      "ghost-face",
+    ])
+    expect(searchKillers("고스트 페이스", KILLERS).map((killer) => killer.id)).toEqual([
+      "ghost-face",
+    ])
+    expect(searchKillers("착한아이", KILLERS).map((killer) => killer.id)).toEqual([
+      "good-guy",
+    ])
+    expect(searchKillers("착한 아이", KILLERS).map((killer) => killer.id)).toEqual([
+      "good-guy",
+    ])
+    expect(searchKillers("해골상인", KILLERS).map((killer) => killer.id)).toEqual([
+      "skull-merchant",
+    ])
+    expect(searchKillers("치즈상인", KILLERS).map((killer) => killer.id)).toEqual([
+      "skull-merchant",
+    ])
+    expect(searchKillers("ghostface", KILLERS).map((killer) => killer.id)).toEqual([
+      "ghost-face",
+    ])
+    expect(searchKillers("goodguy", KILLERS).map((killer) => killer.id)).toEqual([
+      "good-guy",
+    ])
+    expect(searchKillers("어둠의군주", KILLERS).map((killer) => killer.id)).toEqual([
+      "dark-lord",
+    ])
+
+    expect(hangulToSearchJamo("너ㅅ")).toBe("ㄴㅓㅅ")
+    expect(hangulToSearchJamo("너스")).toBe("ㄴㅓㅅㅡ")
+    expect(searchKillers("너", KILLERS).map((killer) => killer.id)).toContain("nurse")
+    expect(searchKillers("너ㅅ", KILLERS).map((killer) => killer.id)).toContain("nurse")
+    expect(searchKillers("너스", KILLERS).map((killer) => killer.id)).toContain("nurse")
+
+    expect(resolveKillerId("착한아이")).toBe("good-guy")
+    expect(resolveKillerId("Ghost Face")).toBe("ghost-face")
+    expect(resolveKillerId("ghostface")).toBe("ghost-face")
+    expect(resolveKillerId("치즈상인")).toBe("skull-merchant")
+  })
 })
 
 describe("fearless row slots and identity", () => {
@@ -186,7 +240,7 @@ describe("fearless row slots and identity", () => {
     expect(getFearlessRowSlots(["nurse", "artist"])).toEqual([
       { kind: "filled", slotIndex: 0, killerId: "nurse" },
       { kind: "filled", slotIndex: 1, killerId: "artist" },
-      { kind: "empty", slotIndex: null, killerId: null },
+      { kind: "empty", slotIndex: 2, killerId: null, actionable: true },
     ])
 
     const full = getFearlessRowSlots([
@@ -213,5 +267,18 @@ describe("fearless row slots and identity", () => {
     const afterDelete = flattenFearlessPicks([second], [])
     expect(afterDelete.some((entry) => entry.playerId === "stable-a")).toBe(false)
     expect(afterDelete).toHaveLength(1)
+  })
+})
+
+describe("formatFearlessPickSlotLabel", () => {
+  it("uses Korean ordinals for the first four slots", () => {
+    expect(formatFearlessPickSlotLabel(0)).toBe("첫 번째 살인마 선택")
+    expect(formatFearlessPickSlotLabel(1)).toBe("두 번째 살인마 선택")
+    expect(formatFearlessPickSlotLabel(2)).toBe("세 번째 살인마 선택")
+    expect(formatFearlessPickSlotLabel(3)).toBe("네 번째 살인마 선택")
+  })
+
+  it("returns 새 살인마 선택 for append slots", () => {
+    expect(formatFearlessPickSlotLabel(null)).toBe("새 살인마 선택")
   })
 })

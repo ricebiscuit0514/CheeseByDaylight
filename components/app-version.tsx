@@ -20,6 +20,6 @@ export function AppVersion({ className }: AppVersionProps) {
 
 export function AppVersionCorner() {
   return (
-    <AppVersion className="pointer-events-none fixed top-1 right-1.5 z-50 select-none text-[10px] text-neutral-600/35 sm:top-1.5 sm:right-2 sm:text-[11px]" />
+    <AppVersion className="pointer-events-none fixed top-1.5 right-2 z-50 select-none text-xs text-neutral-500/80 sm:top-2 sm:right-2.5 sm:text-sm sm:text-neutral-400/90" />
   )
 }

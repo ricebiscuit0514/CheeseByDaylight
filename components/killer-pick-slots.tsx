@@ -1,6 +1,10 @@
 "use client"
 
-import { getFearlessRowSlots, type Team } from "@/lib/fearless"
+import {
+  formatFearlessPickSlotLabel,
+  getFearlessRowSlots,
+  type Team,
+} from "@/lib/fearless"
 import { KILLER_BY_ID } from "@/lib/killer-catalog"
 import { cn } from "@/lib/utils"
 
@@ -14,6 +18,10 @@ export type KillerPickSlotsProps = {
 
 function safePlayerName(playerName: string) {
   return playerName.trim() || "이름 미입력"
+}
+
+function EmptySlotFrame() {
+  return <span className="fearless-empty-frame" aria-hidden="true" />
 }
 
 export function KillerPickSlots({
@@ -39,15 +47,14 @@ export function KillerPickSlots({
           const label = `${displayName} 새 살인마 픽 추가`
           return (
             <button
-              key={`slot-${killerPicks.length}`}
+              key={`slot-empty-${slot.slotIndex}`}
               type="button"
               className="fearless-killer-slot is-empty"
               disabled={disabled}
-              title={label}
               aria-label={label}
-              onClick={() => onOpen(null)}
+              onClick={() => onOpen(slot.slotIndex)}
             >
-              <span className="fearless-empty-frame" aria-hidden="true" />
+              <EmptySlotFrame />
             </button>
           )
         }
@@ -55,32 +62,31 @@ export function KillerPickSlots({
         const killer = KILLER_BY_ID[slot.killerId]
         const killerName =
           killer?.koreanName || killer?.englishName || slot.killerId
-        const label = `${displayName} ${slot.slotIndex + 1}번째 픽, ${killerName} 열기`
+        const openLabel = `${displayName} ${formatFearlessPickSlotLabel(slot.slotIndex)}, ${killerName} 열기`
 
         return (
           <button
             key={`slot-${slot.slotIndex}`}
             type="button"
-            className="fearless-killer-slot is-filled"
+            className="fearless-killer-slot is-filled fearless-slot-tooltip-wrap"
             disabled={disabled}
-            title={label}
-            aria-label={label}
+            aria-label={openLabel}
             onClick={() => onOpen(slot.slotIndex)}
           >
-            {killer ? (
-              <img
-                src={killer.smallPortrait}
-                alt=""
-                draggable={false}
-                loading="lazy"
-              />
-            ) : (
-              <span className="fearless-missing-killer" aria-hidden="true">
-                ?
-              </span>
-            )}
-            <span className="fearless-slot-index" aria-hidden="true">
-              {slot.slotIndex + 1}
+            <span className="fearless-killer-slot-face" aria-hidden="true">
+              {killer ? (
+                <img
+                  src={killer.smallPortrait}
+                  alt=""
+                  draggable={false}
+                  loading="lazy"
+                />
+              ) : (
+                <span className="fearless-missing-killer">?</span>
+              )}
+            </span>
+            <span className="fearless-slot-tooltip" role="tooltip">
+              {killerName}
             </span>
           </button>
         )

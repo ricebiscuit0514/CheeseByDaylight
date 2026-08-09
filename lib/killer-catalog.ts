@@ -29,7 +29,12 @@ export const KILLER_BY_ID: Readonly<Record<KillerId, KillerDefinition>> =
   )
 
 function normalizeLookupValue(value: string): string {
-  return value.trim().toLowerCase()
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFC")
+    .replace(/[\s\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]+/g, "")
+    .replace(/[\p{P}\p{S}]+/gu, "")
 }
 
 const killerIdByName = new Map<string, KillerId>()

@@ -550,8 +550,11 @@ export function Scoreboard() {
   const [auctionDraftThomas, setAuctionDraftThomas] = useState("")
   const [auctionDraftAda, setAuctionDraftAda] = useState("")
   const [auctionWinnerTeam, setAuctionWinnerTeam] = useState<Team | null>(null)
-  // 설명서 모달
-  const [showGuide, setShowGuide] = useState(false)
+  // 설명서 메뉴
+  const [showGuideMenu, setShowGuideMenu] = useState(false)
+  const [activeGuide, setActiveGuide] = useState<"basic" | "fearless" | null>(
+    null,
+  )
   // 우승 결과 오버레이 닫힘 여부
   const [overlayDismissed, setOverlayDismissed] = useState(false)
   const [overlayOutcomeKey, setOverlayOutcomeKey] = useState(0)
@@ -747,24 +750,19 @@ export function Scoreboard() {
     const picks = player.killerPicks ?? []
     if (
       pickerContext.slotIndex !== null &&
-      picks[pickerContext.slotIndex] === undefined
+      pickerContext.slotIndex > picks.length
     ) {
-      if (picks.length >= 4) return null
-      return {
-        ...pickerContext,
-        playerName: player.name,
-        slotIndex: null,
-        currentKillerId: undefined,
-      }
+      return null
     }
 
     return {
       ...pickerContext,
       playerName: player.name,
       currentKillerId:
-        pickerContext.slotIndex === null
-          ? undefined
-          : picks[pickerContext.slotIndex],
+        pickerContext.slotIndex !== null &&
+        pickerContext.slotIndex < picks.length
+          ? picks[pickerContext.slotIndex]
+          : undefined,
     }
   }, [ada, pickerContext, thomas])
   const { hidden: utilityUiHidden, toggle: toggleUtilityUi } = useUtilityUiHidden()
@@ -799,10 +797,28 @@ export function Scoreboard() {
     }
   }, [])
 
+  function closeAllGuideUI() {
+    setShowGuideMenu(false)
+    setActiveGuide(null)
+  }
+
   const handleOpenGuide = () => {
-    setShowResetConfirm(false)
-    setShowFullResetConfirm(false)
-    setShowGuide(true)
+    closeAllResetUI()
+    setShowGuideMenu((wasOpen) => {
+      if (!wasOpen && !hasSeenGuide) {
+        setHasSeenGuide(true)
+        try {
+          localStorage.setItem("dbd-guide-seen-4v4", "true")
+        } catch {
+          // ignore
+        }
+      }
+      return !wasOpen
+    })
+  }
+
+  const openGuideView = (type: "basic" | "fearless") => {
+    setActiveGuide(type)
     if (!hasSeenGuide) {
       setHasSeenGuide(true)
       try {
@@ -1811,6 +1827,7 @@ export function Scoreboard() {
   }
 
   function handleResetClick() {
+    closeAllGuideUI()
     setShowResetConfirm(false)
     setShowKillerResetConfirm(false)
     setShowRosterResetConfirm(false)
@@ -2295,31 +2312,12 @@ export function Scoreboard() {
           )}
         </div>
 
-        {/* 설명서 모달 */}
-        {showGuide && (
-          <>
-            <div
-              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
-              onClick={() => setShowGuide(false)}
-            />
-            <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-4">
-              <div className="pointer-events-auto relative max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setShowGuide(false)}
-                  className="absolute top-4 right-4 z-10 size-8 flex items-center justify-center rounded bg-black/60 text-white transition-colors hover:bg-black/80"
-                  aria-label="Close guide"
-                >
-                  ✕
-                </button>
-                <img
-                  src="/images/guide_4v4.webp"
-                  alt="Game Guide"
-                  className="h-auto w-full"
-                />
-              </div>
-            </div>
-          </>
+        {/* 설명서 메뉴 / 뷰어 */}
+        {(showGuideMenu || activeGuide) && (
+          <div
+            className="fixed inset-0 z-40 cursor-default bg-transparent"
+            onClick={closeAllGuideUI}
+          />
         )}
 
         {/* backdrop for closing prompts on background click */}
@@ -2505,6 +2503,66 @@ export function Scoreboard() {
             >
               설명서
             </FooterBtn>
+
+            {showGuideMenu && (
+              <div className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2">
+                <div className="flex flex-col gap-1.5 rounded border border-neutral-600/70 bg-black/95 p-2 backdrop-blur-sm whitespace-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => openGuideView("basic")}
+                    className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                  >
+                    기본 설명서
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openGuideView("fearless")}
+                    className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                  >
+                    피어리스 설명서
+                  </button>
+                </div>
+
+                {activeGuide && (
+                  <div className="relative max-h-[min(90vh,42rem)] w-[min(92vw,36rem)] overflow-hidden rounded border border-neutral-500/70 bg-black/95 shadow-[0_18px_60px_rgba(0,0,0,0.65)]">
+                    <button
+                      type="button"
+                      onClick={() => setActiveGuide(null)}
+                      className="absolute top-3 right-3 z-10 size-8 flex items-center justify-center rounded border border-neutral-500/60 bg-black/70 text-sm text-white transition-colors hover:bg-black/90"
+                      aria-label="설명서 닫기"
+                    >
+                      ✕
+                    </button>
+                    {activeGuide === "basic" ? (
+                      <img
+                        src="/images/guide_4v4.webp"
+                        alt="4v4 기본 설명서"
+                        className="block h-auto max-h-[min(90vh,42rem)] w-full object-contain object-top"
+                      />
+                    ) : (
+                      <div className="max-h-[min(90vh,42rem)] overflow-y-auto p-4 pr-12 text-sm leading-relaxed text-neutral-200">
+                        <h3
+                          className="mb-3 text-base text-white"
+                          style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                        >
+                          피어리스 모드
+                        </h3>
+                        <ul className="space-y-2 text-xs text-neutral-300">
+                          <li>각 플레이어는 최대 4명의 살인마를 순서대로 픽합니다.</li>
+                          <li>같은 플레이어는 중복 픽이 불가능합니다. 팀·플레이어 간 중복은 가능합니다.</li>
+                          <li>이름표 옆 슬롯을 눌러 살인마를 선택하고, 검색·필터로 목록을 좁힐 수 있습니다.</li>
+                          <li>하드/소프트/개인 필터는 표시용이며, 실제 픽 데이터에는 영향을 주지 않습니다.</li>
+                          <li>밴된 살인마도 픽할 수 있으며, 밴 표시와 픽 닉네임이 함께 보입니다.</li>
+                          <li>살인마 초기화는 픽·밴을 모두 지웁니다. 팀원 초기화는 픽을 유지합니다.</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {!hasSeenGuide && (
               <motion.div

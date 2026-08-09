@@ -1,345 +1,14 @@
 [
   {
-    "id": "animatronic",
-    "englishName": "Animatronic",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 1,
-    "bigPortrait": "/portraits/big/animatronic.webp",
-    "smallPortrait": "/portraits/small/animatronic_s.webp"
-  },
-  {
-    "id": "artist",
-    "englishName": "Artist",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 2,
-    "bigPortrait": "/portraits/big/artist.webp",
-    "smallPortrait": "/portraits/small/artist_s.webp"
-  },
-  {
-    "id": "blight",
-    "englishName": "Blight",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 3,
-    "bigPortrait": "/portraits/big/blight.webp",
-    "smallPortrait": "/portraits/small/blight_s.webp"
-  },
-  {
-    "id": "cannibal",
-    "englishName": "Cannibal",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 4,
-    "bigPortrait": "/portraits/big/cannibal.webp",
-    "smallPortrait": "/portraits/small/cannibal_s.webp"
-  },
-  {
-    "id": "cenobite",
-    "englishName": "Cenobite",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 5,
-    "bigPortrait": "/portraits/big/cenobite.webp",
-    "smallPortrait": "/portraits/small/cenobite_s.webp"
-  },
-  {
-    "id": "clown",
-    "englishName": "Clown",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 6,
-    "bigPortrait": "/portraits/big/clown.webp",
-    "smallPortrait": "/portraits/small/clown_s.webp"
-  },
-  {
-    "id": "dark-lord",
-    "englishName": "Dark Lord",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 7,
-    "bigPortrait": "/portraits/big/dark-lord.webp",
-    "smallPortrait": "/portraits/small/dark-lord_s.webp"
-  },
-  {
-    "id": "deathslinger",
-    "englishName": "Deathslinger",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 8,
-    "bigPortrait": "/portraits/big/deathslinger.webp",
-    "smallPortrait": "/portraits/small/deathslinger_s.webp"
-  },
-  {
-    "id": "demogorgon",
-    "englishName": "Demogorgon",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 9,
-    "bigPortrait": "/portraits/big/demogorgon.webp",
-    "smallPortrait": "/portraits/small/demogorgon_s.webp"
-  },
-  {
-    "id": "doctor",
-    "englishName": "Doctor",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 10,
-    "bigPortrait": "/portraits/big/doctor.webp",
-    "smallPortrait": "/portraits/small/doctor_s.webp"
-  },
-  {
-    "id": "dredge",
-    "englishName": "Dredge",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 11,
-    "bigPortrait": "/portraits/big/dredge.webp",
-    "smallPortrait": "/portraits/small/dredge_s.webp"
-  },
-  {
-    "id": "executioner",
-    "englishName": "Executioner",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 12,
-    "bigPortrait": "/portraits/big/executioner.webp",
-    "smallPortrait": "/portraits/small/executioner_s.webp"
-  },
-  {
-    "id": "first",
-    "englishName": "First",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 13,
-    "bigPortrait": "/portraits/big/first.webp",
-    "smallPortrait": "/portraits/small/first_s.webp"
-  },
-  {
-    "id": "ghost-face",
-    "englishName": "Ghost Face",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 14,
-    "bigPortrait": "/portraits/big/ghost-face.webp",
-    "smallPortrait": "/portraits/small/ghost-face_s.webp"
-  },
-  {
-    "id": "ghoul",
-    "englishName": "Ghoul",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 15,
-    "bigPortrait": "/portraits/big/ghoul.webp",
-    "smallPortrait": "/portraits/small/ghoul_s.webp"
-  },
-  {
-    "id": "good-guy",
-    "englishName": "Good Guy",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 16,
-    "bigPortrait": "/portraits/big/good-guy.webp",
-    "smallPortrait": "/portraits/small/good-guy_s.webp"
-  },
-  {
-    "id": "hag",
-    "englishName": "Hag",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 17,
-    "bigPortrait": "/portraits/big/hag.webp",
-    "smallPortrait": "/portraits/small/hag_s.webp"
-  },
-  {
-    "id": "hillbilly",
-    "englishName": "Hillbilly",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 18,
-    "bigPortrait": "/portraits/big/hillbilly.webp",
-    "smallPortrait": "/portraits/small/hillbilly_s.webp"
-  },
-  {
-    "id": "houndmaster",
-    "englishName": "Houndmaster",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 19,
-    "bigPortrait": "/portraits/big/houndmaster.webp",
-    "smallPortrait": "/portraits/small/houndmaster_s.webp"
-  },
-  {
-    "id": "huntress",
-    "englishName": "Huntress",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 20,
-    "bigPortrait": "/portraits/big/huntress.webp",
-    "smallPortrait": "/portraits/small/huntress_s.webp"
-  },
-  {
-    "id": "judgement",
-    "englishName": "Judgement",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 21,
-    "bigPortrait": "/portraits/big/judgement.webp",
-    "smallPortrait": "/portraits/small/judgement_s.webp"
-  },
-  {
-    "id": "knight",
-    "englishName": "Knight",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 22,
-    "bigPortrait": "/portraits/big/knight.webp",
-    "smallPortrait": "/portraits/small/knight_s.webp"
-  },
-  {
-    "id": "krasue",
-    "englishName": "Krasue",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 23,
-    "bigPortrait": "/portraits/big/krasue.webp",
-    "smallPortrait": "/portraits/small/krasue_s.webp"
-  },
-  {
-    "id": "legion",
-    "englishName": "Legion",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 24,
-    "bigPortrait": "/portraits/big/legion.webp",
-    "smallPortrait": "/portraits/small/legion_s.webp"
-  },
-  {
-    "id": "lich",
-    "englishName": "Lich",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 25,
-    "bigPortrait": "/portraits/big/lich.webp",
-    "smallPortrait": "/portraits/small/lich_s.webp"
-  },
-  {
-    "id": "mastermind",
-    "englishName": "Mastermind",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 26,
-    "bigPortrait": "/portraits/big/mastermind.webp",
-    "smallPortrait": "/portraits/small/mastermind_s.webp"
-  },
-  {
-    "id": "nemesis",
-    "englishName": "Nemesis",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 27,
-    "bigPortrait": "/portraits/big/nemesis.webp",
-    "smallPortrait": "/portraits/small/nemesis_s.webp"
-  },
-  {
-    "id": "nightmare",
-    "englishName": "Nightmare",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 28,
-    "bigPortrait": "/portraits/big/nightmare.webp",
-    "smallPortrait": "/portraits/small/nightmare_s.webp"
-  },
-  {
-    "id": "nurse",
-    "englishName": "Nurse",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 29,
-    "bigPortrait": "/portraits/big/nurse.webp",
-    "smallPortrait": "/portraits/small/nurse_s.webp"
-  },
-  {
-    "id": "oni",
-    "englishName": "Oni",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 30,
-    "bigPortrait": "/portraits/big/oni.webp",
-    "smallPortrait": "/portraits/small/oni_s.webp"
-  },
-  {
-    "id": "onryo",
-    "englishName": "Onryō",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 31,
-    "bigPortrait": "/portraits/big/onryo.webp",
-    "smallPortrait": "/portraits/small/onryo_s.webp"
-  },
-  {
-    "id": "pig",
-    "englishName": "Pig",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 32,
-    "bigPortrait": "/portraits/big/pig.webp",
-    "smallPortrait": "/portraits/small/pig_s.webp"
-  },
-  {
-    "id": "plague",
-    "englishName": "Plague",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 33,
-    "bigPortrait": "/portraits/big/plague.webp",
-    "smallPortrait": "/portraits/small/plague_s.webp"
-  },
-  {
-    "id": "shape",
-    "englishName": "Shape",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 34,
-    "bigPortrait": "/portraits/big/shape.webp",
-    "smallPortrait": "/portraits/small/shape_s.webp"
-  },
-  {
-    "id": "singularity",
-    "englishName": "Singularity",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 35,
-    "bigPortrait": "/portraits/big/singularity.webp",
-    "smallPortrait": "/portraits/small/singularity_s.webp"
-  },
-  {
-    "id": "skull-merchant",
-    "englishName": "Skull Merchant",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 36,
-    "bigPortrait": "/portraits/big/skull-merchant.webp",
-    "smallPortrait": "/portraits/small/skull-merchant_s.webp"
-  },
-  {
     "id": "slasher",
     "englishName": "Slasher",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 37,
+    "koreanName": "슬래셔",
+    "aliases": [
+      "제이슨"
+    ],
+    "sortOrder": 1,
     "bigPortrait": "/portraits/big/slasher.webp",
     "smallPortrait": "/portraits/small/slasher_s.webp"
-  },
-  {
-    "id": "spirit",
-    "englishName": "Spirit",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 38,
-    "bigPortrait": "/portraits/big/spirit.webp",
-    "smallPortrait": "/portraits/small/spirit_s.webp"
   },
   {
     "id": "trapper",
@@ -348,53 +17,476 @@
     "aliases": [
       "덫구"
     ],
-    "sortOrder": 39,
+    "sortOrder": 2,
     "bigPortrait": "/portraits/big/trapper.webp",
     "smallPortrait": "/portraits/small/trapper_s.webp"
   },
   {
-    "id": "trickster",
-    "englishName": "Trickster",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 40,
-    "bigPortrait": "/portraits/big/trickster.webp",
-    "smallPortrait": "/portraits/small/trickster_s.webp"
-  },
-  {
-    "id": "twins",
-    "englishName": "Twins",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 41,
-    "bigPortrait": "/portraits/big/twins.webp",
-    "smallPortrait": "/portraits/small/twins_s.webp"
-  },
-  {
-    "id": "unknown",
-    "englishName": "Unknown",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 42,
-    "bigPortrait": "/portraits/big/unknown.webp",
-    "smallPortrait": "/portraits/small/unknown_s.webp"
-  },
-  {
     "id": "wraith",
     "englishName": "Wraith",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 43,
+    "koreanName": "레이스",
+    "aliases": [
+      "종구"
+    ],
+    "sortOrder": 3,
     "bigPortrait": "/portraits/big/wraith.webp",
     "smallPortrait": "/portraits/small/wraith_s.webp"
   },
   {
+    "id": "lich",
+    "englishName": "Lich",
+    "koreanName": "리치",
+    "aliases": [
+      "베크나"
+    ],
+    "sortOrder": 4,
+    "bigPortrait": "/portraits/big/lich.webp",
+    "smallPortrait": "/portraits/small/lich_s.webp"
+  },
+  {
+    "id": "ghoul",
+    "englishName": "Ghoul",
+    "koreanName": "구울",
+    "aliases": [
+      "카네키",
+      "개초딩"
+    ],
+    "sortOrder": 5,
+    "bigPortrait": "/portraits/big/ghoul.webp",
+    "smallPortrait": "/portraits/small/ghoul_s.webp"
+  },
+  {
+    "id": "first",
+    "englishName": "First",
+    "koreanName": "퍼스트",
+    "aliases": [
+      "카서스"
+    ],
+    "sortOrder": 6,
+    "bigPortrait": "/portraits/big/first.webp",
+    "smallPortrait": "/portraits/small/first_s.webp"
+  },
+  {
+    "id": "huntress",
+    "englishName": "Huntress",
+    "koreanName": "헌트리스",
+    "aliases": [
+      "토구"
+    ],
+    "sortOrder": 7,
+    "bigPortrait": "/portraits/big/huntress.webp",
+    "smallPortrait": "/portraits/small/huntress_s.webp"
+  },
+  {
+    "id": "deathslinger",
+    "englishName": "Deathslinger",
+    "koreanName": "데스슬링거",
+    "aliases": [
+      "총구"
+    ],
+    "sortOrder": 8,
+    "bigPortrait": "/portraits/big/deathslinger.webp",
+    "smallPortrait": "/portraits/small/deathslinger_s.webp"
+  },
+  {
+    "id": "twins",
+    "englishName": "Twins",
+    "koreanName": "쌍둥이",
+    "aliases": [
+      "애엄마",
+      "쌍구",
+      "빅터"
+    ],
+    "sortOrder": 9,
+    "bigPortrait": "/portraits/big/twins.webp",
+    "smallPortrait": "/portraits/small/twins_s.webp"
+  },
+  {
+    "id": "dredge",
+    "englishName": "Dredge",
+    "koreanName": "드레지",
+    "aliases": [
+      "캐비닛"
+    ],
+    "sortOrder": 10,
+    "bigPortrait": "/portraits/big/dredge.webp",
+    "smallPortrait": "/portraits/small/dredge_s.webp"
+  },
+  {
+    "id": "dark-lord",
+    "englishName": "Dark Lord",
+    "koreanName": "어둠의 군주",
+    "aliases": [
+      "드라큘라",
+      "뱀파이어"
+    ],
+    "sortOrder": 11,
+    "bigPortrait": "/portraits/big/dark-lord.webp",
+    "smallPortrait": "/portraits/small/dark-lord_s.webp"
+  },
+  {
+    "id": "mastermind",
+    "englishName": "Mastermind",
+    "koreanName": "마스터마인드",
+    "aliases": [
+      "웨스커"
+    ],
+    "sortOrder": 12,
+    "bigPortrait": "/portraits/big/mastermind.webp",
+    "smallPortrait": "/portraits/small/mastermind_s.webp"
+  },
+  {
+    "id": "legion",
+    "englishName": "Legion",
+    "koreanName": "군단",
+    "aliases": [
+      "런구"
+    ],
+    "sortOrder": 13,
+    "bigPortrait": "/portraits/big/legion.webp",
+    "smallPortrait": "/portraits/small/legion_s.webp"
+  },
+  {
+    "id": "oni",
+    "englishName": "Oni",
+    "koreanName": "악귀",
+    "aliases": [
+      "오니"
+    ],
+    "sortOrder": 14,
+    "bigPortrait": "/portraits/big/oni.webp",
+    "smallPortrait": "/portraits/small/oni_s.webp"
+  },
+  {
+    "id": "hillbilly",
+    "englishName": "Hillbilly",
+    "koreanName": "힐빌리",
+    "aliases": [
+      "톱구"
+    ],
+    "sortOrder": 15,
+    "bigPortrait": "/portraits/big/hillbilly.webp",
+    "smallPortrait": "/portraits/small/hillbilly_s.webp"
+  },
+  {
+    "id": "cannibal",
+    "englishName": "Cannibal",
+    "koreanName": "카니발",
+    "aliases": [
+      "준구"
+    ],
+    "sortOrder": 16,
+    "bigPortrait": "/portraits/big/cannibal.webp",
+    "smallPortrait": "/portraits/small/cannibal_s.webp"
+  },
+  {
+    "id": "nemesis",
+    "englishName": "Nemesis",
+    "koreanName": "네메시스",
+    "aliases": [],
+    "sortOrder": 17,
+    "bigPortrait": "/portraits/big/nemesis.webp",
+    "smallPortrait": "/portraits/small/nemesis_s.webp"
+  },
+  {
+    "id": "singularity",
+    "englishName": "Singularity",
+    "koreanName": "특이점",
+    "aliases": [],
+    "sortOrder": 18,
+    "bigPortrait": "/portraits/big/singularity.webp",
+    "smallPortrait": "/portraits/small/singularity_s.webp"
+  },
+  {
+    "id": "shape",
+    "englishName": "Shape",
+    "koreanName": "쉐이프",
+    "aliases": [
+      "식구"
+    ],
+    "sortOrder": 19,
+    "bigPortrait": "/portraits/big/shape.webp",
+    "smallPortrait": "/portraits/small/shape_s.webp"
+  },
+  {
+    "id": "doctor",
+    "englishName": "Doctor",
+    "koreanName": "닥터",
+    "aliases": [
+      "전구"
+    ],
+    "sortOrder": 20,
+    "bigPortrait": "/portraits/big/doctor.webp",
+    "smallPortrait": "/portraits/small/doctor_s.webp"
+  },
+  {
+    "id": "pig",
+    "englishName": "Pig",
+    "koreanName": "피그",
+    "aliases": [
+      "피구",
+      "아만다",
+      "쏘우"
+    ],
+    "sortOrder": 21,
+    "bigPortrait": "/portraits/big/pig.webp",
+    "smallPortrait": "/portraits/small/pig_s.webp"
+  },
+  {
+    "id": "clown",
+    "englishName": "Clown",
+    "koreanName": "클라운",
+    "aliases": [
+      "방구"
+    ],
+    "sortOrder": 22,
+    "bigPortrait": "/portraits/big/clown.webp",
+    "smallPortrait": "/portraits/small/clown_s.webp"
+  },
+  {
+    "id": "knight",
+    "englishName": "Knight",
+    "koreanName": "기사",
+    "aliases": [
+      "나이트",
+      "삼총사"
+    ],
+    "sortOrder": 23,
+    "bigPortrait": "/portraits/big/knight.webp",
+    "smallPortrait": "/portraits/small/knight_s.webp"
+  },
+  {
     "id": "xenomorph",
     "englishName": "Xenomorph",
-    "koreanName": "",
-    "aliases": [],
-    "sortOrder": 44,
+    "koreanName": "제노모프",
+    "aliases": [
+      "에일리언"
+    ],
+    "sortOrder": 24,
     "bigPortrait": "/portraits/big/xenomorph.webp",
     "smallPortrait": "/portraits/small/xenomorph_s.webp"
+  },
+  {
+    "id": "good-guy",
+    "englishName": "Good Guy",
+    "koreanName": "착한 아이",
+    "aliases": [
+      "처키"
+    ],
+    "sortOrder": 25,
+    "bigPortrait": "/portraits/big/good-guy.webp",
+    "smallPortrait": "/portraits/small/good-guy_s.webp"
+  },
+  {
+    "id": "unknown",
+    "englishName": "Unknown",
+    "koreanName": "미지의 존재",
+    "aliases": [
+      "미존"
+    ],
+    "sortOrder": 26,
+    "bigPortrait": "/portraits/big/unknown.webp",
+    "smallPortrait": "/portraits/small/unknown_s.webp"
+  },
+  {
+    "id": "houndmaster",
+    "englishName": "Houndmaster",
+    "koreanName": "조련사",
+    "aliases": [
+      "개장수"
+    ],
+    "sortOrder": 27,
+    "bigPortrait": "/portraits/big/houndmaster.webp",
+    "smallPortrait": "/portraits/small/houndmaster_s.webp"
+  },
+  {
+    "id": "animatronic",
+    "englishName": "Animatronic",
+    "koreanName": "애니매트로닉스",
+    "aliases": [
+      "프레디"
+    ],
+    "sortOrder": 28,
+    "bigPortrait": "/portraits/big/animatronic.webp",
+    "smallPortrait": "/portraits/small/animatronic_s.webp"
+  },
+  {
+    "id": "onryo",
+    "englishName": "Onryō",
+    "koreanName": "원령",
+    "aliases": [
+      "사다코",
+      "링"
+    ],
+    "sortOrder": 29,
+    "bigPortrait": "/portraits/big/onryo.webp",
+    "smallPortrait": "/portraits/small/onryo_s.webp"
+  },
+  {
+    "id": "executioner",
+    "englishName": "Executioner",
+    "koreanName": "처형자",
+    "aliases": [
+      "삼각두"
+    ],
+    "sortOrder": 30,
+    "bigPortrait": "/portraits/big/executioner.webp",
+    "smallPortrait": "/portraits/small/executioner_s.webp"
+  },
+  {
+    "id": "blight",
+    "englishName": "Blight",
+    "koreanName": "블라이트",
+    "aliases": [
+      "당구"
+    ],
+    "sortOrder": 31,
+    "bigPortrait": "/portraits/big/blight.webp",
+    "smallPortrait": "/portraits/small/blight_s.webp"
+  },
+  {
+    "id": "trickster",
+    "englishName": "Trickster",
+    "koreanName": "트릭스터",
+    "aliases": [
+      "학지운",
+      "학구"
+    ],
+    "sortOrder": 32,
+    "bigPortrait": "/portraits/big/trickster.webp",
+    "smallPortrait": "/portraits/small/trickster_s.webp"
+  },
+  {
+    "id": "plague",
+    "englishName": "Plague",
+    "koreanName": "역병",
+    "aliases": [
+      "웩구",
+      "토쟁이"
+    ],
+    "sortOrder": 33,
+    "bigPortrait": "/portraits/big/plague.webp",
+    "smallPortrait": "/portraits/small/plague_s.webp"
+  },
+  {
+    "id": "nurse",
+    "englishName": "Nurse",
+    "koreanName": "너스",
+    "aliases": [
+      "순구"
+    ],
+    "sortOrder": 34,
+    "bigPortrait": "/portraits/big/nurse.webp",
+    "smallPortrait": "/portraits/small/nurse_s.webp"
+  },
+  {
+    "id": "spirit",
+    "englishName": "Spirit",
+    "koreanName": "스피릿",
+    "aliases": [
+      "왜구",
+      "령구"
+    ],
+    "sortOrder": 35,
+    "bigPortrait": "/portraits/big/spirit.webp",
+    "smallPortrait": "/portraits/small/spirit_s.webp"
+  },
+  {
+    "id": "nightmare",
+    "englishName": "Nightmare",
+    "koreanName": "나이트메어",
+    "aliases": [
+      "몽구"
+    ],
+    "sortOrder": 36,
+    "bigPortrait": "/portraits/big/nightmare.webp",
+    "smallPortrait": "/portraits/small/nightmare_s.webp"
+  },
+  {
+    "id": "ghost-face",
+    "englishName": "Ghost Face",
+    "koreanName": "고스트페이스",
+    "aliases": [
+      "고페",
+      "스크림"
+    ],
+    "sortOrder": 37,
+    "bigPortrait": "/portraits/big/ghost-face.webp",
+    "smallPortrait": "/portraits/small/ghost-face_s.webp"
+  },
+  {
+    "id": "demogorgon",
+    "englishName": "Demogorgon",
+    "koreanName": "데모고르곤",
+    "aliases": [
+      "마늘이",
+      "꽃구"
+    ],
+    "sortOrder": 38,
+    "bigPortrait": "/portraits/big/demogorgon.webp",
+    "smallPortrait": "/portraits/small/demogorgon_s.webp"
+  },
+  {
+    "id": "cenobite",
+    "englishName": "Cenobite",
+    "koreanName": "수도사",
+    "aliases": [
+      "핀헤드",
+      "큐브"
+    ],
+    "sortOrder": 39,
+    "bigPortrait": "/portraits/big/cenobite.webp",
+    "smallPortrait": "/portraits/small/cenobite_s.webp"
+  },
+  {
+    "id": "skull-merchant",
+    "englishName": "Skull Merchant",
+    "koreanName": "해골 상인",
+    "aliases": [
+      "치즈 상인",
+      "드론",
+      "해상"
+    ],
+    "sortOrder": 40,
+    "bigPortrait": "/portraits/big/skull-merchant.webp",
+    "smallPortrait": "/portraits/small/skull-merchant_s.webp"
+  },
+  {
+    "id": "krasue",
+    "englishName": "Krasue",
+    "koreanName": "끄라스",
+    "aliases": [],
+    "sortOrder": 41,
+    "bigPortrait": "/portraits/big/krasue.webp",
+    "smallPortrait": "/portraits/small/krasue_s.webp"
+  },
+  {
+    "id": "artist",
+    "englishName": "Artist",
+    "koreanName": "예술가",
+    "aliases": [],
+    "sortOrder": 42,
+    "bigPortrait": "/portraits/big/artist.webp",
+    "smallPortrait": "/portraits/small/artist_s.webp"
+  },
+  {
+    "id": "hag",
+    "englishName": "Hag",
+    "koreanName": "해그",
+    "aliases": [
+      "망구"
+    ],
+    "sortOrder": 43,
+    "bigPortrait": "/portraits/big/hag.webp",
+    "smallPortrait": "/portraits/small/hag_s.webp"
+  },
+  {
+    "id": "judgement",
+    "englishName": "Judgement",
+    "koreanName": "심판",
+    "aliases": [],
+    "sortOrder": 44,
+    "bigPortrait": "/portraits/big/judgement.webp",
+    "smallPortrait": "/portraits/small/judgement_s.webp"
   }
 ]

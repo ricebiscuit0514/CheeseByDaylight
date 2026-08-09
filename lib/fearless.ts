@@ -7,6 +7,20 @@ import {
 
 export const MAX_FEARLESS_PICKS = 4
 
+const FEARLESS_PICK_ORDINALS = [
+  "첫 번째",
+  "두 번째",
+  "세 번째",
+  "네 번째",
+] as const
+
+/** Human-readable fearless pick slot label (e.g. "첫 번째 살인마 선택"). */
+export function formatFearlessPickSlotLabel(slotIndex: number | null): string {
+  if (slotIndex === null) return "새 살인마 선택"
+  const ordinal = FEARLESS_PICK_ORDINALS[slotIndex]
+  return ordinal ? `${ordinal} 살인마 선택` : `${slotIndex + 1}번째 살인마 선택`
+}
+
 export type FearlessFilterMode = "hard" | "soft" | "personal"
 export type Team = "thomas" | "ada"
 
@@ -46,8 +60,10 @@ export type FearlessFilledRowSlot = {
 
 export type FearlessEmptyRowSlot = {
   kind: "empty"
-  slotIndex: null
+  slotIndex: number
   killerId: null
+  /** True for the next open pick slot; false for reserved placeholders. */
+  actionable: boolean
 }
 
 export type FearlessRowSlot = FearlessFilledRowSlot | FearlessEmptyRowSlot
@@ -144,7 +160,7 @@ export function setPlayerKillerPick<T extends FearlessPlayer>(
   if (!isKillerId(killerId)) return player
 
   const picks = player.killerPicks ?? []
-  if (slotIndex === null) {
+  if (slotIndex === null || slotIndex === picks.length) {
     if (picks.length >= MAX_FEARLESS_PICKS) return player
     if (playerOwnsKillerPick(player, killerId)) return player
     return { ...player, killerPicks: [...picks, killerId] }
@@ -228,16 +244,129 @@ const KOREAN_INITIALS = [
   "ㅎ",
 ] as const
 
+const KOREAN_JUNG = [
+  "ㅏ",
+  "ㅐ",
+  "ㅑ",
+  "ㅒ",
+  "ㅓ",
+  "ㅔ",
+  "ㅕ",
+  "ㅖ",
+  "ㅗ",
+  "ㅘ",
+  "ㅙ",
+  "ㅚ",
+  "ㅛ",
+  "ㅜ",
+  "ㅝ",
+  "ㅞ",
+  "ㅟ",
+  "ㅠ",
+  "ㅡ",
+  "ㅢ",
+  "ㅣ",
+] as const
+
+const KOREAN_JONG = [
+  "",
+  "ㄱ",
+  "ㄲ",
+  "ㄳ",
+  "ㄴ",
+  "ㄵ",
+  "ㄶ",
+  "ㄷ",
+  "ㄹ",
+  "ㄺ",
+  "ㄻ",
+  "ㄼ",
+  "ㄽ",
+  "ㄾ",
+  "ㄿ",
+  "ㅀ",
+  "ㅁ",
+  "ㅂ",
+  "ㅄ",
+  "ㅅ",
+  "ㅆ",
+  "ㅇ",
+  "ㅈ",
+  "ㅊ",
+  "ㅋ",
+  "ㅌ",
+  "ㅍ",
+  "ㅎ",
+] as const
+
+const SEARCH_WHITESPACE_RE =
+  /[\s\u00A0\u1680\u2000-\u200B\u202F\u205F\u3000\uFEFF]+/g
+
+/** Removes whitespace so "착한 아이" and "착한아이" match the same query. */
+export function stripSearchWhitespace(value: string): string {
+  return value.replace(SEARCH_WHITESPACE_RE, "")
+}
+
 /**
  * Removes spacing/punctuation so differently formatted names compare equally.
  * NFC deliberately preserves compatibility jamo such as ㄱ used in queries.
  */
 export function normalizeFearlessSearchText(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFC")
-    .replace(/[\s\p{P}\p{S}]+/gu, "")
+  return stripSearchWhitespace(
+    value.trim().toLowerCase().normalize("NFC"),
+  ).replace(/[\p{P}\p{S}]+/gu, "")
+}
+
+/** Decomposes Hangul into jamo so IME states like "너ㅅ" still match "너스". */
+export function hangulToSearchJamo(value: string): string {
+  let jamo = ""
+  for (const character of normalizeFearlessSearchText(value)) {
+    const codePoint = character.charCodeAt(0)
+    if (codePoint >= 0xac00 && codePoint <= 0xd7a3) {
+      const base = codePoint - 0xac00
+      const cho = Math.floor(base / 588)
+      const jung = Math.floor((base % 588) / 28)
+      const jong = base % 28
+      jamo += KOREAN_INITIALS[cho] + KOREAN_JUNG[jung] + KOREAN_JONG[jong]
+      continue
+    }
+    if (/^[ㄱ-ㅎㅏ-ㅣ]$/.test(character)) {
+      jamo += character
+      continue
+    }
+    jamo += character
+  }
+  return jamo
+}
+
+function killerMatchesQuery(
+  killer: FearlessKillerSearchItem,
+  normalizedQuery: string,
+  jamoQuery: string,
+  initialsQuery: boolean,
+): boolean {
+  const searchableValues = [
+    killer.id,
+    killer.englishName,
+    killer.koreanName,
+    ...killer.aliases,
+  ]
+
+  if (
+    searchableValues.some((value) => {
+      const normalizedValue = normalizeFearlessSearchText(value)
+      if (normalizedValue.includes(normalizedQuery)) return true
+      if (jamoQuery && hangulToSearchJamo(value).includes(jamoQuery)) return true
+      return false
+    })
+  ) {
+    return true
+  }
+
+  return (
+    initialsQuery &&
+    getKoreanInitials(killer.koreanName).includes(normalizedQuery)
+  )
 }
 
 export function getKoreanInitials(value: string): string {
@@ -269,26 +398,11 @@ export function searchKillers(
   const normalizedQuery = normalizeFearlessSearchText(query)
   if (!normalizedQuery) return [...catalog]
 
+  const jamoQuery = hangulToSearchJamo(query)
   const initialsQuery = isInitialsQuery(normalizedQuery)
-  return catalog.filter((killer) => {
-    const searchableValues = [
-      killer.id,
-      killer.englishName,
-      killer.koreanName,
-      ...killer.aliases,
-    ]
-    if (
-      searchableValues.some((value) =>
-        normalizeFearlessSearchText(value).includes(normalizedQuery),
-      )
-    ) {
-      return true
-    }
-    return (
-      initialsQuery &&
-      getKoreanInitials(killer.koreanName).includes(normalizedQuery)
-    )
-  })
+  return catalog.filter((killer) =>
+    killerMatchesQuery(killer, normalizedQuery, jamoQuery, initialsQuery),
+  )
 }
 
 function isPickArray(
@@ -298,7 +412,7 @@ function isPickArray(
 }
 
 /**
- * Returns all filled slots plus one append target until the four-pick maximum.
+ * Returns filled slots plus one trailing empty slot until the four-pick maximum.
  */
 export function getFearlessRowSlots(
   playerOrPicks: FearlessPlayer | readonly string[],
@@ -306,6 +420,7 @@ export function getFearlessRowSlots(
   const picks: readonly string[] = isPickArray(playerOrPicks)
     ? playerOrPicks
     : (playerOrPicks.killerPicks ?? [])
+
   const filledSlots: FearlessFilledRowSlot[] = picks
     .slice(0, MAX_FEARLESS_PICKS)
     .map((killerId, slotIndex) => ({
@@ -315,8 +430,14 @@ export function getFearlessRowSlots(
     }))
 
   if (filledSlots.length >= MAX_FEARLESS_PICKS) return filledSlots
+
   return [
     ...filledSlots,
-    { kind: "empty", slotIndex: null, killerId: null },
+    {
+      kind: "empty",
+      slotIndex: filledSlots.length,
+      killerId: null,
+      actionable: true,
+    },
   ]
 }

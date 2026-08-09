@@ -494,8 +494,13 @@ input[type="number"] {
   padding-inline: clamp(.35rem, .8vw, .7rem);
 }
 .fearless-player-row .player-name-cell {
-  width: clamp(2.8rem, 15vw, 5rem) !important;
-  min-width: 0;
+  width: 5rem !important;
+  min-width: 5rem !important;
+  max-width: 5rem !important;
+  flex: 0 0 5rem !important;
+}
+.fearless-player-row .player-name-input {
+  font-size: .92rem;
 }
 .fearless-player-row-control {
   position: relative;
@@ -514,11 +519,14 @@ input[type="number"] {
 
 .fearless-killer-slots {
   --fearless-team: var(--dbd-orange);
-  --fearless-slot-size: clamp(1.55rem, 7.2vw, 2rem);
+  --fearless-slot-size: clamp(2.33rem, 10.8vw, 3rem);
+  --fearless-slot-gap: clamp(.12rem, .55vw, .28rem);
   display: flex;
+  width: auto;
   min-width: 0;
+  flex: 0 0 auto;
   align-items: center;
-  gap: clamp(.08rem, .4vw, .2rem);
+  gap: var(--fearless-slot-gap);
   font-family: var(--font-s-core);
 }
 .fearless-killer-slots-thomas {
@@ -541,7 +549,6 @@ input[type="number"] {
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 4%),
     0 2px 8px rgb(0 0 0 / 38%);
-  clip-path: polygon(0 0, calc(100% - .32rem) 0, 100% .32rem, 100% 100%, .32rem 100%, 0 calc(100% - .32rem));
   cursor: pointer;
   transition:
     transform .16s ease,
@@ -550,7 +557,10 @@ input[type="number"] {
     box-shadow .16s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.fearless-killer-slots-ada .fearless-killer-slot {
+.fearless-killer-slot.is-empty {
+  clip-path: polygon(0 0, calc(100% - .32rem) 0, 100% .32rem, 100% 100%, .32rem 100%, 0 calc(100% - .32rem));
+}
+.fearless-killer-slots-ada .fearless-killer-slot.is-empty {
   clip-path: polygon(.32rem 0, 100% 0, 100% calc(100% - .32rem), calc(100% - .32rem) 100%, 0 100%, 0 .32rem);
 }
 .fearless-killer-slot img {
@@ -590,6 +600,43 @@ input[type="number"] {
   border-color: rgb(148 148 148 / 35%);
   background: rgb(0 0 0 / 48%);
 }
+.fearless-killer-slot.is-filled {
+  overflow: visible;
+  clip-path: none;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.fearless-killer-slot-face {
+  position: absolute;
+  inset: -6%;
+  overflow: visible;
+}
+.fearless-killer-slot-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  filter:
+    saturate(.8) brightness(.72) contrast(1.1)
+    drop-shadow(0 0 0.55px rgb(255 255 255 / 78%))
+    drop-shadow(0 0 0.55px rgb(255 255 255 / 78%));
+  transition: filter .16s ease, transform .16s ease;
+}
+.fearless-killer-slot.is-filled:hover:not(:disabled),
+.fearless-killer-slot.is-filled:focus-visible {
+  z-index: 2;
+  filter: none;
+  transform: translateY(-2px) scale(1.055);
+}
+.fearless-killer-slot.is-filled:hover:not(:disabled) .fearless-killer-slot-face img,
+.fearless-killer-slot.is-filled:focus-visible .fearless-killer-slot-face img {
+  filter:
+    saturate(1) brightness(.92) contrast(1.05)
+    drop-shadow(0 0 0.65px color-mix(in oklch, var(--fearless-team), white 35%))
+    drop-shadow(0 0 0.65px color-mix(in oklch, var(--fearless-team), white 35%));
+  transform: scale(1.04);
+}
 .fearless-empty-frame {
   position: absolute;
   inset: 18%;
@@ -628,10 +675,74 @@ input[type="number"] {
   line-height: 1;
   text-shadow: 0 1px 2px #000, 0 0 4px #000;
 }
+.fearless-killer-slot.is-empty.is-placeholder {
+  pointer-events: none;
+  opacity: .28;
+  cursor: default;
+}
 .fearless-missing-killer {
   color: rgb(255 255 255 / 55%);
   font-family: var(--font-aldrich);
   font-size: 1rem;
+}
+.fearless-slot-tooltip-wrap {
+  position: relative;
+}
+.fearless-slot-tooltip {
+  position: absolute;
+  bottom: calc(100% + .55rem);
+  left: 50%;
+  z-index: 30;
+  visibility: hidden;
+  opacity: 0;
+  width: max-content;
+  max-width: 12rem;
+  border: 1px solid color-mix(in oklch, var(--fearless-team), transparent 18%);
+  background:
+    linear-gradient(145deg, rgb(12 12 14 / 96%), rgb(4 4 5 / 98%));
+  padding: .42rem .72rem;
+  color: color-mix(in oklch, var(--fearless-team), white 42%);
+  font-size: clamp(.72rem, 1.8vw, .88rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.01em;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(.35rem) scale(.94);
+  transition:
+    opacity .14s ease,
+    transform .14s ease,
+    visibility .14s ease;
+  box-shadow:
+    0 10px 28px rgb(0 0 0 / 58%),
+    0 0 18px color-mix(in oklch, var(--fearless-team), transparent 72%);
+}
+.fearless-slot-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: .55rem;
+  height: .55rem;
+  border-right: 1px solid color-mix(in oklch, var(--fearless-team), transparent 28%);
+  border-bottom: 1px solid color-mix(in oklch, var(--fearless-team), transparent 28%);
+  background: rgb(8 8 9 / 98%);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.fearless-killer-slots-thomas .fearless-slot-tooltip-wrap:hover .fearless-slot-tooltip,
+.fearless-killer-slots-thomas .fearless-slot-tooltip-wrap:focus-visible .fearless-slot-tooltip,
+.fearless-killer-slots-ada .fearless-slot-tooltip-wrap:hover .fearless-slot-tooltip,
+.fearless-killer-slots-ada .fearless-slot-tooltip-wrap:focus-visible .fearless-slot-tooltip,
+.fearless-slot-tooltip-wrap:hover .fearless-slot-tooltip,
+.fearless-slot-tooltip-wrap:focus-visible .fearless-slot-tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+.fearless-killer-slot.is-filled.fearless-slot-tooltip-wrap:hover,
+.fearless-killer-slot.is-filled.fearless-slot-tooltip-wrap:focus-visible {
+  z-index: 40;
 }
 
 .fearless-picker-backdrop {
@@ -642,27 +753,27 @@ input[type="number"] {
   align-items: center;
   justify-content: center;
   padding: clamp(.5rem, 2vw, 1.5rem);
-  background:
-    radial-gradient(circle at center, rgb(30 30 30 / 44%), transparent 62%),
-    rgb(0 0 0 / 78%);
-  backdrop-filter: blur(5px);
+  background: transparent;
   font-family: var(--font-s-core);
+  font-weight: 400;
   animation: fearless-backdrop-in .16s ease-out;
 }
 .fearless-picker-panel {
   --fearless-team: var(--dbd-orange);
   position: relative;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  width: min(70rem, calc(100vw - 1rem));
-  max-height: min(90dvh, 48rem);
-  min-height: min(38rem, calc(100dvh - 1rem));
+  grid-template-rows: auto auto minmax(0, 1fr);
+  width: min(84rem, calc(100vw - 1rem));
+  height: min(42rem, calc(100dvh - 1rem));
+  min-height: min(42rem, calc(100dvh - 1rem));
+  max-height: min(42rem, calc(100dvh - 1rem));
   overflow: hidden;
   border: 1px solid color-mix(in oklch, var(--fearless-team), transparent 52%);
   background:
     linear-gradient(118deg, color-mix(in oklch, var(--fearless-team), transparent 94%), transparent 38%),
     rgb(8 8 9 / 98%);
   color: #f1f1f1;
+  font-weight: 400;
   box-shadow:
     0 24px 80px rgb(0 0 0 / 72%),
     inset 0 0 45px color-mix(in oklch, var(--fearless-team), transparent 96%);
@@ -678,17 +789,21 @@ input[type="number"] {
   padding: 1rem 1rem .65rem;
   border-bottom: 1px solid rgb(255 255 255 / 7%);
 }
-.fearless-picker-heading p {
-  margin-bottom: .12rem;
-  color: color-mix(in oklch, var(--fearless-team), white 24%);
-  font-size: .68rem;
-  font-weight: 700;
-  letter-spacing: .04em;
+.fearless-picker-heading {
+  min-width: 0;
+  flex: 1 1 auto;
 }
-.fearless-picker-heading h2 {
-  font-size: clamp(1.15rem, 2.4vw, 1.55rem);
-  font-weight: 700;
+.fearless-picker-title {
+  font-size: clamp(1.35rem, 2.8vw, 1.9rem);
+  font-weight: 400;
   letter-spacing: -.025em;
+  line-height: 1.25;
+}
+.fearless-picker-title-name {
+  color: var(--fearless-team);
+}
+.fearless-picker-title-pick {
+  color: white;
 }
 .fearless-picker-close {
   display: grid;
@@ -718,13 +833,14 @@ input[type="number"] {
   outline-offset: 2px;
 }
 .fearless-picker-toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: .75rem;
   padding: .75rem 1rem;
 }
 .fearless-filter-tabs {
+  justify-self: start;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   overflow: hidden;
@@ -738,7 +854,7 @@ input[type="number"] {
   border-right: 1px solid rgb(255 255 255 / 9%);
   color: rgb(255 255 255 / 48%);
   font-size: .76rem;
-  font-weight: 700;
+  font-weight: 400;
   transition: color .15s ease, background .15s ease;
 }
 .fearless-filter-tab:last-child { border-right: 0; }
@@ -748,7 +864,15 @@ input[type="number"] {
   color: color-mix(in oklch, var(--fearless-team), white 46%);
   box-shadow: inset 0 -2px var(--fearless-team);
 }
+.fearless-picker-toolbar-actions {
+  display: flex;
+  justify-self: center;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+}
 .fearless-picker-search {
+  justify-self: end;
   display: flex;
   width: min(18rem, 42vw);
   min-height: 2.75rem;
@@ -773,11 +897,33 @@ input[type="number"] {
   font-size: .8rem;
   outline: none;
 }
+.fearless-picker-search-clear {
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  background: rgb(255 255 255 / 8%);
+  color: rgb(255 255 255 / 58%);
+  transition: color .15s ease, background .15s ease;
+}
+.fearless-picker-search-clear svg {
+  width: .85rem;
+  height: .85rem;
+}
+.fearless-picker-search-clear:hover,
+.fearless-picker-search-clear:focus-visible {
+  background: rgb(255 255 255 / 14%);
+  color: white;
+}
 .fearless-picker-search input::placeholder { color: rgb(255 255 255 / 35%); }
-.fearless-picker-search input::-webkit-search-cancel-button { opacity: .5; }
+.fearless-picker-search input::-webkit-search-cancel-button { display: none; }
 .fearless-picker-grid-wrap {
   position: relative;
+  display: flex;
   min-height: 0;
+  flex-direction: column;
   overflow: hidden;
 }
 .fearless-picker-grid-wrap::after {
@@ -792,50 +938,59 @@ input[type="number"] {
 }
 .fearless-picker-grid {
   display: grid;
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: max-content;
   align-content: start;
-  gap: clamp(.35rem, 1vw, .65rem);
+  gap: 1.1rem .65rem;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: .25rem 1rem 4rem;
+  padding: .55rem 1.5rem 1.5rem;
   scrollbar-color: color-mix(in oklch, var(--fearless-team), transparent 45%) transparent;
   scrollbar-width: thin;
 }
-.fearless-picker-grid::-webkit-scrollbar { width: 5px; }
-.fearless-picker-grid::-webkit-scrollbar-track { background: transparent; }
-.fearless-picker-grid::-webkit-scrollbar-thumb {
-  border-radius: 99px;
-  background: color-mix(in oklch, var(--fearless-team), transparent 48%);
-}
 .fearless-picker-cell {
   position: relative;
+  display: block;
+  width: 100%;
   min-width: 0;
-  aspect-ratio: 4 / 5;
-  overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 10%);
-  background: #0e0e0f;
+  overflow: visible;
+  border: 0;
+  background: transparent;
   color: white;
   text-align: left;
+  padding: .42rem .36rem;
   isolation: isolate;
-  clip-path: polygon(0 0, calc(100% - .4rem) 0, 100% .4rem, 100% 100%, .4rem 100%, 0 calc(100% - .4rem));
-  transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease, filter .15s ease;
   -webkit-tap-highlight-color: transparent;
+}
+.fearless-picker-cell-sizer {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 0;
+  padding-bottom: 125%;
+}
+.fearless-picker-cell-frame {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  transform: translateZ(0);
+}
+.fearless-picker-cell-frame-pop {
+  animation: fearless-cell-pop .28s cubic-bezier(.34, 1.45, .64, 1);
 }
 .fearless-picker-portrait {
   position: absolute;
-  inset: 0;
-  z-index: -2;
-  overflow: hidden;
-  background: #111;
+  inset: -5%;
+  z-index: 0;
+  overflow: visible;
+  background: transparent;
+  pointer-events: none;
 }
 .fearless-picker-portrait::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background: linear-gradient(to bottom, transparent 42%, rgb(0 0 0 / 88%) 100%);
-  pointer-events: none;
+  display: none;
 }
 .fearless-picker-portrait::after {
   content: "";
@@ -844,77 +999,130 @@ input[type="number"] {
   z-index: 1;
   pointer-events: none;
   opacity: 0;
-  transition: opacity .15s ease;
+  background: linear-gradient(to bottom, transparent 46%, rgb(0 0 0 / 86%) 100%);
 }
 .fearless-picker-portrait img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  filter: saturate(.76) brightness(.72) contrast(1.08);
-  transform: scale(1.01);
-  transition: filter .18s ease, transform .18s ease;
-}
-.fearless-picker-cell:hover,
-.fearless-picker-cell:focus-visible {
-  z-index: 2;
-  border-color: color-mix(in oklch, var(--fearless-team), transparent 18%);
-  transform: translateY(-2px);
-  box-shadow: 0 0 18px color-mix(in oklch, var(--fearless-team), transparent 68%);
+  object-fit: contain;
+  object-position: center center;
+  filter:
+    saturate(.76) brightness(.72) contrast(1.08)
+    drop-shadow(0 0 0.55px rgb(255 255 255 / 78%))
+    drop-shadow(0 0 0.55px rgb(255 255 255 / 78%));
+  transform: translateZ(0);
+  transition: filter .16s ease;
 }
 .fearless-picker-cell:hover .fearless-picker-portrait img,
 .fearless-picker-cell:focus-visible .fearless-picker-portrait img {
-  filter: saturate(.95) brightness(.88) contrast(1.04);
-  transform: scale(1.055);
+  filter:
+    saturate(.95) brightness(.88) contrast(1.04)
+    drop-shadow(0 0 0.65px color-mix(in oklch, var(--fearless-team), white 35%))
+    drop-shadow(0 0 0.65px color-mix(in oklch, var(--fearless-team), white 35%));
 }
-.fearless-picker-cell:active { transform: translateY(0) scale(.98); }
-.fearless-picker-cell.is-selected {
-  border-color: var(--dbd-yellow);
-  box-shadow:
-    inset 0 0 0 1px var(--dbd-yellow),
-    0 0 18px color-mix(in oklch, var(--dbd-yellow), transparent 65%);
+.fearless-picker-cell.is-selected .fearless-picker-portrait img {
+  filter:
+    saturate(.98) brightness(.94) contrast(1.04)
+    drop-shadow(0 0 0.75px color-mix(in oklch, var(--fearless-team), white 42%))
+    drop-shadow(0 0 0.75px color-mix(in oklch, var(--fearless-team), white 42%));
 }
 .fearless-picker-cell.is-picked .fearless-picker-portrait img {
-  filter: grayscale(1) brightness(.39) contrast(1.18);
+  filter:
+    grayscale(1) brightness(.39) contrast(1.18)
+    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%))
+    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%));
 }
 .fearless-picker-cell.is-banned .fearless-picker-portrait img {
-  filter: grayscale(.45) sepia(.55) saturate(2.4) hue-rotate(315deg) brightness(.28) contrast(1.35);
+  filter:
+    grayscale(.35) sepia(.45) saturate(2.1) hue-rotate(315deg) brightness(.58) contrast(1.22)
+    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%))
+    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%));
 }
 .fearless-picker-cell.is-banned .fearless-picker-portrait::after {
-  opacity: .65;
-  background: linear-gradient(145deg, rgb(110 0 0 / 82%), rgb(20 0 0 / 36%));
+  opacity: .42;
+  background: linear-gradient(145deg, rgb(110 0 0 / 58%), rgb(20 0 0 / 24%));
   mix-blend-mode: color;
 }
-.fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait img {
-  filter: grayscale(.78) sepia(.7) saturate(2) hue-rotate(315deg) brightness(.24) contrast(1.4);
+.fearless-picker-cell-frame::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: 42%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 82%) 78%);
 }
-.fearless-picker-killer-name {
+.fearless-picker-grid::-webkit-scrollbar { width: 5px; }
+.fearless-picker-grid::-webkit-scrollbar-track { background: transparent; }
+.fearless-picker-grid::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  background: color-mix(in oklch, var(--fearless-team), transparent 48%);
+}
+.fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait img {
+  filter:
+    grayscale(.62) sepia(.55) saturate(1.8) hue-rotate(315deg) brightness(.48) contrast(1.28)
+    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%))
+    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%));
+}
+.fearless-picker-label-row {
   position: absolute;
   right: .35rem;
-  bottom: .32rem;
+  bottom: .3rem;
   left: .35rem;
   z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .4rem;
+  pointer-events: none;
+}
+.fearless-picker-killer-name {
+  position: static;
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
-  color: rgb(255 255 255 / 88%);
-  font-size: clamp(.58rem, 1.25vw, .72rem);
-  font-weight: 700;
-  line-height: 1.25;
+  color: rgb(255 255 255 / 92%);
+  font-size: clamp(.74rem, 1.55vw, .96rem);
+  font-weight: 400;
+  line-height: 1.2;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-shadow: 0 1px 3px #000;
+  text-shadow: 0 1px 4px #000, 0 0 8px rgb(0 0 0 / 65%);
+}
+.fearless-picker-status-marks {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: .22rem;
+}
+.fearless-pick-mark {
+  flex: 0 0 auto;
+  border: 1px solid rgb(255 255 255 / 38%);
+  background: rgb(255 255 255 / 12%);
+  padding: .14rem .48rem;
+  color: rgb(255 255 255 / 90%);
+  font-size: clamp(.58rem, 1.2vw, .72rem);
+  font-weight: 400;
+  letter-spacing: .08em;
+  line-height: 1;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 34%);
 }
 .fearless-ban-mark {
-  position: absolute;
-  top: .3rem;
-  right: .3rem;
-  z-index: 3;
-  border: 1px solid rgb(255 110 110 / 60%);
-  background: rgb(65 0 0 / 82%);
-  padding: .12rem .3rem;
-  color: #ffb2b2;
-  font-size: .55rem;
-  font-weight: 700;
+  position: static;
+  flex: 0 0 auto;
+  border: 1px solid rgb(255 110 110 / 42%);
+  background: rgb(65 0 0 / 52%);
+  padding: .14rem .48rem;
+  color: rgb(255 178 178 / 88%);
+  font-size: clamp(.58rem, 1.2vw, .72rem);
+  font-weight: 400;
+  letter-spacing: .08em;
   line-height: 1;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 50%);
+  transform: none;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 34%);
 }
 .fearless-pick-stack {
   position: absolute;
@@ -923,9 +1131,11 @@ input[type="number"] {
   z-index: 3;
   display: flex;
   max-width: calc(100% - .56rem);
+  max-height: calc(100% - 2.2rem);
   flex-direction: column;
   align-items: flex-start;
   gap: .14rem;
+  overflow: hidden;
 }
 .fearless-pick-name {
   display: block;
@@ -933,10 +1143,10 @@ input[type="number"] {
   overflow: hidden;
   border-left: 2px solid currentColor;
   background: rgb(0 0 0 / 78%);
-  padding: .12rem .28rem;
-  font-size: clamp(.5rem, 1vw, .62rem);
-  font-weight: 700;
-  line-height: 1.15;
+  padding: .16rem .36rem;
+  font-size: clamp(.62rem, 1.25vw, .78rem);
+  font-weight: 400;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
   box-shadow: 0 1px 5px rgb(0 0 0 / 48%);
@@ -950,49 +1160,28 @@ input[type="number"] {
   text-align: center;
   font-size: .8rem;
 }
-.fearless-picker-footer {
-  position: relative;
-  z-index: 3;
-  display: flex;
-  min-height: 4.4rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: .8rem;
-  border-top: 1px solid rgb(255 255 255 / 10%);
-  background: rgb(7 7 8 / 98%);
-  padding: .65rem 1rem;
-  box-shadow: 0 -12px 30px rgb(0 0 0 / 38%);
-}
-.fearless-picker-selection {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-}
-.fearless-picker-selection span {
-  color: rgb(255 255 255 / 38%);
-  font-size: .58rem;
-  font-weight: 700;
-}
-.fearless-picker-selection strong {
-  overflow: hidden;
-  color: color-mix(in oklch, var(--fearless-team), white 34%);
-  font-size: .82rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .fearless-picker-actions {
-  display: flex;
-  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: .45rem;
 }
 .fearless-picker-action {
+  display: inline-flex;
+  width: 7.75rem;
+  min-width: 7.75rem;
   min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgb(255 255 255 / 16%);
   background: rgb(255 255 255 / 5%);
-  padding: .5rem .9rem;
+  padding: .5rem .55rem;
   color: rgb(255 255 255 / 74%);
   font-size: .72rem;
-  font-weight: 700;
+  font-weight: 400;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
   transition: border-color .15s ease, background .15s ease, color .15s ease, transform .15s ease;
 }
 .fearless-picker-action:hover:not(:disabled) { background: rgb(255 255 255 / 10%); color: white; }
@@ -1015,6 +1204,11 @@ input[type="number"] {
   background: color-mix(in oklch, var(--fearless-team), transparent 65%);
 }
 
+@keyframes fearless-cell-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.07); }
+  100% { transform: scale(1); }
+}
 @keyframes fearless-backdrop-in {
   from { opacity: 0; }
 }
@@ -1036,7 +1230,7 @@ input[type="number"] {
     padding-right: clamp(7rem, 12vw, 9.75rem);
   }
   .fearless-killer-slots {
-    --fearless-slot-size: clamp(1.75rem, 3vw, 2.25rem);
+    --fearless-slot-size: clamp(2.625rem, 4.5vw, 3.375rem);
   }
   .fearless-player-row .skull-slot { width: 2rem; height: 2.2rem; }
   .fearless-player-row .no-kill-button { width: 1.75rem; height: 1.75rem; }
@@ -1045,11 +1239,10 @@ input[type="number"] {
   .fearless-picker-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 @media (min-width: 1024px) {
-  .fearless-picker-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .fearless-picker-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 @media (min-width: 1200px) {
-  .fearless-killer-slots { --fearless-slot-size: 2.25rem; }
-  .fearless-player-row .player-name-cell { width: 7rem !important; }
+  .fearless-killer-slots { --fearless-slot-size: 3.375rem; }
   .fearless-player-row .skull-slot { width: 2.2rem; height: 2.4rem; }
 }
 @media (max-width: 639px) {
@@ -1075,7 +1268,7 @@ input[type="number"] {
     justify-content: flex-end;
   }
   .fearless-killer-slots {
-    --fearless-slot-size: 2.75rem;
+    --fearless-slot-size: 4.125rem;
   }
   .fearless-roster-controls-thomas {
     padding-left: 0;
@@ -1086,31 +1279,46 @@ input[type="number"] {
   .fearless-picker-backdrop { align-items: flex-end; padding: 0; }
   .fearless-picker-panel {
     width: 100vw;
-    max-height: 94dvh;
+    height: min(42rem, 94dvh);
     min-height: min(42rem, 94dvh);
+    max-height: min(42rem, 94dvh);
     clip-path: polygon(0 0, calc(100% - .65rem) 0, 100% .65rem, 100% 100%, 0 100%);
   }
   .fearless-picker-header { padding: .75rem .75rem .55rem; }
   .fearless-picker-toolbar {
-    align-items: stretch;
+    display: flex;
     flex-direction: column;
+    align-items: stretch;
     padding: .55rem .75rem .7rem;
   }
   .fearless-filter-tabs,
   .fearless-picker-search { width: 100%; }
-  .fearless-filter-tab { min-width: 0; }
-  .fearless-picker-grid { padding-inline: .75rem; }
-  .fearless-picker-footer {
-    align-items: stretch;
-    flex-direction: column;
-    padding: .55rem .75rem .7rem;
+  .fearless-filter-tabs { justify-self: stretch; }
+  .fearless-picker-search { justify-self: stretch; }
+  .fearless-picker-toolbar-actions {
+    width: 100%;
+    min-height: 0;
   }
-  .fearless-picker-selection { flex-direction: row; gap: .35rem; align-items: baseline; }
-  .fearless-picker-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .fearless-picker-toolbar-actions:not(:empty) {
+    min-height: 2.75rem;
+  }
+  .fearless-filter-tab { min-width: 0; }
+  .fearless-picker-grid { gap: 1.1rem .65rem; padding-inline: 1.1rem; }
+  .fearless-picker-actions {
+    display: inline-flex;
+    justify-content: center;
+    gap: .45rem;
+    width: 100%;
+  }
 }
 @media (max-width: 420px) {
   .fearless-player-row .player-plate { gap: .14rem; padding-inline: .22rem; }
-  .fearless-player-row .player-name-cell { width: clamp(2.4rem, 14vw, 3.4rem) !important; }
+  .fearless-player-row .player-name-cell {
+    width: 5rem !important;
+    min-width: 5rem !important;
+    max-width: 5rem !important;
+    flex-basis: 5rem !important;
+  }
   .fearless-player-row .skull-group { gap: .03rem; }
   .fearless-player-row .skull-slot { width: 1.25rem; height: 1.48rem; }
   .fearless-player-row .no-kill-button { width: 1.2rem; height: 1.2rem; }

@@ -366,7 +366,10 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
           {isThomas ? (
             <>
               <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
-              <div className="player-name-cell w-32 sm:w-36 flex-none flex items-center">{nameInput}</div>
+              <div className={cn(
+                "player-name-cell flex-none flex items-center",
+                !hasKillerControl && "w-32 sm:w-36",
+              )}>{nameInput}</div>
               <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
               <NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
               {skullGroup}
@@ -376,7 +379,10 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
               {skullGroup}
               <NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
               <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
-              <div className="player-name-cell w-32 sm:w-36 flex-none flex items-center justify-end">{nameInput}</div>
+              <div className={cn(
+                "player-name-cell flex-none flex items-center justify-end",
+                !hasKillerControl && "w-32 sm:w-36",
+              )}>{nameInput}</div>
               <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
             </>
           )}
