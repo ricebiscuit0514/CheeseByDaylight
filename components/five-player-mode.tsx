@@ -15,7 +15,10 @@ import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice
 import { ZoomCompensated } from "@/components/zoom-compensated"
 import { UtilityUiToggle } from "@/components/utility-ui-toggle"
 import { SyncStatusCompactLabel } from "@/components/sync-status-compact-label"
-import { consumeViewerLinkExpiredNotice } from "@/lib/viewer-session-notice"
+import {
+  consumeViewerSessionEndedNotice,
+  type ViewerSessionEndReason,
+} from "@/lib/viewer-session-notice"
 import { useUtilityUiHidden } from "@/hooks/use-utility-ui-hidden"
 import { cn } from "@/lib/utils"
 
@@ -80,13 +83,12 @@ export function FivePlayerMode() {
 
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasSeenGuide, setHasSeenGuide] = useState(true)
-  const [showViewerLinkExpiredNotice, setShowViewerLinkExpiredNotice] =
-    useState(false)
+  const [viewerSessionEndReason, setViewerSessionEndReason] =
+    useState<ViewerSessionEndReason | null>(null)
 
   useEffect(() => {
-    if (consumeViewerLinkExpiredNotice()) {
-      setShowViewerLinkExpiredNotice(true)
-    }
+    const reason = consumeViewerSessionEndedNotice()
+    if (reason) setViewerSessionEndReason(reason)
   }, [])
 
   useEffect(() => {
@@ -941,9 +943,10 @@ export function FivePlayerMode() {
 
       </div>
 
-      {showViewerLinkExpiredNotice && (
+      {viewerSessionEndReason && (
         <ViewerLinkExpiredNotice
-          onDismiss={() => setShowViewerLinkExpiredNotice(false)}
+          reason={viewerSessionEndReason}
+          onDismiss={() => setViewerSessionEndReason(null)}
         />
       )}
 

@@ -21,6 +21,7 @@ import {
   prepareFirebaseSession,
   registerHostPresence,
   resumeScoreboardRoom,
+  ROOM_TTL_MS,
   saveRoomSession,
   subscribeToFirebaseConnection,
   subscribeToScoreboardRoom,
@@ -30,7 +31,7 @@ import {
   type FourVFourSyncState,
 } from "@/lib/firebase/scoreboard-room"
 import { claimSingleFirebaseTab } from "@/lib/firebase/single-tab"
-import { markViewerLinkExpired } from "@/lib/viewer-session-notice"
+import { markViewerHostDisconnected, markViewerLinkExpired } from "@/lib/viewer-session-notice"
 
 export type ScoreboardRoomRole = "local" | "host" | "viewer"
 export type ScoreboardRoomStatus =
@@ -64,10 +65,6 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
   )
   const [hostOnline, setHostOnline] = useState(false)
   const [roomExpiresAt, setRoomExpiresAt] = useState<number | null>(null)
-  const [hostDisconnectDeadline, setHostDisconnectDeadline] = useState<
-    number | null
-  >(null)
-  const [serverTimeOffset, setServerTimeOffset] = useState(0)
   const [terminalStatus, setTerminalStatus] = useState<
     "expired" | "error" | null
   >(null)
@@ -84,9 +81,10 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
   )
   const databaseRef = useRef<Database | null>(null)
 
-  const returnViewerToLocal = useCallback((options?: { expired?: boolean }) => {
+  const returnViewerToLocal = useCallback((options?: { expired?: boolean; hostDisconnected?: boolean }) => {
     sessionStorage.removeItem(VIEWER_SESSION_KEY)
-    if (options?.expired) markViewerLinkExpired()
+    if (options?.hostDisconnected) markViewerHostDisconnected()
+    else if (options?.expired) markViewerLinkExpired()
     if (databaseRef.current) goOffline(databaseRef.current)
     window.location.replace(SCOREBOARD_GAME_PATHS[gameMode])
   }, [gameMode])
@@ -111,10 +109,9 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     setToken(null)
     setRoomReady(false)
     setHostOnline(false)
-    setHostDisconnectDeadline(null)
     setTerminalStatus("expired")
     setErrorMessage(
-      "방장 연결이 끊긴 뒤 1시간이 지나 공유방이 종료되었습니다. 다시 연동을 시작해 주세요.",
+      "방장 연결이 끊긴 뒤 40분이 지나 공유방이 종료되었습니다. 다시 연동을 시작해 주세요.",
     )
   }, [])
 
@@ -136,7 +133,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       if (inviteToken) {
         saveRoomSession(sessionStorage, VIEWER_SESSION_KEY, {
           token: inviteToken,
-          expiresAt: Date.now() + 60 * 60 * 1000,
+          expiresAt: Date.now() + ROOM_TTL_MS,
           gameMode,
         })
         clearInviteTokenFromUrl(gameMode)
@@ -189,7 +186,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       void (async () => {
         saveRoomSession(sessionStorage, VIEWER_SESSION_KEY, {
           token: inviteToken,
-          expiresAt: Date.now() + 60 * 60 * 1000,
+          expiresAt: Date.now() + ROOM_TTL_MS,
           gameMode,
         })
         clearInviteTokenFromUrl(gameMode)
@@ -245,7 +242,6 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     setFirebaseConnected(null)
     setHostOnline(false)
     setRoomExpiresAt(null)
-    setHostDisconnectDeadline(null)
     setTerminalStatus(null)
     setErrorMessage(null)
 
@@ -310,7 +306,6 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
           return
         }
 
-        setServerTimeOffset(offset)
         const serverNow = Date.now() + offset
         if (disposed) {
           goOffline(database)
@@ -372,14 +367,20 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
 
               const isHostOnline =
                 Object.keys(room.hostConnections ?? {}).length > 0
+
+              if (
+                sawValidRoom &&
+                !isHostOnline &&
+                typeof room.hostDisconnectedAt === "number"
+              ) {
+                clearPendingExpire()
+                returnViewerToLocal({ hostDisconnected: true })
+                return
+              }
+
               setRoomReady(true)
               setRoomExpiresAt(room.expiresAt)
               setHostOnline(isHostOnline)
-              setHostDisconnectDeadline(
-                !isHostOnline && typeof room.hostDisconnectedAt === "number"
-                  ? room.hostDisconnectedAt + HOST_DISCONNECT_GRACE_MS
-                  : null,
-              )
               saveRoomSession(sessionStorage, VIEWER_SESSION_KEY, {
                 token,
                 expiresAt: room.expiresAt,
@@ -471,7 +472,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
           isPermissionDenied(error)
             ? creating
               ? "공유방을 만들지 못했습니다. Firebase Console의 Realtime Database Rules가 최신인지 확인해 주세요."
-              : "이전 공유방의 1시간 재접속 시간이 지나 종료되었습니다. 새 연동을 시작해 주세요."
+              : "이전 공유방의 40분 재접속 시간이 지나 종료되었습니다. 새 연동을 시작해 주세요."
             : message,
         )
       } finally {
@@ -586,29 +587,6 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     state.mode === "4v4" ? state.firstAttackerId : null,
     terminalStatus,
     token,
-  ])
-
-  useEffect(() => {
-    if (role !== "viewer" || !roomReady || !hostDisconnectDeadline) return
-
-    const remaining =
-      hostDisconnectDeadline - (Date.now() + serverTimeOffset)
-    if (remaining <= 0) {
-      returnViewerToLocal({ expired: true })
-      return
-    }
-
-    const timeout = window.setTimeout(
-      () => returnViewerToLocal({ expired: true }),
-      remaining,
-    )
-    return () => window.clearTimeout(timeout)
-  }, [
-    hostDisconnectDeadline,
-    returnViewerToLocal,
-    role,
-    roomReady,
-    serverTimeOffset,
   ])
 
   useEffect(() => {

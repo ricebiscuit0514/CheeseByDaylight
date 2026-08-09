@@ -31,7 +31,10 @@ import {
   VIEWER_SESSION_KEY,
   loadRoomSession,
 } from "@/lib/firebase/scoreboard-room"
-import { consumeViewerLinkExpiredNotice } from "@/lib/viewer-session-notice"
+import {
+  consumeViewerSessionEndedNotice,
+  type ViewerSessionEndReason,
+} from "@/lib/viewer-session-notice"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { buildCaptureMatchResult } from "@/lib/capture-match-result"
 import {
@@ -542,13 +545,12 @@ export function Scoreboard() {
     useState<AceModalSyncState | null>(null)
 
   const [isLoaded, setIsLoaded] = useState(false)
-  const [showViewerLinkExpiredNotice, setShowViewerLinkExpiredNotice] =
-    useState(false)
+  const [viewerSessionEndReason, setViewerSessionEndReason] =
+    useState<ViewerSessionEndReason | null>(null)
 
   useEffect(() => {
-    if (consumeViewerLinkExpiredNotice()) {
-      setShowViewerLinkExpiredNotice(true)
-    }
+    const reason = consumeViewerSessionEndedNotice()
+    if (reason) setViewerSessionEndReason(reason)
   }, [])
 
   const syncState = useMemo<ScoreboardSyncState>(
@@ -2521,9 +2523,10 @@ export function Scoreboard() {
         )}
       </div>
 
-      {showViewerLinkExpiredNotice && (
+      {viewerSessionEndReason && (
         <ViewerLinkExpiredNotice
-          onDismiss={() => setShowViewerLinkExpiredNotice(false)}
+          reason={viewerSessionEndReason}
+          onDismiss={() => setViewerSessionEndReason(null)}
         />
       )}
 
