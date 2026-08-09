@@ -3,11 +3,15 @@
   "version": "1.2.3",
   "private": true,
   "scripts": {
+    "predev": "npm run generate:killers",
     "dev": "next dev",
+    "prebuild": "npm run generate:killers",
     "build": "next build",
     "start": "next start",
+    "generate:killers": "node scripts/generate-killer-catalog.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run tests/fearless.test.ts tests/scoreboard-room.test.ts",
     "test:rules": "firebase emulators:exec --only database \"vitest run tests/database.rules.test.ts\"",
     "firebase:deploy:rules": "firebase deploy --only database"
   },

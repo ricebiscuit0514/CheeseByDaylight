@@ -146,6 +146,71 @@ describe("Realtime Database scoreboard room rules", () => {
     )
   })
 
+  it("allows ordered picks and valid killer bans for the owner", async () => {
+    const ownerDatabase = testEnv.authenticatedContext(OWNER_UID).database()
+
+    await assertSucceeds(
+      set(
+        ref(
+          ownerDatabase,
+          `scoreboardRooms/${ROOM_TOKEN}/scoreboard/thomas/0/killerPicks`,
+        ),
+        ["nurse", "ghost-face", "artist"],
+      ),
+    )
+    await assertSucceeds(
+      set(
+        ref(ownerDatabase, `scoreboardRooms/${ROOM_TOKEN}/scoreboard/killerBans`),
+        {
+          "skull-merchant": true,
+          xenomorph: true,
+        },
+      ),
+    )
+  })
+
+  it("rejects a fifth pick and invalid fearless slugs or ban values", async () => {
+    const database = testEnv.authenticatedContext(OWNER_UID).database()
+    const playerRef = ref(
+      database,
+      `scoreboardRooms/${ROOM_TOKEN}/scoreboard/thomas/0/killerPicks`,
+    )
+    const bansRef = ref(
+      database,
+      `scoreboardRooms/${ROOM_TOKEN}/scoreboard/killerBans`,
+    )
+
+    await assertFails(
+      set(playerRef, ["nurse", "wraith", "artist", "blight", "clown"]),
+    )
+    await assertFails(set(playerRef, ["Ghost Face"]))
+    await assertFails(set(bansRef, { "not_a_slug": true }))
+    await assertFails(set(bansRef, { nurse: false }))
+  })
+
+  it("denies viewer writes to fearless picks and bans", async () => {
+    const database = testEnv.authenticatedContext(VIEWER_UID).database()
+
+    await assertFails(
+      set(
+        ref(
+          database,
+          `scoreboardRooms/${ROOM_TOKEN}/scoreboard/thomas/0/killerPicks`,
+        ),
+        ["nurse"],
+      ),
+    )
+    await assertFails(
+      set(
+        ref(
+          database,
+          `scoreboardRooms/${ROOM_TOKEN}/scoreboard/killerBans/nurse`,
+        ),
+        true,
+      ),
+    )
+  })
+
   it("rejects invalid score values and unknown fields", async () => {
     const database = testEnv.authenticatedContext(OWNER_UID).database()
 
@@ -250,6 +315,15 @@ describe("Realtime Database scoreboard room rules", () => {
 
   it("allows a user to create a validated room they own", async () => {
     const token = "c".repeat(48)
+    const database = testEnv.authenticatedContext(OWNER_UID).database()
+
+    await assertSucceeds(
+      set(ref(database, `scoreboardRooms/${token}`), roomData()),
+    )
+  })
+
+  it("continues to accept the legacy 4v4 payload without fearless fields", async () => {
+    const token = "b".repeat(48)
     const database = testEnv.authenticatedContext(OWNER_UID).database()
 
     await assertSucceeds(

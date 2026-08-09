@@ -8,6 +8,7 @@ import {
   formatAceRoundScore,
   type AceRoundLogEntry,
 } from "@/lib/ace-round-log"
+import { KILLER_BY_ID } from "@/lib/killer-catalog"
 
 type Team = "thomas" | "ada"
 
@@ -218,22 +219,63 @@ function CapturePlayerRow({
 }) {
   const isThomas = team === "thomas"
   const killer = player.killer?.trim() ?? ""
+  const fearlessKillers = (player.killerPicks ?? [])
+    .slice(0, 4)
+    .map((killerId) => KILLER_BY_ID[killerId])
+    .filter((entry) => entry !== undefined)
   const playerName = player.name.trim() || "이름 없음"
 
-  const killerBadge = killer ? (
+  const killerBadge = fearlessKillers.length > 0 ? (
     <span
       style={{
-        flexShrink: 0,
+        display: "flex",
+        maxWidth: NAME_WIDTH,
+        alignItems: "center",
+        justifyContent: isThomas ? "flex-start" : "flex-end",
+        gap: "2px",
+        overflow: "hidden",
+      }}
+      title={fearlessKillers
+        .map((entry) => entry.koreanName || entry.englishName)
+        .join(", ")}
+    >
+      {fearlessKillers.map((entry, index) => (
+        <img
+          key={`${entry.id}-${index}`}
+          src={entry.smallPortrait}
+          alt=""
+          width={20}
+          height={20}
+          draggable={false}
+          style={{
+            display: "block",
+            width: "20px",
+            height: "20px",
+            flex: "0 0 20px",
+            border: "1px solid rgba(234,179,8,0.72)",
+            borderRadius: "2px",
+            objectFit: "cover",
+          }}
+        />
+      ))}
+    </span>
+  ) : killer ? (
+    <span
+      style={{
+        display: "block",
+        maxWidth: NAME_WIDTH,
+        overflow: "hidden",
         borderRadius: "4px",
         border: "1px solid rgba(234,179,8,0.85)",
         backgroundColor: "rgba(6,6,6,0.95)",
-        padding: "4px 8px",
-        fontSize: "11px",
+        padding: "2px 6px",
+        fontSize: "10px",
         lineHeight: 1,
         color: YELLOW,
         fontFamily: FONT_GODO,
         fontWeight: 400,
         whiteSpace: "nowrap",
+        textOverflow: "ellipsis",
       }}
     >
       {killer}
@@ -241,8 +283,9 @@ function CapturePlayerRow({
   ) : null
 
   const nameBlock = (
-    <span
+    <div
       style={{
+        position: "relative",
         display: "flex",
         alignItems: "center",
         alignSelf: "stretch",
@@ -260,20 +303,42 @@ function CapturePlayerRow({
         textOverflow: "ellipsis",
         whiteSpace: "nowrap",
         justifyContent: isThomas ? "flex-start" : "flex-end",
-        transform: "translateY(-7px)",
       }}
     >
-      {isFirstAttacker ? (
-        <CapturePlayerName
-          name={playerName}
-          team={team}
-          isFirstAttacker
-          style="roster"
-        />
-      ) : (
-        playerName
+      <span
+        style={{
+          display: "block",
+          maxWidth: "100%",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          transform: "translateY(-8px)",
+        }}
+      >
+        {isFirstAttacker ? (
+          <CapturePlayerName
+            name={playerName}
+            team={team}
+            isFirstAttacker
+            style="roster"
+          />
+        ) : (
+          playerName
+        )}
+      </span>
+      {killerBadge && (
+        <span
+          style={{
+            position: "absolute",
+            right: isThomas ? "auto" : 0,
+            bottom: "2px",
+            left: isThomas ? 0 : "auto",
+            maxWidth: "100%",
+          }}
+        >
+          {killerBadge}
+        </span>
       )}
-    </span>
+    </div>
   )
 
   const skullBlock = (
@@ -307,7 +372,6 @@ function CapturePlayerRow({
         width: "100%",
       }}
     >
-      {isThomas && killerBadge}
       <div style={{ ...plateStyle(team), zIndex: 0 }}>
         <PlateGrain />
         <div
@@ -337,7 +401,6 @@ function CapturePlayerRow({
           )}
         </div>
       </div>
-      {!isThomas && killerBadge}
     </div>
   )
 }

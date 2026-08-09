@@ -9,6 +9,11 @@ import {
 } from "@/lib/ace-round-log"
 import type { AceModalStep, AceSlotSpinPlan } from "@/lib/ace-modal-sync"
 import {
+  isKillerId,
+  KILLERS,
+  resolveKillerId,
+} from "@/lib/killer-catalog"
+import {
   get,
   goOffline,
   goOnline,
@@ -120,6 +125,7 @@ export function createDefaultScoreboardState(
     mode: "4v4",
     thomas: DEFAULT_FOUR_V_FOUR_PLAYERS("thomas"),
     ada: DEFAULT_FOUR_V_FOUR_PLAYERS("ada"),
+    killerBans: [],
     thomasName: "",
     adaName: "",
     firstAttackerId: null,
@@ -145,6 +151,7 @@ export type FourVFourSyncState = {
   mode: "4v4"
   thomas: Player[]
   ada: Player[]
+  killerBans: string[]
   thomasName: string
   adaName: string
   firstAttackerId: string | null
@@ -197,20 +204,26 @@ type WireAceState = {
   adaBackup?: Player
 }
 
-type FourVFourWireState = Omit<
+export type FourVFourWireState = Omit<
   FourVFourSyncState,
-  "thomas" | "ada" | "ace" | "firstAttackerId" | "mode"
+  | "thomas"
+  | "ada"
+  | "killerBans"
+  | "ace"
+  | "firstAttackerId"
+  | "mode"
 > & {
   mode: "4v4"
   thomas: Player[] | null
   ada: Player[] | null
+  killerBans?: Record<string, true>
   thomasCount: number
   adaCount: number
   ace: WireAceState
   firstAttackerId?: string
 }
 
-type FivePlayerWireState = {
+export type FivePlayerWireState = {
   mode: "5p"
   playerCount: number
   players: Player[] | null
@@ -218,7 +231,7 @@ type FivePlayerWireState = {
   givingConfig: number[]
 }
 
-type ScoreboardWireState = FourVFourWireState | FivePlayerWireState
+export type ScoreboardWireState = FourVFourWireState | FivePlayerWireState
 
 export type StoredRoomSession = {
   token: string
@@ -242,6 +255,19 @@ function isPlayer(value: unknown): value is Player {
     typeof player.played === "boolean" &&
     (player.killer === undefined ||
       (typeof player.killer === "string" && player.killer.length <= 30))
+  )
+}
+
+function isFourVFourPlayer(value: unknown): value is Player {
+  if (!isPlayer(value)) return false
+  // Same-player duplicates are accepted on the wire and stripped in normalize.
+  return (
+    value.killerPicks === undefined ||
+    (Array.isArray(value.killerPicks) &&
+      value.killerPicks.length <= 4 &&
+      value.killerPicks.every(
+        (killerId) => typeof killerId === "string" && isKillerId(killerId),
+      ))
   )
 }
 
@@ -270,10 +296,10 @@ function isAceState(value: unknown): value is AceSyncState {
     isNullableString(ace.adaId) &&
     (ace.thomasBackup === null ||
       ace.thomasBackup === undefined ||
-      isPlayer(ace.thomasBackup)) &&
+      isFourVFourPlayer(ace.thomasBackup)) &&
     (ace.adaBackup === null ||
       ace.adaBackup === undefined ||
-      isPlayer(ace.adaBackup)) &&
+      isFourVFourPlayer(ace.adaBackup)) &&
     isNullableString(ace.firstAttackerBackup) &&
     (ace.winnerTeam === null ||
       ace.winnerTeam === undefined ||
@@ -362,6 +388,23 @@ function excludedIdsToWire(ids: string[]) {
   return Object.fromEntries(ids.map((id) => [id, true as const]))
 }
 
+function killerBansFromWire(value: unknown) {
+  if (Array.isArray(value)) return normalizeKillerBans(value)
+  if (!value || typeof value !== "object") return []
+  return normalizeKillerBans(
+    Object.entries(value)
+      .filter(([, enabled]) => enabled === true)
+      .map(([killerId]) => killerId),
+  )
+}
+
+function killerBansToWire(killerBans: string[]) {
+  if (killerBans.length === 0) return undefined
+  return Object.fromEntries(
+    killerBans.map((killerId) => [killerId, true as const]),
+  )
+}
+
 const VALID_INTEGER_KILLS = new Set([0, 1, 2, 3, 4])
 
 function isIntegerPlayer(value: unknown): value is Player {
@@ -392,10 +435,14 @@ function isFourVFourSyncState(
     state.mode === "4v4" &&
     Array.isArray(state.thomas) &&
     state.thomas.length <= 4 &&
-    state.thomas.every(isPlayer) &&
+    state.thomas.every(isFourVFourPlayer) &&
     Array.isArray(state.ada) &&
     state.ada.length <= 4 &&
-    state.ada.every(isPlayer) &&
+    state.ada.every(isFourVFourPlayer) &&
+    Array.isArray(state.killerBans) &&
+    state.killerBans.length <= KILLERS.length &&
+    new Set(state.killerBans).size === state.killerBans.length &&
+    state.killerBans.every(isKillerId) &&
     typeof state.thomasName === "string" &&
     state.thomasName.length <= 24 &&
     typeof state.adaName === "string" &&
@@ -426,14 +473,62 @@ export function isScoreboardSyncState(
   return isFourVFourSyncState(value) || isFivePlayerSyncState(value)
 }
 
-function normalizePlayer(player: Player): Player {
+function normalizeBasePlayer(player: Player) {
   return {
     id: player.id.slice(0, 80),
     name: player.name.slice(0, 40),
     kills: VALID_KILLS.has(player.kills) ? player.kills : 0,
     played: player.played,
-    killer: (player.killer ?? "").slice(0, 30),
   }
+}
+
+export function normalizeFourVFourPlayer(player: Player): Player {
+  const seen = new Set<string>()
+  const requestedPicks: string[] = []
+  if (Array.isArray(player.killerPicks)) {
+    for (const killerId of player.killerPicks) {
+      if (
+        typeof killerId !== "string" ||
+        !isKillerId(killerId) ||
+        seen.has(killerId)
+      ) {
+        continue
+      }
+      seen.add(killerId)
+      requestedPicks.push(killerId)
+      if (requestedPicks.length === 4) break
+    }
+  }
+  const legacyPick =
+    requestedPicks.length === 0 && typeof player.killer === "string"
+      ? resolveKillerId(player.killer)
+      : undefined
+  const killerPicks = legacyPick ? [legacyPick] : requestedPicks
+
+  return {
+    ...normalizeBasePlayer(player),
+    ...(killerPicks.length > 0 ? { killerPicks } : {}),
+  }
+}
+
+export function normalizeKillerBans(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+
+  const seen = new Set<string>()
+  const bans: string[] = []
+  for (const killerId of value) {
+    if (
+      typeof killerId !== "string" ||
+      !isKillerId(killerId) ||
+      seen.has(killerId)
+    ) {
+      continue
+    }
+    seen.add(killerId)
+    bans.push(killerId)
+    if (bans.length === KILLERS.length) break
+  }
+  return bans
 }
 
 export function normalizeFourVFourState(
@@ -441,8 +536,9 @@ export function normalizeFourVFourState(
 ): FourVFourSyncState {
   return {
     mode: "4v4",
-    thomas: state.thomas.slice(0, 4).map(normalizePlayer),
-    ada: state.ada.slice(0, 4).map(normalizePlayer),
+    thomas: state.thomas.slice(0, 4).map(normalizeFourVFourPlayer),
+    ada: state.ada.slice(0, 4).map(normalizeFourVFourPlayer),
+    killerBans: normalizeKillerBans(state.killerBans),
     thomasName: state.thomasName.slice(0, 24),
     adaName: state.adaName.slice(0, 24),
     firstAttackerId: state.firstAttackerId,
@@ -450,10 +546,10 @@ export function normalizeFourVFourState(
       ...state.ace,
       roundLog: normalizeAceRoundLog(state.ace.roundLog),
       thomasBackup: state.ace.thomasBackup
-        ? normalizePlayer(state.ace.thomasBackup)
+        ? normalizeFourVFourPlayer(state.ace.thomasBackup)
         : null,
       adaBackup: state.ace.adaBackup
-        ? normalizePlayer(state.ace.adaBackup)
+        ? normalizeFourVFourPlayer(state.ace.adaBackup)
         : null,
     },
   }
@@ -463,12 +559,13 @@ export function normalizeFivePlayerState(
   state: FivePlayerSyncState,
 ): FivePlayerSyncState {
   const normalizeIntegerPlayer = (player: Player): Player => {
-    const normalized = normalizePlayer(player)
+    const normalized = normalizeBasePlayer(player)
     return {
       ...normalized,
       kills: VALID_INTEGER_KILLS.has(normalized.kills)
         ? normalized.kills
         : 0,
+      killer: (player.killer ?? "").slice(0, 30),
     }
   }
 
@@ -528,8 +625,12 @@ function toWireAce(ace: AceSyncState): WireAceState {
   if (ace.adaId) wire.adaId = ace.adaId
   if (ace.firstAttackerBackup) wire.firstAttackerBackup = ace.firstAttackerBackup
   if (ace.winnerTeam) wire.winnerTeam = ace.winnerTeam
-  if (ace.thomasBackup) wire.thomasBackup = normalizePlayer(ace.thomasBackup)
-  if (ace.adaBackup) wire.adaBackup = normalizePlayer(ace.adaBackup)
+  if (ace.thomasBackup) {
+    wire.thomasBackup = normalizeFourVFourPlayer(ace.thomasBackup)
+  }
+  if (ace.adaBackup) {
+    wire.adaBackup = normalizeFourVFourPlayer(ace.adaBackup)
+  }
   if (Object.keys(ace.winnersMap).length > 0) wire.winnersMap = ace.winnersMap
   if (ace.roundLog.length > 0) wire.roundLog = ace.roundLog
 
@@ -549,6 +650,8 @@ function toWireFourVFourState(state: FourVFourSyncState): FourVFourWireState {
     ace: toWireAce(normalized.ace),
   }
 
+  const killerBansWire = killerBansToWire(normalized.killerBans)
+  if (killerBansWire) wire.killerBans = killerBansWire
   if (normalized.firstAttackerId) {
     wire.firstAttackerId = normalized.firstAttackerId
   }
@@ -567,7 +670,7 @@ function toWireFivePlayerState(state: FivePlayerSyncState): FivePlayerWireState 
   }
 }
 
-function toWireState(state: ScoreboardSyncState): ScoreboardWireState {
+export function toWireState(state: ScoreboardSyncState): ScoreboardWireState {
   if (state.mode === "5p") return toWireFivePlayerState(state)
   return toWireFourVFourState(state)
 }
@@ -579,6 +682,7 @@ function fromWireFourVFourState(
     mode: "4v4",
     thomas: Array.isArray(wire.thomas) ? wire.thomas : [],
     ada: Array.isArray(wire.ada) ? wire.ada : [],
+    killerBans: killerBansFromWire(wire.killerBans),
     thomasName: wire.thomasName ?? "",
     adaName: wire.adaName ?? "",
     firstAttackerId: wire.firstAttackerId ?? null,
@@ -622,7 +726,7 @@ function fromWireFourVFourState(
   ) {
     return null
   }
-  return candidate
+  return normalizeFourVFourState(candidate)
 }
 
 function fromWireFivePlayerState(
@@ -644,7 +748,7 @@ function fromWireFivePlayerState(
   return candidate
 }
 
-function fromWireState(value: unknown): ScoreboardSyncState | null {
+export function fromWireState(value: unknown): ScoreboardSyncState | null {
   if (!value || typeof value !== "object") return null
   const wire = value as Partial<ScoreboardWireState>
   if (wire.mode === "5p") return fromWireFivePlayerState(wire)

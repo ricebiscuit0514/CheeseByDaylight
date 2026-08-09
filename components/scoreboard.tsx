@@ -12,6 +12,8 @@ import {
 } from "@/lib/ace-modal-sync"
 import { AceMatchOverlay } from "@/components/ace-match-overlay"
 import { HoldButton } from "@/components/hold-button"
+import { KillerPicker, type KillerPickerContext } from "@/components/killer-picker"
+import { KillerPickSlots } from "@/components/killer-pick-slots"
 import { MAX_KILLS, PlayerRow, type Player } from "@/components/player-row"
 import { AppVersionCorner } from "@/components/app-version"
 import { CopyScoreboardImageButton } from "@/components/copy-scoreboard-image-button"
@@ -30,6 +32,8 @@ import {
   MODE_SWITCH_SESSION_KEY,
   VIEWER_SESSION_KEY,
   loadRoomSession,
+  normalizeFourVFourPlayer,
+  normalizeKillerBans,
 } from "@/lib/firebase/scoreboard-room"
 import {
   consumeViewerSessionEndedNotice,
@@ -44,6 +48,12 @@ import {
   normalizeAceRoundLog,
   type AceRoundLogEntry,
 } from "@/lib/ace-round-log"
+import {
+  cancelPlayerKillerPick,
+  flattenFearlessPicks,
+  setPlayerKillerPick,
+  toggleKillerBan,
+} from "@/lib/fearless"
 import { cn } from "@/lib/utils"
 import { motion } from "motion/react"
 import { useRouter } from "next/navigation"
@@ -69,6 +79,12 @@ const LS_KEY = "dbd-scoreboard-v1"
 const EXPIRATION_TIME_MS = 60 * 60 * 1000 // 마지막 조작 기준 1시간 만료
 
 const teamScore = (players: Player[]) => players.reduce((s, p) => s + p.kills, 0)
+
+function clearPlayerKillers(player: Player): Player {
+  const next = { ...player, killerPicks: [] }
+  delete next.killer
+  return next
+}
 
 function computePreAceTeamScore(
   roster: Player[],
@@ -444,7 +460,27 @@ function loadFromStorage() {
       localStorage.removeItem(LS_KEY)
       return null
     }
-    return parsed
+    return {
+      ...parsed,
+      thomas: Array.isArray(parsed.thomas)
+        ? parsed.thomas.map(normalizeFourVFourPlayer)
+        : parsed.thomas,
+      ada: Array.isArray(parsed.ada)
+        ? parsed.ada.map(normalizeFourVFourPlayer)
+        : parsed.ada,
+      killerBans: normalizeKillerBans(parsed.killerBans),
+      ace: parsed.ace
+        ? {
+            ...parsed.ace,
+            thomasBackup: parsed.ace.thomasBackup
+              ? normalizeFourVFourPlayer(parsed.ace.thomasBackup)
+              : null,
+            adaBackup: parsed.ace.adaBackup
+              ? normalizeFourVFourPlayer(parsed.ace.adaBackup)
+              : null,
+          }
+        : parsed.ace,
+    }
   } catch {
     return null
   }
@@ -468,6 +504,9 @@ export function Scoreboard() {
   const [ada, setAda] = useState<Player[]>(INITIAL_ADA)
   const [thomasName, setThomasName] = useState("A")
   const [adaName, setAdaName] = useState("B")
+  const [killerBans, setKillerBans] = useState<string[]>([])
+  const [pickerContext, setPickerContext] =
+    useState<KillerPickerContext | null>(null)
   const teamNameLinked = useRef<Record<Team, boolean>>({ thomas: false, ada: false })
   const playerId = useRef(0)
   const [removeMode, setRemoveMode] = useState<Team | null>(null)
@@ -551,6 +590,9 @@ export function Scoreboard() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [viewerSessionEndReason, setViewerSessionEndReason] =
     useState<ViewerSessionEndReason | null>(null)
+  const [lastScoredKills, setLastScoredKills] = useState<number | null>(null)
+  const [lastScoredPlayerId, setLastScoredPlayerId] =
+    useState<string | null>(null)
 
   useEffect(() => {
     const reason = consumeViewerSessionEndedNotice()
@@ -562,6 +604,7 @@ export function Scoreboard() {
       mode: "4v4",
       thomas,
       ada,
+      killerBans,
       thomasName,
       adaName,
       firstAttackerId,
@@ -598,6 +641,7 @@ export function Scoreboard() {
       firstAttackerId,
       hasCompletedAceMatch,
       isAceMatchMode,
+      killerBans,
       showAceProceedButton,
       showAceRematchPrompt,
       showAcePromptModal,
@@ -646,6 +690,7 @@ export function Scoreboard() {
     }
     setThomas(remote.thomas)
     setAda(remote.ada)
+    setKillerBans(remote.killerBans)
     setThomasName(remote.thomasName)
     setAdaName(remote.adaName)
     setFirstAttackerId(
@@ -689,7 +734,44 @@ export function Scoreboard() {
     onRemoteState: applyRemoteState,
   })
   const isViewer = sync.role === "viewer"
+  const allPicks = useMemo(
+    () => flattenFearlessPicks(thomas, ada),
+    [thomas, ada],
+  )
+  const activePickerContext = useMemo<KillerPickerContext | null>(() => {
+    if (!pickerContext) return null
+    const roster = pickerContext.team === "thomas" ? thomas : ada
+    const player = roster.find((candidate) => candidate.id === pickerContext.playerId)
+    if (!player) return null
+
+    const picks = player.killerPicks ?? []
+    if (
+      pickerContext.slotIndex !== null &&
+      picks[pickerContext.slotIndex] === undefined
+    ) {
+      if (picks.length >= 4) return null
+      return {
+        ...pickerContext,
+        playerName: player.name,
+        slotIndex: null,
+        currentKillerId: undefined,
+      }
+    }
+
+    return {
+      ...pickerContext,
+      playerName: player.name,
+      currentKillerId:
+        pickerContext.slotIndex === null
+          ? undefined
+          : picks[pickerContext.slotIndex],
+    }
+  }, [ada, pickerContext, thomas])
   const { hidden: utilityUiHidden, toggle: toggleUtilityUi } = useUtilityUiHidden()
+
+  useEffect(() => {
+    if (pickerContext && !activePickerContext) setPickerContext(null)
+  }, [activePickerContext, pickerContext])
 
   useEffect(() => {
     if (!utilityUiHidden) return
@@ -754,6 +836,7 @@ export function Scoreboard() {
     if (saved) {
       if (Array.isArray(saved.thomas)) setThomas(saved.thomas)
       if (Array.isArray(saved.ada)) setAda(saved.ada)
+      setKillerBans(saved.killerBans)
       if (saved.thomasName) setThomasName(saved.thomasName)
       if (saved.adaName) setAdaName(saved.adaName)
       if (saved.firstAttackerId !== undefined) setFirstAttackerId(saved.firstAttackerId)
@@ -878,8 +961,6 @@ export function Scoreboard() {
   }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada])
 
   const [showOverlay, setShowOverlay] = useState(false)
-  const [lastScoredKills, setLastScoredKills] = useState<number | null>(null)
-  const [lastScoredPlayerId, setLastScoredPlayerId] = useState<string | null>(null)
 
   const isComebackWin = useMemo(() => {
     if (isAceMatchMode) return false
@@ -1241,6 +1322,7 @@ export function Scoreboard() {
   }, [hasAnyScore])
 
   function record(team: Team, playerId: string, newKills: number, animate: boolean) {
+    if (isViewer) return
     setLastScoredKills(newKills)
     setLastScoredPlayerId(playerId)
     const roster = team === "thomas" ? thomas : ada
@@ -1272,6 +1354,7 @@ export function Scoreboard() {
   }
 
   function handleCancel(team: Team, playerId: string) {
+    if (isViewer) return
     // 같은 스코어를 다시 눌러 취소 — kills를 0으로 되돌리고 played를 false로 해제
     const setTeam = team === "thomas" ? setThomas : setAda
     setTeam((prev) =>
@@ -1304,6 +1387,7 @@ export function Scoreboard() {
   }
 
   function reorder(team: Team, fromId: string, toId: string) {
+    if (isViewer) return
     if (fromId === toId) return
     const setTeam = team === "thomas" ? setThomas : setAda
     setTeam((prev) => {
@@ -1327,6 +1411,7 @@ export function Scoreboard() {
   }
 
   function shuffleTeam(team: Team) {
+    if (isViewer) return
     const setTeam = team === "thomas" ? setThomas : setAda
     setTeam((prev) => {
       const shuffled = [...prev]
@@ -1342,6 +1427,7 @@ export function Scoreboard() {
   }
 
   function addPlayer(team: Team) {
+    if (isViewer) return
     const roster = team === "thomas" ? thomas : ada
     if (roster.length >= MAX_PLAYERS_PER_TEAM) return
 
@@ -1362,6 +1448,79 @@ export function Scoreboard() {
     setRemoveMode(null)
   }
 
+  function openKillerPicker(
+    team: Team,
+    player: Player,
+    slotIndex: number | null,
+  ) {
+    setPickerContext({
+      team,
+      playerId: player.id,
+      playerName: player.name,
+      slotIndex,
+      currentKillerId:
+        slotIndex === null ? undefined : player.killerPicks?.[slotIndex],
+    })
+  }
+
+  function handleKillerPick(killerId: string) {
+    if (isViewer || !activePickerContext) return
+    const { team, playerId, slotIndex } = activePickerContext
+    const roster = team === "thomas" ? thomas : ada
+    const player = roster.find((candidate) => candidate.id === playerId)
+    if (!player) {
+      setPickerContext(null)
+      return
+    }
+
+    const nextPlayer = setPlayerKillerPick(player, killerId, slotIndex)
+    if (nextPlayer === player) return
+
+    const setTeam = team === "thomas" ? setThomas : setAda
+    setTeam((current) =>
+      current.map((candidate) =>
+        candidate.id === playerId
+          ? setPlayerKillerPick(candidate, killerId, slotIndex)
+          : candidate,
+      ),
+    )
+    setPickerContext({
+      ...activePickerContext,
+      slotIndex: slotIndex ?? (player.killerPicks?.length ?? 0),
+      currentKillerId: killerId,
+    })
+  }
+
+  function handleKillerPickCancel() {
+    if (
+      isViewer ||
+      !activePickerContext ||
+      activePickerContext.slotIndex === null
+    ) {
+      return
+    }
+
+    const { team, playerId, slotIndex } = activePickerContext
+    const setTeam = team === "thomas" ? setThomas : setAda
+    setTeam((current) =>
+      current.map((player) =>
+        player.id === playerId
+          ? cancelPlayerKillerPick(player, slotIndex)
+          : player,
+      ),
+    )
+    setPickerContext({
+      ...activePickerContext,
+      slotIndex: null,
+      currentKillerId: undefined,
+    })
+  }
+
+  function handleKillerBanToggle(killerId: string) {
+    if (isViewer) return
+    setKillerBans((current) => toggleKillerBan(current, killerId))
+  }
+
   const renderRow = (team: Team, p: Player, index: number) => {
     const isThomas = team === "thomas"
     const isAcePlayer = isAceMatchMode && (isThomas ? p.id === aceThomasId : p.id === aceAdaId)
@@ -1374,6 +1533,15 @@ export function Scoreboard() {
     const selgong = firstAttackerId != null && p.id === firstAttackerId
     const tabIdx = isThomas ? index + 1 : 5 + index
     const isLastPlayerOverall = team === "ada" && index === ada.length - 1
+    const killerControl = (
+      <KillerPickSlots
+        playerName={p.name}
+        team={team}
+        killerPicks={p.killerPicks ?? []}
+        disabled={removeMode === team}
+        onOpen={(slotIndex) => openKillerPicker(team, p, slotIndex)}
+      />
+    )
 
     if (isNonAcePlayer) {
       return (
@@ -1390,6 +1558,7 @@ export function Scoreboard() {
             animId={anim[p.id] ?? 0}
             prevKills={prevKillsMap[p.id] ?? 0}
             dragging={false}
+            killerControl={killerControl}
             onScore={() => {}}
             onZeroKill={() => {}}
             onCancel={() => {}}
@@ -1425,13 +1594,14 @@ export function Scoreboard() {
           dragging={draggingId === p.id}
           readOnly={isViewer}
           removeMode={!isViewer && removeMode === team}
+          killerControl={killerControl}
           onRemove={() => removePlayer(team, p.id)}
           onScore={(nk) => handleScore(team, p.id, nk)}
           onZeroKill={() => handleZeroKill(team, p.id)}
           onCancel={() => handleCancel(team, p.id)}
           onNameChange={(name) => updatePlayerName(team, p.id, name)}
           onNameCommit={(name) => updatePlayerName(team, p.id, name)}
-          onKillerChange={(killer) => updateKiller(team, p.id, killer)}
+          onKillerChange={() => {}}
           onDragStart={() => {
             dragItem.current = { team, id: p.id }
             setDraggingId(p.id)
@@ -1482,6 +1652,7 @@ export function Scoreboard() {
   }
 
   function removePlayer(team: Team, playerId: string) {
+    if (isViewer) return
     const setTeam = team === "thomas" ? setThomas : setAda
     const roster = team === "thomas" ? thomas : ada
     setTeam((prev) => {
@@ -1491,6 +1662,9 @@ export function Scoreboard() {
       return next
     })
     setFirstAttackerId((current) => (current === playerId ? null : current))
+    setPickerContext((current) =>
+      current?.playerId === playerId ? null : current,
+    )
     setAnim((current) => {
       const next = { ...current }
       delete next[playerId]
@@ -1499,6 +1673,7 @@ export function Scoreboard() {
   }
 
   function updatePlayerName(team: Team, playerId: string, name: string) {
+    if (isViewer) return
     const setTeam = team === "thomas" ? setThomas : setAda
     const roster = team === "thomas" ? thomas : ada
     setTeam((prev) => prev.map((player) => player.id === playerId ? { ...player, name } : player))
@@ -1510,12 +1685,8 @@ export function Scoreboard() {
     }
   }
 
-  function updateKiller(team: Team, playerId: string, killer: string) {
-    const setTeam = team === "thomas" ? setThomas : setAda
-    setTeam((prev) => prev.map((player) => player.id === playerId ? { ...player, killer } : player))
-  }
-
   function commitPlayerName(team: Team, playerId: string, name: string) {
+    if (isViewer) return
     const roster = team === "thomas" ? thomas : ada
     const cleanName = name.trim()
     if (teamNameLinked.current[team] || roster[0]?.id !== playerId || !cleanName) return
@@ -1578,8 +1749,11 @@ export function Scoreboard() {
   }
 
   function resetKillers() {
-    setThomas((prev) => prev.map((p) => ({ ...p, killer: "" })))
-    setAda((prev) => prev.map((p) => ({ ...p, killer: "" })))
+    if (isViewer) return
+    setThomas((prev) => prev.map(clearPlayerKillers))
+    setAda((prev) => prev.map(clearPlayerKillers))
+    setKillerBans([])
+    setPickerContext(null)
     closeAllResetUI()
   }
 
@@ -1602,6 +1776,7 @@ export function Scoreboard() {
   }
 
   function resetRoster() {
+    if (isViewer) return
     setThomas((prev) =>
       prev.map((p) => ({ ...p, name: "", kills: 0, played: false })),
     )
@@ -1621,6 +1796,7 @@ export function Scoreboard() {
   }
 
   function reset() {
+    if (isViewer) return
     setThomas((prev) => prev.map((p) => ({ ...p, kills: 0, played: false })))
     setAda((prev) => prev.map((p) => ({ ...p, kills: 0, played: false })))
     setAnim({})
@@ -1655,8 +1831,11 @@ export function Scoreboard() {
   }
 
   function fullReset() {
+    if (isViewer) return
     setThomas(INITIAL_THOMAS)
     setAda(INITIAL_ADA)
+    setKillerBans([])
+    setPickerContext(null)
     setThomasName("A")
     setAdaName("B")
     setAnim({})
@@ -1701,7 +1880,7 @@ export function Scoreboard() {
         onAuctionResult={handleAuctionResult}
       />
 
-      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-3 pb-12 md:px-8 md:py-4 md:pb-14">
+      <div className="relative mx-auto flex min-h-screen max-w-[1440px] flex-col px-3 py-3 pb-12 sm:px-4 md:px-6 md:py-4 md:pb-14">
         {/* editable team titles & floating coin toss widget */}
         <div className="relative border-b border-foreground/10 pb-4">
           {!isAceMatchMode && (
@@ -1829,9 +2008,9 @@ export function Scoreboard() {
             </div>
           </motion.div>
         ) : (
-          <div className="mt-1 grid grid-cols-1 gap-5 md:h-96 md:grid-cols-2 md:gap-12 lg:gap-20">
-            <div className="flex w-full max-w-xl flex-col justify-self-end gap-2">
-              <div className="flex items-center gap-1 text-neutral-400">
+          <div className="mt-1 grid grid-cols-1 gap-5 md:h-96 md:grid-cols-2 md:gap-8 lg:gap-12">
+            <div className="flex w-full max-w-[42rem] flex-col justify-self-end gap-2">
+              <div className="fearless-roster-controls fearless-roster-controls-thomas flex items-center gap-1 text-neutral-400">
                 <ShuffleButton teamName={thomasName} onClick={() => shuffleTeam("thomas")} disabled={hasAnyScore || isViewer} />
                 <button
                   type="button"
@@ -1872,8 +2051,8 @@ export function Scoreboard() {
               </div>
             </div>
 
-            <div className="flex w-full max-w-xl flex-col gap-2">
-              <div className="flex items-center justify-end gap-1 text-neutral-400">
+            <div className="flex w-full max-w-[42rem] flex-col gap-2">
+              <div className="fearless-roster-controls fearless-roster-controls-ada flex items-center justify-end gap-1 text-neutral-400">
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setRemoveMode((current) => current === "ada" ? null : "ada") }}
@@ -2633,6 +2812,25 @@ export function Scoreboard() {
       )}
 
       {utilityUiHidden && <SyncStatusCompactLabel role={sync.role} />}
+
+      {activePickerContext && (
+        <KillerPicker
+          open
+          context={activePickerContext}
+          allPicks={allPicks}
+          killerBans={killerBans}
+          playerKillerPicks={
+            (activePickerContext.team === "thomas" ? thomas : ada).find(
+              (player) => player.id === activePickerContext.playerId,
+            )?.killerPicks ?? []
+          }
+          readOnly={isViewer}
+          onPick={handleKillerPick}
+          onCancelPick={handleKillerPickCancel}
+          onToggleBan={handleKillerBanToggle}
+          onClose={() => setPickerContext(null)}
+        />
+      )}
 
     </main>
   )

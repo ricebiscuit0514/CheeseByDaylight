@@ -7,7 +7,16 @@ import { cn } from "@/lib/utils"
 export const SKULLS_PER_PLAYER = 4
 export const MAX_KILLS = 4
 
-export type Player = { id: string; name: string; kills: number; played: boolean; killer?: string }
+export type Player = {
+  id: string
+  name: string
+  kills: number
+  played: boolean
+  /** 1v4 legacy/free-text killer field. */
+  killer?: string
+  /** Ordered 4v4 fearless picks. Unique per player; cross-player duplicates OK. */
+  killerPicks?: string[]
+}
 type Team = "thomas" | "ada"
 const SKULL_URL = "/images/skull.webp"
 const SKULL_STAGGER = 0.42
@@ -199,13 +208,15 @@ function buildPlateMotion(prevKills: number, kills: number, fourKill: boolean, i
   }
 }
 
-export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, isGoldSkull = false, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, tabIndex, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd, onNameKeyDown }: {
+export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, isGoldSkull = false, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, tabIndex, killerControl, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd, onNameKeyDown }: {
   player: Player; team: Team; active: boolean; isSelgong?: boolean; aceBadge?: "win" | "lose" | null; isGoldSkull?: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean; tabIndex?: number
+  killerControl?: React.ReactNode
   onRemove?: () => void; onScore: (newKills: number) => void; onZeroKill: () => void; onCancel: () => void; onNameChange: (name: string) => void
   onNameCommit: (name: string) => void; onKillerChange: (killer: string) => void; onDragStart: () => void; onDragEnter: () => void; onDragEnd: () => void
   onNameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
 }) {
   const isThomas = team === "thomas"
+  const hasKillerControl = killerControl != null
   const interactionsDisabled = readOnly || removeMode
   const reducedMotionRaw = useReducedMotion()
   const [mounted, setMounted] = useState(false)
@@ -293,22 +304,30 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
   const skullGroup = <div className="skull-group" onMouseLeave={() => setHover(null)}>{skulls}</div>
 
   return (
-    <div className="relative">
+    <div className={cn(
+      "relative",
+      hasKillerControl && "fearless-player-row",
+      hasKillerControl && `fearless-player-row-${team}`,
+    )}>
       {/* 살인마 기록 — 이름표 바깥 절대 위치, 이름표 높이와 수직 중앙 정렬
           thomas팀: 오른쪽 끝(이름표 가장자리)이 고정되고 input이 왼쪽으로 늘어남
           ada팀:    왼쪽 끝(이름표 가장자리)이 고정되고 input이 오른쪽으로 늘어남 */}
       <div className={cn(
-        "absolute top-1/2 -translate-y-1/2 z-10 flex",
-        isThomas
+        hasKillerControl
+          ? "fearless-player-row-control"
+          : "absolute top-1/2 -translate-y-1/2 z-10 flex",
+        !hasKillerControl && (isThomas
           ? "justify-end right-[calc(100%+0.375rem)]"  // 우측 끝 고정 → 왼쪽으로 성장
-          : "justify-start left-[calc(100%+0.375rem)]", // 좌측 끝 고정 → 오른쪽으로 성장
+          : "justify-start left-[calc(100%+0.375rem)]"), // 좌측 끝 고정 → 오른쪽으로 성장
       )}>
-        <KillerTag
-          value={player.killer ?? ""}
-          isThomas={isThomas}
-          disabled={interactionsDisabled}
-          onChange={onKillerChange}
-        />
+        {hasKillerControl ? killerControl : (
+          <KillerTag
+            value={player.killer ?? ""}
+            isThomas={isThomas}
+            disabled={interactionsDisabled}
+            onChange={onKillerChange}
+          />
+        )}
       </div>
       <motion.div
         key={`${player.id}-${animId}`}
@@ -347,7 +366,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
           {isThomas ? (
             <>
               <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
-              <div className="w-32 sm:w-36 flex-none flex items-center">{nameInput}</div>
+              <div className="player-name-cell w-32 sm:w-36 flex-none flex items-center">{nameInput}</div>
               <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
               <NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
               {skullGroup}
@@ -357,7 +376,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
               {skullGroup}
               <NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
               <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
-              <div className="w-32 sm:w-36 flex-none flex items-center justify-end">{nameInput}</div>
+              <div className="player-name-cell w-32 sm:w-36 flex-none flex items-center justify-end">{nameInput}</div>
               <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
             </>
           )}

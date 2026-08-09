@@ -1,0 +1,16 @@
+S-Core Dream font notice
+
+Copyright and intellectual property: S-Core Co., Ltd. (주)에스코어
+
+S-Core Dream is provided free of charge to all users, including individuals
+and companies, and redistribution is permitted. Modification of the font files
+and sale of the font itself are prohibited.
+
+The files in this directory are stored unmodified.
+
+Official license and font page:
+https://s-core.co.kr/company/font/
+
+Downloaded from Project Noonnu via jsDelivr:
+https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-4Regular.woff
+https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-7ExtraBold.woff
