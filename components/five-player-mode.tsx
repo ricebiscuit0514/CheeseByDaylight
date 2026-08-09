@@ -869,6 +869,8 @@ export function FivePlayerMode() {
           </div>
             </>
           )}
+            </>
+          )}
           <UtilityUiToggle hidden={utilityUiHidden} onToggle={toggleUtilityUi} />
         </ZoomCompensated>
 
