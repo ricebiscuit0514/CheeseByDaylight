@@ -11,7 +11,7 @@ import {
 
 type Team = "thomas" | "ada"
 
-const SKULL_URL = "/images/skull.png"
+const SKULL_URL = "/images/skull.webp"
 const ORANGE = "#f97316"
 const BLUE = "#3b82f6"
 const YELLOW = "#eab308"

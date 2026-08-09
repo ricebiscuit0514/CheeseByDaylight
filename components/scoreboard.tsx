@@ -1837,7 +1837,7 @@ export function Scoreboard() {
                   className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
                 >
                   <img
-                    src="/images/addplayer.png"
+                    src="/images/addplayer.webp"
                     alt=""
                     draggable={false}
                     className="size-full object-cover transition-[filter] group-hover:brightness-125"
@@ -1853,7 +1853,7 @@ export function Scoreboard() {
                   className={cn("group size-9 overflow-hidden rounded-sm transition-[transform,filter] hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue", removeMode === "thomas" && "drop-shadow-[0_0_8px_var(--dbd-red)]")}
                 >
                   <img
-                    src="/images/removeplayer.png"
+                    src="/images/removeplayer.webp"
                     alt=""
                     draggable={false}
                     className={cn("size-full object-cover transition-[filter] group-hover:brightness-125", removeMode === "thomas" && "brightness-125")}
@@ -2656,7 +2656,7 @@ function ShuffleButton({ teamName, onClick, disabled }: { teamName: string; onCl
       className="group size-12 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-dbd-blue disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
     >
       <img
-        src="/images/random.png"
+        src="/images/random.webp"
         alt=""
         draggable={false}
         className="size-full object-cover transition-[filter] group-hover:brightness-125"

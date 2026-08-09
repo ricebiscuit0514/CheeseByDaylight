@@ -418,7 +418,7 @@ export function FivePlayerMode() {
                   className="group size-12 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:scale-100"
                 >
                   <img
-                    src="/images/random.png"
+                    src="/images/random.webp"
                     alt=""
                     draggable={false}
                     className="size-full object-cover transition-[filter] group-hover:brightness-125 group-disabled:brightness-75"
@@ -435,7 +435,7 @@ export function FivePlayerMode() {
                   className="group size-9 overflow-hidden rounded-sm transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-35"
                 >
                   <img
-                    src="/images/addplayer.png"
+                    src="/images/addplayer.webp"
                     alt=""
                     draggable={false}
                     className="size-full object-cover transition-[filter] group-hover:brightness-125"
@@ -456,7 +456,7 @@ export function FivePlayerMode() {
                   }`}
                 >
                   <img
-                    src="/images/removeplayer.png"
+                    src="/images/removeplayer.webp"
                     alt=""
                     draggable={false}
                     className="size-full object-cover transition-[filter] group-hover:brightness-125"

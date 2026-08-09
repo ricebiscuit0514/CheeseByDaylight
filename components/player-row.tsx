@@ -9,7 +9,7 @@ export const MAX_KILLS = 4
 
 export type Player = { id: string; name: string; kills: number; played: boolean; killer?: string }
 type Team = "thomas" | "ada"
-const SKULL_URL = "/images/skull.png"
+const SKULL_URL = "/images/skull.webp"
 const SKULL_STAGGER = 0.42
 const SKULL_DURATION = 0.68
 const SKULL_IMPACT_AT = 0.32
@@ -80,7 +80,7 @@ function Skull({ fill, previewFill, team, animId, animOrder, animate, disabled, 
   )
 }
 
-const ZERO_KILL_URL = "/images/0kill.png"
+const ZERO_KILL_URL = "/images/0kill.webp"
 
 function NoKillButton({ played, kills, disabled, onZero, onCancel }: { played: boolean; kills: number; disabled: boolean; onZero: () => void; onCancel: () => void }) {
   const selected = played && kills === 0

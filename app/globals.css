@@ -195,7 +195,7 @@
 }
 
 /* Premium asymmetric-horror combat system */
-.trial-arena { background-color: var(--background); background-image: url("/images/lullaby-of-the-dark-key-art.png"); background-position: center center; background-size: cover; background-repeat: no-repeat; width: 100vw; height: 100vh; }
+.trial-arena { background-color: var(--background); background-image: url("/images/lullaby-of-the-dark-key-art.webp"); background-position: center center; background-size: cover; background-repeat: no-repeat; width: 100vw; height: 100vh; }
 .trial-arena::before { content: ""; position: absolute; inset: 0; background-color: rgba(0, 0, 0, 0.85); }
 .arena-fog { position: absolute; inset: 22% -15% 0; opacity: .28; background: radial-gradient(ellipse at center, color-mix(in oklch, var(--muted-foreground), transparent 91%), transparent 65%); filter: blur(32px); }
 .arena-scratches { position: absolute; inset: 0; opacity: .11; pointer-events: none; background: repeating-linear-gradient(112deg, transparent 0 42px, color-mix(in oklch, var(--foreground), transparent 90%) 43px, transparent 44px 76px); mask-image: linear-gradient(to bottom, transparent, black 25%, black 80%, transparent); }

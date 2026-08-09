@@ -143,7 +143,7 @@ export default function LandingPage() {
         {/* Original Cheese Skull Logo Image (Clickable Cheese Easter Egg!) */}
         <div className="relative w-full max-w-lg sm:max-w-xl md:max-w-2xl h-auto flex items-center justify-center px-2">
           <Image
-            src="/images/cheese-skull-logo.png"
+            src="/images/cheese-skull-logo.webp"
             alt="Cheese by Daylight"
             width={600}
             height={360}
