@@ -106,6 +106,8 @@ type ColdState =
       isGeneral?: boolean
       /** isGeneral일 때 올킬로 우승(역전) 가능한지 여부. false면 올킬로 동점만 가능. */
       isWinPossible?: boolean
+      /** isGeneral + isWinPossible일 때, 현재 점수가 상대보다 낮아 역전승 문구를 쓸지 */
+      isComebackWinNotice?: boolean
       /** 선제 콜드게임 우승 가능 알림 여부 */
       isEarlyWinNotice?: boolean
     }
@@ -325,6 +327,7 @@ function computeCold(
       need: displayNeed,
       isGeneral: true,
       isWinPossible: canWin,
+      isComebackWinNotice: canWin && my < opp,
     }
   }
 
@@ -1990,14 +1993,14 @@ export function Scoreboard() {
                                   <>
                                     {"이번 경기에서 "}
                                     <span className="cold-kill-count">{"올킬"}</span>
-                                    {" 하면 우승입니다"}
+                                    {cold.isComebackWinNotice ? " 하면 역전승입니다" : " 하면 우승입니다"}
                                   </>
                                 )
                                 : (
                                   <>
                                     {"이번 경기에서 "}
                                     <span className="cold-kill-count">{fmt(cold.need)}킬</span>
-                                    {" 이상 하면 우승입니다"}
+                                    {cold.isComebackWinNotice ? " 이상 하면 역전승입니다" : " 이상 하면 우승입니다"}
                                   </>
                                 )
                               : cold.need >= MAX_KILLS
