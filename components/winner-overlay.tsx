@@ -215,7 +215,7 @@ export function WinnerOverlay({
                     className="mb-1 text-xl md:text-3xl font-black italic text-dbd-yellow tracking-widest drop-shadow-[0_0_12px_color-mix(in_oklch,var(--dbd-yellow),transparent_35%)]"
                     style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
                   >
-                    역전승!
+                    역전!
                   </span>
                 )}
                 <span 
