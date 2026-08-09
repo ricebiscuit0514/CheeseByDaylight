@@ -730,7 +730,7 @@ export function FivePlayerMode() {
                   ✕
                 </button>
                 <img
-                  src="/images/guide_1v4.jpg"
+                  src="/images/guide_1v4.webp"
                   alt="Game Guide"
                   className="h-auto w-full object-contain"
                 />

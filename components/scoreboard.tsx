@@ -2129,7 +2129,7 @@ export function Scoreboard() {
                   ✕
                 </button>
                 <img
-                  src="/images/guide_4v4.jpg"
+                  src="/images/guide_4v4.webp"
                   alt="Game Guide"
                   className="h-auto w-full"
                 />
