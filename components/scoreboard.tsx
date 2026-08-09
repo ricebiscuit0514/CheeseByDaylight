@@ -18,6 +18,7 @@ import { CopyScoreboardImageButton } from "@/components/copy-scoreboard-image-bu
 import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
 import { ZoomCompensated } from "@/components/zoom-compensated"
 import { UtilityUiToggle } from "@/components/utility-ui-toggle"
+import { SyncStatusCompactLabel } from "@/components/sync-status-compact-label"
 import { TeamScore } from "@/components/team-score"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { WinnerOverlay } from "@/components/winner-overlay"
@@ -2621,6 +2622,8 @@ export function Scoreboard() {
         )}
       </ZoomCompensated>
       )}
+
+      {utilityUiHidden && <SyncStatusCompactLabel role={sync.role} />}
 
     </main>
   )

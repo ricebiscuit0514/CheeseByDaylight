@@ -14,6 +14,7 @@ import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { ZoomCompensated } from "@/components/zoom-compensated"
 import { UtilityUiToggle } from "@/components/utility-ui-toggle"
+import { SyncStatusCompactLabel } from "@/components/sync-status-compact-label"
 import { consumeViewerLinkExpiredNotice } from "@/lib/viewer-session-notice"
 import { useUtilityUiHidden } from "@/hooks/use-utility-ui-hidden"
 import { cn } from "@/lib/utils"
@@ -935,6 +936,8 @@ export function FivePlayerMode() {
           )}
         </ZoomCompensated>
         )}
+
+        {utilityUiHidden && <SyncStatusCompactLabel role={sync.role} />}
 
       </div>
 
