@@ -1,9 +1,17 @@
 "use client"
 
 import type { Player } from "@/components/player-row"
+import type { AceRoundLogEntry } from "@/lib/ace-round-log"
+import {
+  isAceRoundLogEntry,
+  MAX_ACE_ROUND_LOG,
+  normalizeAceRoundLog,
+} from "@/lib/ace-round-log"
 import type { AceModalStep, AceSlotSpinPlan } from "@/lib/ace-modal-sync"
 import {
   get,
+  goOffline,
+  goOnline,
   onDisconnect,
   onValue,
   ref,
@@ -14,6 +22,7 @@ import {
   type Database,
   type Unsubscribe,
 } from "firebase/database"
+import { getAnonymousUser } from "@/lib/firebase/client"
 
 export const ROOM_TTL_MS = 60 * 60 * 1000
 export const HOST_DISCONNECT_GRACE_MS = 60 * 60 * 1000
@@ -31,6 +40,7 @@ export type AceSyncState = {
   firstAttackerBackup: string | null
   winnerTeam: "thomas" | "ada" | null
   winnersMap: Record<string, "win" | "lose">
+  roundLog: AceRoundLogEntry[]
   showProceedButton: boolean
   showRematchPrompt: boolean
   setupStep: AceModalStep
@@ -123,6 +133,7 @@ export function createDefaultScoreboardState(
       firstAttackerBackup: null,
       winnerTeam: null,
       winnersMap: {},
+      roundLog: [],
       showProceedButton: false,
       showRematchPrompt: false,
       ...CLOSED_ACE_SETUP,
@@ -181,6 +192,7 @@ type WireAceState = {
   firstAttackerBackup?: string
   winnerTeam?: "thomas" | "ada"
   winnersMap?: Record<string, "win" | "lose">
+  roundLog?: AceRoundLogEntry[]
   thomasBackup?: Player
   adaBackup?: Player
 }
@@ -268,6 +280,10 @@ function isAceState(value: unknown): value is AceSyncState {
       ace.winnerTeam === "thomas" ||
       ace.winnerTeam === "ada") &&
     validWinners &&
+    (ace.roundLog === undefined ||
+      (Array.isArray(ace.roundLog) &&
+        ace.roundLog.length <= MAX_ACE_ROUND_LOG &&
+        ace.roundLog.every(isAceRoundLogEntry))) &&
     typeof ace.showProceedButton === "boolean" &&
     (ace.showRematchPrompt === undefined ||
       typeof ace.showRematchPrompt === "boolean") &&
@@ -432,6 +448,7 @@ export function normalizeFourVFourState(
     firstAttackerId: state.firstAttackerId,
     ace: {
       ...state.ace,
+      roundLog: normalizeAceRoundLog(state.ace.roundLog),
       thomasBackup: state.ace.thomasBackup
         ? normalizePlayer(state.ace.thomasBackup)
         : null,
@@ -514,6 +531,7 @@ function toWireAce(ace: AceSyncState): WireAceState {
   if (ace.thomasBackup) wire.thomasBackup = normalizePlayer(ace.thomasBackup)
   if (ace.adaBackup) wire.adaBackup = normalizePlayer(ace.adaBackup)
   if (Object.keys(ace.winnersMap).length > 0) wire.winnersMap = ace.winnersMap
+  if (ace.roundLog.length > 0) wire.roundLog = ace.roundLog
 
   return wire
 }
@@ -574,6 +592,7 @@ function fromWireFourVFourState(
       firstAttackerBackup: wire.ace?.firstAttackerBackup ?? null,
       winnerTeam: wire.ace?.winnerTeam ?? null,
       winnersMap: wire.ace?.winnersMap ?? {},
+      roundLog: normalizeAceRoundLog(wire.ace?.roundLog),
       showProceedButton: wire.ace?.showProceedButton ?? false,
       showRematchPrompt: wire.ace?.showRematchPrompt ?? false,
       ...CLOSED_ACE_SETUP,
@@ -646,19 +665,32 @@ export function buildInviteUrl(token: string, gameMode: ScoreboardGameMode) {
 }
 
 export function buildDiscordInviteMessage(url: string) {
-  return `[치즈 바이 데이라이트 | 점수판 연동하기](${url})`
+  return `[치즈 바이 데이라이트 | 점수판 연동하기(여기를 클릭)](${url})`
 }
 
-export function consumeInviteToken(gameMode: ScoreboardGameMode) {
-  const match = window.location.hash.match(/^#room=([a-f0-9]{48,128})$/i)
-  if (!match) return null
+const INVITE_TOKEN_HASH_RE = /^#room=([a-f0-9]{48,128})$/i
 
+export function parseInviteTokenFromHash() {
+  const match = window.location.hash.match(INVITE_TOKEN_HASH_RE)
+  if (!match) return null
+  return match[1].toLowerCase()
+}
+
+export function clearInviteTokenFromUrl(gameMode: ScoreboardGameMode) {
+  if (!INVITE_TOKEN_HASH_RE.test(window.location.hash)) return
   window.history.replaceState(
     window.history.state,
     "",
     SCOREBOARD_GAME_PATHS[gameMode],
   )
-  return match[1].toLowerCase()
+}
+
+/** @deprecated Prefer parseInviteTokenFromHash + clearInviteTokenFromUrl */
+export function consumeInviteToken(gameMode: ScoreboardGameMode) {
+  const token = parseInviteTokenFromHash()
+  if (!token) return null
+  clearInviteTokenFromUrl(gameMode)
+  return token
 }
 
 export function loadRoomSession(
@@ -925,6 +957,25 @@ export async function deleteScoreboardRoom(
   token: string,
 ) {
   await remove(ref(database, roomPath(token)))
+}
+
+/** 다른 사람 방에 들어갈 때 남아 있는 본인 방장 세션·공유방을 정리한다. */
+export async function abandonHostRoomIfNeeded(viewerToken: string) {
+  const hostSession = loadRoomSession(localStorage, HOST_SESSION_KEY)
+  if (!hostSession) return
+
+  const normalizedViewerToken = viewerToken.toLowerCase()
+  if (hostSession.token === normalizedViewerToken) return
+
+  localStorage.removeItem(HOST_SESSION_KEY)
+  try {
+    const { database } = await getAnonymousUser()
+    goOnline(database)
+    await deleteScoreboardRoom(database, hostSession.token)
+    goOffline(database)
+  } catch {
+    // 로컬 방장 세션은 이미 제거됨. 서버 방은 TTL로 만료된다.
+  }
 }
 
 export function subscribeToScoreboardRoom(

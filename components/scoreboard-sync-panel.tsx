@@ -178,7 +178,9 @@ export function ScoreboardSyncPanel({
           <p className="mt-0.5 text-[11px] text-neutral-400">
             점수판 조작이 제한됩니다.
           </p>
-          <StatusLine status={status} />
+          <div className="mt-0.5 flex justify-end">
+            <StatusLine status={status} />
+          </div>
           {errorMessage && (
             <p className="mt-1 max-w-72 text-[10px] text-red-400">
               {errorMessage}
@@ -197,6 +199,9 @@ export function ScoreboardSyncPanel({
       </div>
     )
   }
+
+  const hostButtonLabel =
+    status === "connecting" ? "공유 준비 중..." : "점수판 공유 중"
 
   return (
     <div className="relative flex flex-col items-end">
@@ -225,14 +230,21 @@ export function ScoreboardSyncPanel({
         onClick={openPanel}
         aria-expanded={open}
         className={cn(
-          "flex items-center gap-2 rounded border bg-black/85 px-4 py-2 text-sm shadow-lg backdrop-blur-sm transition-colors",
-          CHZZK_GREEN_BUTTON,
-          !hasSeenGuide && CHZZK_GREEN_PULSE,
+          "flex items-center gap-2 rounded border px-4 py-2 text-sm shadow-lg transition-colors",
+          role === "host"
+            ? "border-emerald-500 bg-emerald-500 font-bold text-white hover:border-emerald-400 hover:bg-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.45)]"
+            : cn(
+                "bg-black/85 backdrop-blur-sm",
+                CHZZK_GREEN_BUTTON,
+                !hasSeenGuide && CHZZK_GREEN_PULSE,
+              ),
         )}
         style={{ fontFamily: "var(--font-godo)" }}
       >
         {role === "host" ? <Wifi size={15} /> : <Link2 size={15} />}
-        <span>점수판 연동 설정</span>
+        <span>
+          {role === "host" ? hostButtonLabel : "점수판 연동 설정"}
+        </span>
       </button>
 
       {open && (
@@ -261,8 +273,12 @@ export function ScoreboardSyncPanel({
             <p className="mt-1 text-xs leading-relaxed text-neutral-300">
               진행자를 맡으실 경우, 시작하기 버튼을 누른 뒤, 주소를 복사하세요.
             </p>
-            <p className="mt-1.5 text-xs leading-relaxed text-neutral-400">
-              참가자는 공유된 주소로 접속하여 점수판을 확인할 수 있으며, 조작이 제한됩니다.
+            <p className="mt-1.5 text-xs leading-relaxed text-amber-300/90">
+              이 주소는 함께 경기하는 스트리머에게만 공유해 주세요.
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-neutral-400">
+              상대 스트리머가 주소로 접속하면 같은 점수판을 볼 수 있으며, 점수
+              조작은 제한됩니다.
             </p>
           </div>
 

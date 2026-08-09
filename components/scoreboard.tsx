@@ -14,18 +14,32 @@ import { AceMatchOverlay } from "@/components/ace-match-overlay"
 import { HoldButton } from "@/components/hold-button"
 import { MAX_KILLS, PlayerRow, type Player } from "@/components/player-row"
 import { AppVersionCorner } from "@/components/app-version"
+import { CopyScoreboardImageButton } from "@/components/copy-scoreboard-image-button"
 import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
+import { ZoomCompensated } from "@/components/zoom-compensated"
+import { UtilityUiToggle } from "@/components/utility-ui-toggle"
 import { TeamScore } from "@/components/team-score"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { WinnerOverlay } from "@/components/winner-overlay"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
+import { useUtilityUiHidden } from "@/hooks/use-utility-ui-hidden"
 import type { FourVFourSyncState, ScoreboardSyncState } from "@/lib/firebase/scoreboard-room"
 import {
   CLOSED_ACE_SETUP,
   MODE_SWITCH_SESSION_KEY,
+  VIEWER_SESSION_KEY,
+  loadRoomSession,
 } from "@/lib/firebase/scoreboard-room"
 import { consumeViewerLinkExpiredNotice } from "@/lib/viewer-session-notice"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
+import { buildCaptureMatchResult } from "@/lib/capture-match-result"
+import {
+  appendAceRoundLogEntry,
+  buildAceRoundLogKey,
+  createAceRoundLogEntry,
+  normalizeAceRoundLog,
+  type AceRoundLogEntry,
+} from "@/lib/ace-round-log"
 import { cn } from "@/lib/utils"
 import { motion } from "motion/react"
 import { useRouter } from "next/navigation"
@@ -51,6 +65,19 @@ const LS_KEY = "dbd-scoreboard-v1"
 const EXPIRATION_TIME_MS = 60 * 60 * 1000 // 마지막 조작 기준 1시간 만료
 
 const teamScore = (players: Player[]) => players.reduce((s, p) => s + p.kills, 0)
+
+function computePreAceTeamScore(
+  roster: Player[],
+  acePlayerId: string | null,
+  aceBackup: Player | null,
+) {
+  return roster.reduce((sum, player) => {
+    if (acePlayerId && aceBackup && player.id === acePlayerId) {
+      return sum + aceBackup.kills
+    }
+    return sum + player.kills
+  }, 0)
+}
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 
 type ColdState =
@@ -120,6 +147,104 @@ function toValid4v4Step(rawNeed: number): number {
   if (rawNeed <= 3) return 3
   if (rawNeed <= 3.5) return 3.5
   return 4
+}
+
+/** 선공 선수가 로스터 1번이 아닐 때, 해당 팀 출전 순서를 선공 기준으로 회전 */
+function orderTeamRosterForFirstAttacker(
+  roster: Player[],
+  firstAttackerId: string | null,
+): Player[] {
+  if (!firstAttackerId) return roster
+  const index = roster.findIndex((player) => player.id === firstAttackerId)
+  if (index <= 0) return roster
+  return [...roster.slice(index), ...roster.slice(0, index)]
+}
+
+/**
+ * 로스터 순서·선공 기준 이상적 교대 출전 순서 (A1→B1→A2→B2…).
+ * 순서를 건너뛴 입력이 있어도, 미출전 중 시퀀스상 가장 앞 선수를 다음 차례로 잡는다.
+ */
+function buildIdealPlayOrder(
+  thomas: Player[],
+  ada: Player[],
+  firstAttackTeam: Team | null,
+  firstAttackerId: string | null,
+): Array<{ playerId: string; team: Team }> {
+  const firstTeam = firstAttackTeam ?? "thomas"
+  const secondTeam: Team = firstTeam === "thomas" ? "ada" : "thomas"
+  const firstRosterRaw = firstTeam === "thomas" ? thomas : ada
+  const secondRoster = secondTeam === "thomas" ? thomas : ada
+  const firstRoster = orderTeamRosterForFirstAttacker(
+    firstRosterRaw,
+    firstAttackerId && firstRosterRaw.some((player) => player.id === firstAttackerId)
+      ? firstAttackerId
+      : null,
+  )
+
+  const maxLen = Math.max(firstRoster.length, secondRoster.length)
+  const sequence: Array<{ playerId: string; team: Team }> = []
+  for (let index = 0; index < maxLen; index += 1) {
+    if (index < firstRoster.length) {
+      sequence.push({ playerId: firstRoster[index].id, team: firstTeam })
+    }
+    if (index < secondRoster.length) {
+      sequence.push({ playerId: secondRoster[index].id, team: secondTeam })
+    }
+  }
+  return sequence
+}
+
+function getNextExpectedPlayer(
+  thomas: Player[],
+  ada: Player[],
+  firstAttackTeam: Team | null,
+  firstAttackerId: string | null,
+): { playerId: string; team: Team } | null {
+  const hasAnyPlayed =
+    thomas.some((player) => player.played) || ada.some((player) => player.played)
+  if (!firstAttackTeam && !hasAnyPlayed) return null
+
+  const playedById = new Map(
+    [...thomas, ...ada].map((player) => [player.id, player.played]),
+  )
+  for (const slot of buildIdealPlayOrder(
+    thomas,
+    ada,
+    firstAttackTeam,
+    firstAttackerId,
+  )) {
+    if (!playedById.get(slot.playerId)) return slot
+  }
+  return null
+}
+
+/** 에이스 결정전 등 — 총 출전 횟수 홀짝으로 차례 팀을 판단 (기존 방식) */
+function computeTurnByPlayCount(
+  thomas: Player[],
+  ada: Player[],
+  firstAttackTeam: Team | null,
+): Team | null {
+  const thomasPlayed = thomas.filter((player) => player.played).length
+  const adaPlayed = ada.filter((player) => player.played).length
+  const totalPlayed = thomasPlayed + adaPlayed
+  if (totalPlayed === 0) return firstAttackTeam
+
+  const firstTeam = firstAttackTeam ?? "thomas"
+  const otherTeam: Team = firstTeam === "thomas" ? "ada" : "thomas"
+  const nextTeam = totalPlayed % 2 === 0 ? firstTeam : otherTeam
+
+  const nextRemaining =
+    nextTeam === "thomas"
+      ? thomas.filter((player) => !player.played).length
+      : ada.filter((player) => !player.played).length
+  if (nextRemaining === 0) {
+    const otherRemaining =
+      nextTeam === "thomas"
+        ? ada.filter((player) => !player.played).length
+        : thomas.filter((player) => !player.played).length
+    return otherRemaining > 0 ? otherTeam : null
+  }
+  return nextTeam
 }
 
 /**
@@ -318,6 +443,16 @@ function loadFromStorage() {
   }
 }
 
+function resolveFirstAttackerId(
+  firstAttackerId: string | null,
+  thomas: Player[],
+  ada: Player[],
+): string | null {
+  if (!firstAttackerId) return null
+  const rosterIds = new Set([...thomas, ...ada].map((player) => player.id))
+  return rosterIds.has(firstAttackerId) ? firstAttackerId : null
+}
+
 export function Scoreboard() {
   const router = useRouter()
   // SSR/CSR hydration mismatch 방지: 초기값은 항상 서버와 동일한 기본값으로 시작하고,
@@ -339,6 +474,10 @@ export function Scoreboard() {
   const remotePlayersRef = useRef<{ thomas: Player[]; ada: Player[] } | null>(
     null,
   )
+  /** gameover 시 이전 winnerName — 점수 수정으로 무승부로 바뀌었는지 감지 */
+  const prevGameoverWinnerRef = useRef<string | "tie" | null | undefined>(
+    undefined,
+  )
 
   useEffect(() => {
     animRef.current = anim
@@ -357,6 +496,7 @@ export function Scoreboard() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   // 살인마 초기화 확인 프롬프트
   const [showKillerResetConfirm, setShowKillerResetConfirm] = useState(false)
+  const [showRosterResetConfirm, setShowRosterResetConfirm] = useState(false)
   // 모두 초기화 확인 프롬프트
   const [showFullResetConfirm, setShowFullResetConfirm] = useState(false)
   // 경매순서 정하기
@@ -382,6 +522,7 @@ export function Scoreboard() {
   const [aceFirstAttackerBackup, setAceFirstAttackerBackup] = useState<string | null>(null)
   const [aceWinnerTeam, setAceWinnerTeam] = useState<Team | null>(null)
   const [aceWinnersMap, setAceWinnersMap] = useState<Record<string, "win" | "lose">>({})
+  const [aceRoundLog, setAceRoundLog] = useState<AceRoundLogEntry[]>([])
   const [aceVictoryOverlay, setAceVictoryOverlay] = useState<{
     winnerTeamName: string
     acePlayerName: string
@@ -427,6 +568,7 @@ export function Scoreboard() {
         firstAttackerBackup: aceFirstAttackerBackup,
         winnerTeam: aceWinnerTeam,
         winnersMap: aceWinnersMap,
+        roundLog: aceRoundLog,
         showProceedButton: showAceProceedButton,
         showRematchPrompt: showAceRematchPrompt,
         ...(showAcePromptModal
@@ -439,6 +581,7 @@ export function Scoreboard() {
       aceAdaId,
       aceFirstAttackerBackup,
       aceModalSync,
+      aceRoundLog,
       aceThomasBackup,
       aceThomasId,
       aceWinnerTeam,
@@ -498,7 +641,13 @@ export function Scoreboard() {
     setAda(remote.ada)
     setThomasName(remote.thomasName)
     setAdaName(remote.adaName)
-    setFirstAttackerId(remote.firstAttackerId)
+    setFirstAttackerId(
+      resolveFirstAttackerId(
+        remote.firstAttackerId,
+        remote.thomas,
+        remote.ada,
+      ),
+    )
     setIsAceMatchMode(remote.ace.isActive)
     setHasCompletedAceMatch(remote.ace.hasCompleted)
     setAceThomasId(remote.ace.thomasId)
@@ -508,6 +657,7 @@ export function Scoreboard() {
     setAceFirstAttackerBackup(remote.ace.firstAttackerBackup)
     setAceWinnerTeam(remote.ace.winnerTeam)
     setAceWinnersMap(remote.ace.winnersMap)
+    setAceRoundLog(normalizeAceRoundLog(remote.ace.roundLog))
     setShowAceProceedButton(remote.ace.showProceedButton)
     setShowAceRematchPrompt(remote.ace.showRematchPrompt)
     setViewerAceModalSync(aceSetupToModalSync(remote.ace))
@@ -532,6 +682,17 @@ export function Scoreboard() {
     onRemoteState: applyRemoteState,
   })
   const isViewer = sync.role === "viewer"
+  const { hidden: utilityUiHidden, toggle: toggleUtilityUi } = useUtilityUiHidden()
+
+  useEffect(() => {
+    if (!utilityUiHidden) return
+    setShowResetMenu(false)
+    setShowResetConfirm(false)
+    setShowKillerResetConfirm(false)
+    setShowRosterResetConfirm(false)
+    setShowFullResetConfirm(false)
+    setShowModeSwitchConfirm(false)
+  }, [utilityUiHidden])
 
   useEffect(() => {
     if (!isViewer) remotePlayersRef.current = null
@@ -575,6 +736,13 @@ export function Scoreboard() {
       // ignore
     }
 
+    // 시청자는 Firebase 원격 상태만 따르도록 로컬 solo 저장값을 복원하지 않는다.
+    const viewerSession = loadRoomSession(sessionStorage, VIEWER_SESSION_KEY)
+    if (viewerSession?.gameMode === "4v4") {
+      setIsLoaded(true)
+      return
+    }
+
     const saved = loadFromStorage()
     if (saved) {
       if (Array.isArray(saved.thomas)) setThomas(saved.thomas)
@@ -592,6 +760,7 @@ export function Scoreboard() {
         setAceFirstAttackerBackup(saved.ace.firstAttackerBackup)
         setAceWinnerTeam(saved.ace.winnerTeam)
         setAceWinnersMap(saved.ace.winnersMap)
+        setAceRoundLog(normalizeAceRoundLog(saved.ace.roundLog))
         setShowAceProceedButton(saved.ace.showProceedButton)
       }
     }
@@ -614,9 +783,7 @@ export function Scoreboard() {
     }
   }, [isLoaded, isViewer, syncState])
 
-  // "다음 플레이어" 계산: 선공 팀을 기준으로 교대 순서를 파악한다.
-  // 선공 팀이 결정되면, 총 플레이 횟수의 홀짝으로 다음 차례 팀을 정한다.
-  // 선공 팀이 없으면 (아직 아무도 안 플레이) null 반환.
+  // "다음 플레이어" 계산: 로스터·선공 기준 이상적 교대 순서에서 미출전 선수 중 가장 앞을 찾는다.
   const firstAttackTeam: Team | null = useMemo(() => {
     if (!firstAttackerId) return null
     if (thomas.some((p) => p.id === firstAttackerId)) return "thomas"
@@ -624,32 +791,20 @@ export function Scoreboard() {
     return null
   }, [firstAttackerId, thomas, ada])
 
+  const nextExpectedPlayer = useMemo(
+    () =>
+      isAceMatchMode
+        ? null
+        : getNextExpectedPlayer(thomas, ada, firstAttackTeam, firstAttackerId),
+    [thomas, ada, firstAttackTeam, firstAttackerId, isAceMatchMode],
+  )
+
   const turn: Team | null = useMemo(() => {
-    const thomasPlayed = thomas.filter((p) => p.played).length
-    const adaPlayed = ada.filter((p) => p.played).length
-    const totalPlayed = thomasPlayed + adaPlayed
-    // 선공이 정해졌으면 첫 경기 전에도 선공 팀 차례로 간주한다.
-    if (totalPlayed === 0) return firstAttackTeam
-
-    // 선공 팀을 기준으로 홀짝 판단:
-    // 총 플레이 횟수가 짝수이면 선공 팀 차례, 홀수이면 상대 팀 차례
-    const firstTeam = firstAttackTeam ?? "thomas"
-    const otherTeam: Team = firstTeam === "thomas" ? "ada" : "thomas"
-
-    const nextTeam = totalPlayed % 2 === 0 ? firstTeam : otherTeam
-
-    // 해당 팀에 남은 플레이어가 없으면 상대 팀으로 넘긴다
-    const nextRemaining = nextTeam === "thomas"
-      ? thomas.filter((p) => !p.played).length
-      : ada.filter((p) => !p.played).length
-    if (nextRemaining === 0) {
-      const otherRemaining = nextTeam === "thomas"
-        ? ada.filter((p) => !p.played).length
-        : thomas.filter((p) => !p.played).length
-      return otherRemaining > 0 ? otherTeam : null
+    if (isAceMatchMode) {
+      return computeTurnByPlayCount(thomas, ada, firstAttackTeam)
     }
-    return nextTeam
-  }, [thomas, ada, firstAttackTeam])
+    return nextExpectedPlayer?.team ?? null
+  }, [isAceMatchMode, thomas, ada, firstAttackTeam, nextExpectedPlayer])
 
   const leftTarget = useMemo(() => {
     if (isAceMatchMode && aceThomasId) {
@@ -725,6 +880,65 @@ export function Scoreboard() {
     return detectComebackWin(thomas, ada, lastScoredPlayerId)
   }, [cold, thomas, ada, lastScoredPlayerId, isAceMatchMode])
 
+  const captureMatchResult = useMemo(
+    () =>
+      buildCaptureMatchResult({
+        cold,
+        thomasName,
+        adaName,
+        isComebackWin,
+        isAceMatchMode,
+        bothAcePlayed,
+        aceWinnerTeam,
+        aceThomasId,
+        aceAdaId,
+        thomas,
+        ada,
+      }),
+    [
+      aceAdaId,
+      aceThomasId,
+      aceWinnerTeam,
+      ada,
+      adaName,
+      bothAcePlayed,
+      cold,
+      isAceMatchMode,
+      isComebackWin,
+      thomas,
+      thomasName,
+    ],
+  )
+
+  const captureUsesPreAceScores =
+    aceRoundLog.length > 0 ||
+    isAceMatchMode ||
+    aceWinnerTeam !== null ||
+    aceThomasBackup !== null ||
+    aceAdaBackup !== null
+
+  const captureLeftScore = useMemo(() => {
+    if (!captureUsesPreAceScores) return teamScore(thomas)
+    return computePreAceTeamScore(thomas, aceThomasId, aceThomasBackup)
+  }, [
+    aceThomasBackup,
+    aceThomasId,
+    captureUsesPreAceScores,
+    thomas,
+  ])
+
+  const captureRightScore = useMemo(() => {
+    if (!captureUsesPreAceScores) return teamScore(ada)
+    return computePreAceTeamScore(ada, aceAdaId, aceAdaBackup)
+  }, [aceAdaBackup, aceAdaId, captureUsesPreAceScores, ada])
+
+  const captureMainFirstAttackerId = useMemo(() => {
+    if (captureUsesPreAceScores && aceFirstAttackerBackup) {
+      return aceFirstAttackerBackup
+    }
+    return firstAttackerId
+  }, [aceFirstAttackerBackup, captureUsesPreAceScores, firstAttackerId])
+
   // 1:1 Ace Match Notification Warning Logic
   const aceMatchWarning = useMemo(() => {
     if (!isAceMatchMode || !aceThomasId || !aceAdaId) return null
@@ -788,7 +1002,35 @@ export function Scoreboard() {
       else if (kills >= 4) delayMs = 2400
 
       const timer = setTimeout(() => {
+        const roundKey = buildAceRoundLogKey(
+          aceThomasId,
+          aceAdaId,
+          thomasAce.kills,
+          adaAce.kills,
+        )
+        const firstAttackerTeam =
+          firstAttackerId === aceThomasId
+            ? "thomas"
+            : firstAttackerId === aceAdaId
+              ? "ada"
+              : undefined
+        const logRound = (outcome: "tie" | "thomas" | "ada") => {
+          setAceRoundLog((prev) =>
+            appendAceRoundLogEntry(
+              prev,
+              roundKey,
+              createAceRoundLogEntry(
+                thomasAce,
+                adaAce,
+                outcome,
+                firstAttackerTeam,
+              ),
+            ),
+          )
+        }
+
         if (thomasAce.kills > adaAce.kills) {
+          logRound("thomas")
           setAceWinnersMap((prev) => ({
             ...prev,
             [thomasAce.id]: "win",
@@ -802,6 +1044,7 @@ export function Scoreboard() {
           })
           // Keep isAceMatchMode true while victory overlay is playing!
         } else if (adaAce.kills > thomasAce.kills) {
+          logRound("ada")
           setAceWinnersMap((prev) => ({
             ...prev,
             [adaAce.id]: "win",
@@ -815,6 +1058,7 @@ export function Scoreboard() {
           })
           // Keep isAceMatchMode true while victory overlay is playing!
         } else {
+          logRound("tie")
           setAceWinnerTeam(null)
           setShowAceRematchPrompt(true)
         }
@@ -822,7 +1066,7 @@ export function Scoreboard() {
 
       return () => clearTimeout(timer)
     }
-  }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada, thomasName, adaName, lastScoredKills])
+  }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada, thomasName, adaName, lastScoredKills, firstAttackerId])
 
   const handleAceVictoryDismiss = () => {
     setAceVictoryOverlay(null)
@@ -879,6 +1123,34 @@ export function Scoreboard() {
     setShowOverlay(false)
   }
 
+  // 점수 수정 등으로 경기 결과가 무승부로 바뀌면 무승부 오버레이·에이스 결정전 안내를 다시 띄운다.
+  useEffect(() => {
+    if (!isLoaded) return
+    if (isAceMatchMode || hasCompletedAceMatch) {
+      prevGameoverWinnerRef.current =
+        cold.status === "gameover" ? cold.winnerName : null
+      return
+    }
+
+    const currentWinner =
+      cold.status === "gameover" ? cold.winnerName : null
+    const prevWinner = prevGameoverWinnerRef.current
+
+    if (prevWinner === undefined) {
+      prevGameoverWinnerRef.current = currentWinner
+      return
+    }
+
+    if (currentWinner === "tie" && prevWinner !== "tie") {
+      setOverlayDismissed(false)
+      setShowOverlay(true)
+      setShowAceProceedButton(false)
+      setShowAcePromptModal(false)
+    }
+
+    prevGameoverWinnerRef.current = currentWinner
+  }, [cold, isAceMatchMode, hasCompletedAceMatch, isLoaded])
+
   // cold/gameover 발생 시 킬 점수(0~4킬)에 맞는 동적 애니메이션 대기시간 후 우승 오버레이 표시
   // 0킬: 600ms, 1킬: 900ms, 2킬: 1250ms, 3킬: 1650ms, 3.5킬: 2100ms, 4킬: 2400ms (해골이 완전히 박힌 후 여유 있게 재생)
   useEffect(() => {
@@ -902,8 +1174,21 @@ export function Scoreboard() {
     }
   }, [cold.status, lastScoredKills, isAceMatchMode])
 
-  // 현재 turn 팀의 다음 플레이어 ID (roster 순서 + 선공 첫 출전 보정)
+  // 현재 turn 팀의 다음 플레이어 ID
   const nextPlayerId = useMemo(() => {
+    if (!isAceMatchMode && nextExpectedPlayer) {
+      return {
+        thomas:
+          nextExpectedPlayer.team === "thomas"
+            ? nextExpectedPlayer.playerId
+            : null,
+        ada:
+          nextExpectedPlayer.team === "ada"
+            ? nextExpectedPlayer.playerId
+            : null,
+      }
+    }
+
     const resolve = (team: Team): string | null => {
       if (turn !== team) return null
       const roster = team === "thomas" ? thomas : ada
@@ -927,7 +1212,15 @@ export function Scoreboard() {
       thomas: resolve("thomas"),
       ada: resolve("ada"),
     }
-  }, [turn, thomas, ada, firstAttackerId, firstAttackTeam])
+  }, [
+    turn,
+    thomas,
+    ada,
+    firstAttackerId,
+    firstAttackTeam,
+    isAceMatchMode,
+    nextExpectedPlayer,
+  ])
 
   const dragItem = useRef<{ team: Team; id: string } | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -1265,19 +1558,58 @@ export function Scoreboard() {
     setShowResetMenu(false)
     setShowResetConfirm(false)
     setShowKillerResetConfirm(false)
+    setShowRosterResetConfirm(false)
     setShowFullResetConfirm(false)
   }
 
-  function openResetConfirm(type: "score" | "killer" | "full") {
+  function openResetConfirm(type: "score" | "killer" | "roster" | "full") {
     setShowResetConfirm(type === "score")
     setShowKillerResetConfirm(type === "killer")
+    setShowRosterResetConfirm(type === "roster")
     setShowFullResetConfirm(type === "full")
   }
 
   function resetKillers() {
     setThomas((prev) => prev.map((p) => ({ ...p, killer: "" })))
     setAda((prev) => prev.map((p) => ({ ...p, killer: "" })))
-    setShowKillerResetConfirm(false)
+    closeAllResetUI()
+  }
+
+  function clearAceMatchFlowState() {
+    setOverlayDismissed(false)
+    setIsAceMatchMode(false)
+    setShowAcePromptModal(false)
+    setAceThomasId(null)
+    setAceAdaId(null)
+    setAceThomasBackup(null)
+    setAceAdaBackup(null)
+    setAceFirstAttackerBackup(null)
+    setAceWinnerTeam(null)
+    setAceWinnersMap({})
+    setAceRoundLog([])
+    setAceVictoryOverlay(null)
+    setShowAceRematchPrompt(false)
+    setHasCompletedAceMatch(false)
+    setShowAceProceedButton(false)
+  }
+
+  function resetRoster() {
+    setThomas((prev) =>
+      prev.map((p) => ({ ...p, name: "", kills: 0, played: false, killer: "" })),
+    )
+    setAda((prev) =>
+      prev.map((p) => ({ ...p, name: "", kills: 0, played: false, killer: "" })),
+    )
+    setAnim({})
+    setPrevKillsMap({})
+    setFirstAttackerId(null)
+    setLastScoredKills(null)
+    setLastScoredPlayerId(null)
+    setAuctionWinnerTeam(null)
+    setAuctionDraftThomas("")
+    setAuctionDraftAda("")
+    clearAceMatchFlowState()
+    closeAllResetUI()
   }
 
   function reset() {
@@ -1289,27 +1621,15 @@ export function Scoreboard() {
     setLastScoredKills(null)
     setLastScoredPlayerId(null)
     setAuctionWinnerTeam(null)
-    setShowResetConfirm(false)
-    setOverlayDismissed(false)
-    setIsAceMatchMode(false)
-    setShowAcePromptModal(false)
-    setAceThomasId(null)
-    setAceAdaId(null)
-    setAceThomasBackup(null)
-    setAceAdaBackup(null)
-    setAceFirstAttackerBackup(null)
-    setAceWinnerTeam(null)
-    setAceWinnersMap({})
-    setAceVictoryOverlay(null)
-    setShowAceRematchPrompt(false)
-    setHasCompletedAceMatch(false)
-    setShowAceProceedButton(false)
+    closeAllResetUI()
+    clearAceMatchFlowState()
     // localStorage는 useEffect가 상태 변경 후 자동으로 업데이트함
   }
 
   function handleResetClick() {
     setShowResetConfirm(false)
     setShowKillerResetConfirm(false)
+    setShowRosterResetConfirm(false)
     setShowFullResetConfirm(false)
     setShowResetMenu((open) => !open)
   }
@@ -1319,11 +1639,11 @@ export function Scoreboard() {
   }
 
   function handleResetCancel() {
-    setShowResetConfirm(false)
+    closeAllResetUI()
   }
 
   function handleKillerResetCancel() {
-    setShowKillerResetConfirm(false)
+    closeAllResetUI()
   }
 
   function fullReset() {
@@ -1337,21 +1657,8 @@ export function Scoreboard() {
     setLastScoredKills(null)
     setLastScoredPlayerId(null)
     setAuctionWinnerTeam(null)
-    setShowFullResetConfirm(false)
-    setOverlayDismissed(false)
-    setIsAceMatchMode(false)
-    setShowAcePromptModal(false)
-    setAceThomasId(null)
-    setAceAdaId(null)
-    setAceThomasBackup(null)
-    setAceAdaBackup(null)
-    setAceFirstAttackerBackup(null)
-    setAceWinnerTeam(null)
-    setAceWinnersMap({})
-    setAceVictoryOverlay(null)
-    setShowAceRematchPrompt(false)
-    setHasCompletedAceMatch(false)
-    setShowAceProceedButton(false)
+    closeAllResetUI()
+    clearAceMatchFlowState()
     try { localStorage.removeItem(LS_KEY) } catch { /* ignore */ }
   }
 
@@ -1373,7 +1680,7 @@ export function Scoreboard() {
         if (removeMode) setRemoveMode(null)
       }}
     >
-      <AppVersionCorner />
+      {!utilityUiHidden && <AppVersionCorner />}
 
       <AuctionOrderModal
         open={showAuctionModal}
@@ -1829,7 +2136,7 @@ export function Scoreboard() {
         )}
 
         {/* backdrop for closing prompts on background click */}
-        {(showResetMenu || showResetConfirm || showKillerResetConfirm || showFullResetConfirm) && (
+        {(showResetMenu || showResetConfirm || showKillerResetConfirm || showRosterResetConfirm || showFullResetConfirm) && (
           <div
             className="fixed inset-0 z-40 cursor-default bg-transparent"
             onClick={closeAllResetUI}
@@ -1837,7 +2144,12 @@ export function Scoreboard() {
         )}
 
         {/* fixed utility controls */}
-        <div className="fixed bottom-5 left-4 z-50 flex flex-col gap-2 text-neutral-300 md:bottom-6 md:left-8">
+        <ZoomCompensated
+          origin="bottom left"
+          className="fixed bottom-5 left-4 z-50 flex flex-col gap-2 text-neutral-300 md:bottom-6 md:left-8"
+        >
+          {!utilityUiHidden && (
+            <>
           <div className="relative flex items-center">
             <FooterBtn
               onClick={handleOpenGuide}
@@ -1877,15 +2189,23 @@ export function Scoreboard() {
                     <button
                       type="button"
                       onClick={() => openResetConfirm("score")}
-                      className="h-8 rounded border border-dbd-yellow/70 bg-black/80 px-3 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/10"
+                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
                       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                     >
                       점수 초기화
                     </button>
                     <button
                       type="button"
+                      onClick={() => openResetConfirm("roster")}
+                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                      style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                    >
+                      팀원 초기화
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => openResetConfirm("killer")}
-                      className="h-8 rounded border border-dbd-yellow/70 bg-black/80 px-3 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/10"
+                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
                       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                     >
                       살인마 초기화
@@ -1900,17 +2220,17 @@ export function Scoreboard() {
                     </button>
                   </div>
 
-                  {(showResetConfirm || showKillerResetConfirm || showFullResetConfirm) && (
+                  {(showResetConfirm || showKillerResetConfirm || showRosterResetConfirm || showFullResetConfirm) && (
                     <div className="flex flex-col gap-1.5 py-2">
                       <div className="flex h-8 items-center">
                         {showResetConfirm && (
-                          <div className="flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
                             <p className="text-xs text-neutral-200">점수를 초기화하시겠습니까?</p>
                             <div className="flex gap-2">
                               <button
                                 type="button"
                                 onClick={handleResetConfirm}
-                                className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20"
+                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 예
@@ -1929,14 +2249,42 @@ export function Scoreboard() {
                       </div>
 
                       <div className="flex h-8 items-center">
+                        {showRosterResetConfirm && (
+                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                            <p className="text-xs text-neutral-200">
+                              팀원 목록과 점수를 초기화하시겠습니까?
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={resetRoster}
+                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                예
+                              </button>
+                              <button
+                                type="button"
+                                onClick={closeAllResetUI}
+                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                아니오
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex h-8 items-center">
                         {showKillerResetConfirm && (
-                          <div className="flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
-                            <p className="text-xs text-neutral-200">살인마를 초기화하시겠습니까?</p>
+                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                            <p className="text-xs text-neutral-200">살인마 플레이 기록을 초기화하시겠습니까?</p>
                             <div className="flex gap-2">
                               <button
                                 type="button"
                                 onClick={resetKillers}
-                                className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20"
+                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 예
@@ -1969,7 +2317,7 @@ export function Scoreboard() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setShowFullResetConfirm(false)}
+                                onClick={closeAllResetUI}
                                 className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
@@ -1985,7 +2333,10 @@ export function Scoreboard() {
               )}
             </div>
           )}
-        </div>
+            </>
+          )}
+          <UtilityUiToggle hidden={utilityUiHidden} onToggle={toggleUtilityUi} />
+        </ZoomCompensated>
 
         {/* 우승 오버레이 */}
         {showOverlay && !overlayDismissed && !isAceMatchMode && cold.status === "cold" && (
@@ -2200,7 +2551,22 @@ export function Scoreboard() {
       )}
 
       {/* Mode Switcher Floating Button & Popover */}
-      <div className="fixed bottom-5 right-4 z-50 flex flex-col items-end gap-2 md:bottom-6 md:right-8">
+      {!utilityUiHidden && (
+      <ZoomCompensated
+        origin="bottom right"
+        className="fixed bottom-5 right-4 z-50 flex flex-col items-end gap-2 md:bottom-6 md:right-8"
+      >
+        <CopyScoreboardImageButton
+          thomas={thomas}
+          ada={ada}
+          thomasName={thomasName}
+          adaName={adaName}
+          leftScore={captureLeftScore}
+          rightScore={captureRightScore}
+          matchResult={captureMatchResult}
+          aceRoundLog={aceRoundLog}
+          mainFirstAttackerId={captureMainFirstAttackerId}
+        />
         <ScoreboardSyncPanel
           role={sync.role}
           status={sync.status}
@@ -2253,7 +2619,8 @@ export function Scoreboard() {
             )}
           </>
         )}
-      </div>
+      </ZoomCompensated>
+      )}
 
     </main>
   )

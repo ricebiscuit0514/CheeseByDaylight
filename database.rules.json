@@ -4,7 +4,7 @@
     ".write": false,
     "scoreboardRooms": {
       "$roomId": {
-        ".read": "auth != null && data.child('status').val() === 'active' && (data.child('hostConnections').exists() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 3600000 > now))",
+        ".read": "auth != null && data.child('status').val() === 'active' && data.child('expiresAt').val() > now && (!data.child('hostDisconnectedAt').isNumber() || data.child('hostDisconnectedAt').val() + 3600000 > now)",
         ".write": "auth != null && $roomId.matches(/^[a-f0-9]{48,128}$/) && ((data.exists() && data.child('ownerUid').val() === auth.uid && (!newData.exists() || !data.child('hostConnections').exists() || data.child('hostConnections').hasChildren() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 3600000 > now))) || (!data.exists() && newData.exists() && newData.child('ownerUid').val() === auth.uid))",
         ".validate": "!newData.exists() || newData.hasChildren(['version', 'ownerUid', 'status', 'createdAt', 'updatedAt', 'expiresAt', 'scoreboard'])",
         "version": {
@@ -122,6 +122,35 @@
             "winnersMap": {
               "$playerId": {
                 ".validate": "(newData.val() === 'win' || newData.val() === 'lose') && (newData.parent().parent().parent().child('thomas').child('0').child('id').val() === $playerId || newData.parent().parent().parent().child('thomas').child('1').child('id').val() === $playerId || newData.parent().parent().parent().child('thomas').child('2').child('id').val() === $playerId || newData.parent().parent().parent().child('thomas').child('3').child('id').val() === $playerId || newData.parent().parent().parent().child('ada').child('0').child('id').val() === $playerId || newData.parent().parent().parent().child('ada').child('1').child('id').val() === $playerId || newData.parent().parent().parent().child('ada').child('2').child('id').val() === $playerId || newData.parent().parent().parent().child('ada').child('3').child('id').val() === $playerId)"
+              }
+            },
+            "roundLog": {
+              "$index": {
+                ".validate": "$index.matches(/^[0-9]+$/) && newData.hasChildren(['thomasPlayerName', 'adaPlayerName', 'outcome'])",
+                "thomasPlayerName": {
+                  ".validate": "newData.isString() && newData.val().length <= 40"
+                },
+                "adaPlayerName": {
+                  ".validate": "newData.isString() && newData.val().length <= 40"
+                },
+                "outcome": {
+                  ".validate": "newData.val() === 'tie' || newData.val() === 'thomas' || newData.val() === 'ada'"
+                },
+                "thomasKills": {
+                  ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1 || newData.val() === 2 || newData.val() === 3 || newData.val() === 3.5 || newData.val() === 4)"
+                },
+                "adaKills": {
+                  ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1 || newData.val() === 2 || newData.val() === 3 || newData.val() === 3.5 || newData.val() === 4)"
+                },
+                "key": {
+                  ".validate": "newData.isString() && newData.val().length <= 120"
+                },
+                "firstAttackerTeam": {
+                  ".validate": "newData.val() === 'thomas' || newData.val() === 'ada'"
+                },
+                "$other": {
+                  ".validate": false
+                }
               }
             },
             "thomasBackup": {

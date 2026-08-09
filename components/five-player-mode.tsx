@@ -12,7 +12,10 @@ import type { FivePlayerSyncState } from "@/lib/firebase/scoreboard-room"
 import { MODE_SWITCH_SESSION_KEY } from "@/lib/firebase/scoreboard-room"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
+import { ZoomCompensated } from "@/components/zoom-compensated"
+import { UtilityUiToggle } from "@/components/utility-ui-toggle"
 import { consumeViewerLinkExpiredNotice } from "@/lib/viewer-session-notice"
+import { useUtilityUiHidden } from "@/hooks/use-utility-ui-hidden"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_RECEIVING = [5, 8, 10, 12, 15]
@@ -192,6 +195,14 @@ export function FivePlayerMode() {
     onRemoteState: applyRemoteState,
   })
   const isViewer = sync.role === "viewer"
+  const { hidden: utilityUiHidden, toggle: toggleUtilityUi } = useUtilityUiHidden()
+
+  useEffect(() => {
+    if (!utilityUiHidden) return
+    setShowResetConfirm(false)
+    setShowFullResetConfirm(false)
+    setShowModeSwitchConfirm(false)
+  }, [utilityUiHidden])
 
   useEffect(() => {
     if (!isViewer) remotePlayersRef.current = null
@@ -368,7 +379,7 @@ export function FivePlayerMode() {
         if (isEditingPinball) setIsEditingPinball(false)
       }}
     >
-      <AppVersionCorner />
+      {!utilityUiHidden && <AppVersionCorner />}
 
       <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-3 pb-12 md:px-6 md:py-4 md:pb-12">
         
@@ -737,7 +748,12 @@ export function FivePlayerMode() {
         )}
 
         {/* Fixed Utility Controls (Bottom-Left) matching 4v4 mode */}
-        <div className="fixed bottom-5 left-4 z-50 flex flex-col gap-2 text-neutral-300 md:bottom-6 md:left-8">
+        <ZoomCompensated
+          origin="bottom left"
+          className="fixed bottom-5 left-4 z-50 flex flex-col gap-2 text-neutral-300 md:bottom-6 md:left-8"
+        >
+          {!utilityUiHidden && (
+            <>
           <div className="relative flex items-center">
             <button
               type="button"
@@ -853,10 +869,15 @@ export function FivePlayerMode() {
           </div>
             </>
           )}
-        </div>
+          <UtilityUiToggle hidden={utilityUiHidden} onToggle={toggleUtilityUi} />
+        </ZoomCompensated>
 
         {/* Mode Switcher Floating Button & Popover (Bottom-Right) */}
-        <div className="fixed bottom-5 right-4 z-50 flex flex-col items-end gap-2 md:bottom-6 md:right-8">
+        {!utilityUiHidden && (
+        <ZoomCompensated
+          origin="bottom right"
+          className="fixed bottom-5 right-4 z-50 flex flex-col items-end gap-2 md:bottom-6 md:right-8"
+        >
           <ScoreboardSyncPanel
             role={sync.role}
             status={sync.status}
@@ -910,7 +931,8 @@ export function FivePlayerMode() {
           )}
             </>
           )}
-        </div>
+        </ZoomCompensated>
+        )}
 
       </div>
 

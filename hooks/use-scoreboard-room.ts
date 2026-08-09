@@ -9,8 +9,10 @@ import {
   MODE_SWITCH_SESSION_KEY,
   VIEWER_SESSION_KEY,
   SCOREBOARD_GAME_PATHS,
+  abandonHostRoomIfNeeded,
   buildInviteUrl,
-  consumeInviteToken,
+  clearInviteTokenFromUrl,
+  parseInviteTokenFromHash,
   createScoreboardRoom,
   createDefaultScoreboardState,
   deleteScoreboardRoom,
@@ -25,6 +27,7 @@ import {
   writeScoreboardState,
   type ScoreboardGameMode,
   type ScoreboardSyncState,
+  type FourVFourSyncState,
 } from "@/lib/firebase/scoreboard-room"
 import { claimSingleFirebaseTab } from "@/lib/firebase/single-tab"
 import { markViewerLinkExpired } from "@/lib/viewer-session-notice"
@@ -76,6 +79,9 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
   const remoteStateRef = useRef(onRemoteState)
   const shouldCreateRef = useRef(false)
   const lastPublishedRef = useRef("")
+  const prevSyncedFirstAttackerIdRef = useRef<string | null | undefined>(
+    undefined,
+  )
   const databaseRef = useRef<Database | null>(null)
 
   const returnViewerToLocal = useCallback((options?: { expired?: boolean }) => {
@@ -123,41 +129,83 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
   useEffect(() => {
     if (initialized) return
 
-    const inviteToken = consumeInviteToken(gameMode)
-    if (inviteToken) {
-      saveRoomSession(sessionStorage, VIEWER_SESSION_KEY, {
-        token: inviteToken,
-        expiresAt: Date.now() + 60 * 60 * 1000,
-        gameMode,
-      })
-      setRole("viewer")
-      setToken(inviteToken)
+    let cancelled = false
+
+    const bootstrap = async () => {
+      const inviteToken = parseInviteTokenFromHash()
+      if (inviteToken) {
+        saveRoomSession(sessionStorage, VIEWER_SESSION_KEY, {
+          token: inviteToken,
+          expiresAt: Date.now() + 60 * 60 * 1000,
+          gameMode,
+        })
+        clearInviteTokenFromUrl(gameMode)
+
+        await abandonHostRoomIfNeeded(inviteToken)
+        if (cancelled) return
+        setRole("viewer")
+        setToken(inviteToken)
+        setInitialized(true)
+        return
+      }
+
+      const viewerSession = loadRoomSession(
+        sessionStorage,
+        VIEWER_SESSION_KEY,
+      )
+      if (viewerSession && viewerSession.gameMode === gameMode) {
+        await abandonHostRoomIfNeeded(viewerSession.token)
+        if (cancelled) return
+        setRole("viewer")
+        setToken(viewerSession.token)
+        setInitialized(true)
+        return
+      }
+
+      if (viewerSession && viewerSession.gameMode !== gameMode) {
+        sessionStorage.removeItem(VIEWER_SESSION_KEY)
+      }
+
+      const hostSession = loadRoomSession(localStorage, HOST_SESSION_KEY)
+      if (hostSession && hostSession.gameMode === gameMode) {
+        setRole("host")
+        setToken(hostSession.token)
+      }
       setInitialized(true)
-      return
     }
 
-    const viewerSession = loadRoomSession(
-      sessionStorage,
-      VIEWER_SESSION_KEY,
-    )
-    if (viewerSession && viewerSession.gameMode === gameMode) {
-      setRole("viewer")
-      setToken(viewerSession.token)
-      setInitialized(true)
-      return
-    }
+    void bootstrap()
 
-    if (viewerSession && viewerSession.gameMode !== gameMode) {
-      sessionStorage.removeItem(VIEWER_SESSION_KEY)
+    return () => {
+      cancelled = true
     }
-
-    const hostSession = loadRoomSession(localStorage, HOST_SESSION_KEY)
-    if (hostSession && hostSession.gameMode === gameMode) {
-      setRole("host")
-      setToken(hostSession.token)
-    }
-    setInitialized(true)
   }, [gameMode, initialized])
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const inviteToken = parseInviteTokenFromHash()
+      if (!inviteToken || inviteToken === token) return
+
+      void (async () => {
+        saveRoomSession(sessionStorage, VIEWER_SESSION_KEY, {
+          token: inviteToken,
+          expiresAt: Date.now() + 60 * 60 * 1000,
+          gameMode,
+        })
+        clearInviteTokenFromUrl(gameMode)
+
+        await abandonHostRoomIfNeeded(inviteToken)
+        setTabSuperseded(false)
+        setTerminalStatus(null)
+        setErrorMessage(null)
+        setRole("viewer")
+        setToken(inviteToken)
+      })()
+    }
+
+    window.addEventListener("hashchange", onHashChange)
+    return () => window.removeEventListener("hashchange", onHashChange)
+  }, [gameMode, token])
 
   useEffect(() => {
     if (
@@ -178,16 +226,20 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     let hostCanRegisterPresence = false
     let latestConnectionState = false
     let wasSuperseded = false
-    const releaseTabClaim = claimSingleFirebaseTab(() => {
-      wasSuperseded = true
-      setTabSuperseded(true)
-      setRoomReady(false)
-      setFirebaseConnected(false)
-      setErrorMessage(
-        "같은 브라우저의 더 최근 탭에서 연동을 시작해 이 탭의 Firebase 연결을 종료했습니다.",
-      )
-      if (databaseRef.current) goOffline(databaseRef.current)
-    })
+    let clearViewerPendingExpire: (() => void) | undefined
+    const releaseTabClaim =
+      role === "host"
+        ? claimSingleFirebaseTab(() => {
+            wasSuperseded = true
+            setTabSuperseded(true)
+            setRoomReady(false)
+            setFirebaseConnected(false)
+            setErrorMessage(
+              "같은 브라우저의 더 최근 탭에서 연동을 시작해 이 탭의 Firebase 연결을 종료했습니다.",
+            )
+            if (databaseRef.current) goOffline(databaseRef.current)
+          })
+        : () => {}
 
     setRoomReady(false)
     setFirebaseConnected(null)
@@ -266,6 +318,27 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
         }
 
         if (role === "viewer") {
+          let sawValidRoom = false
+          let pendingExpireTimeout: number | undefined
+
+          const clearPendingExpire = () => {
+            if (pendingExpireTimeout !== undefined) {
+              window.clearTimeout(pendingExpireTimeout)
+              pendingExpireTimeout = undefined
+            }
+          }
+          clearViewerPendingExpire = clearPendingExpire
+
+          const scheduleViewerExpire = () => {
+            if (pendingExpireTimeout !== undefined) return
+            pendingExpireTimeout = window.setTimeout(() => {
+              pendingExpireTimeout = undefined
+              if (!disposed && !sawValidRoom) {
+                returnViewerToLocal({ expired: true })
+              }
+            }, 2500)
+          }
+
           unsubscribeRoom = subscribeToScoreboardRoom(
             database,
             token,
@@ -277,6 +350,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
                   room.scoreboard.mode &&
                   room.scoreboard.mode !== gameMode
                 ) {
+                  clearPendingExpire()
                   redirectViewerToGameMode(
                     room.scoreboard.mode,
                     token,
@@ -284,9 +358,17 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
                   )
                   return
                 }
-                returnViewerToLocal({ expired: true })
+                if (sawValidRoom) {
+                  clearPendingExpire()
+                  returnViewerToLocal({ expired: true })
+                  return
+                }
+                scheduleViewerExpire()
                 return
               }
+
+              clearPendingExpire()
+              sawValidRoom = true
 
               const isHostOnline =
                 Object.keys(room.hostConnections ?? {}).length > 0
@@ -312,7 +394,11 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
             },
             () => {
               if (disposed) return
-              returnViewerToLocal({ expired: true })
+              if (sawValidRoom) {
+                returnViewerToLocal({ expired: true })
+                return
+              }
+              scheduleViewerExpire()
             },
           )
           return
@@ -397,6 +483,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
 
     return () => {
       disposed = true
+      clearViewerPendingExpire?.()
       unsubscribeRoom?.()
       unsubscribeConnection?.()
       releaseTabClaim()
@@ -451,7 +538,55 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     }, 120)
 
     return () => window.clearTimeout(timeout)
-  }, [enabled, role, roomReady, state, terminalStatus, token])
+  }, [enabled, gameMode, role, roomReady, state, terminalStatus, token])
+
+  // 선공 결정(firstAttackerId)은 시청자 UI에 바로 반영되어야 하므로 디바운스 없이 즉시 동기화한다.
+  useEffect(() => {
+    if (gameMode !== "4v4" || state.mode !== "4v4") return
+    if (
+      !enabled ||
+      role !== "host" ||
+      !token ||
+      !roomReady ||
+      terminalStatus
+    ) {
+      return
+    }
+
+    const next = (state as FourVFourSyncState).firstAttackerId ?? null
+    const prev = prevSyncedFirstAttackerIdRef.current
+    prevSyncedFirstAttackerIdRef.current = next
+    if (prev === undefined || prev === next) return
+
+    void (async () => {
+      try {
+        const currentState = stateRef.current
+        const serialized = JSON.stringify(currentState)
+        const { database } = await getAnonymousUser()
+        const expiresAt = await writeScoreboardState(database, token, currentState)
+        lastPublishedRef.current = serialized
+        saveRoomSession(localStorage, HOST_SESSION_KEY, {
+          token,
+          expiresAt,
+          gameMode,
+        })
+        setRoomExpiresAt(expiresAt)
+      } catch (error) {
+        if (databaseRef.current) goOffline(databaseRef.current)
+        setTerminalStatus("error")
+        setErrorMessage(toErrorMessage(error))
+      }
+    })()
+  }, [
+    enabled,
+    gameMode,
+    role,
+    roomReady,
+    state.mode,
+    state.mode === "4v4" ? state.firstAttackerId : null,
+    terminalStatus,
+    token,
+  ])
 
   useEffect(() => {
     if (role !== "viewer" || !roomReady || !hostDisconnectDeadline) return
