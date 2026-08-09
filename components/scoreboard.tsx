@@ -1603,10 +1603,10 @@ export function Scoreboard() {
 
   function resetRoster() {
     setThomas((prev) =>
-      prev.map((p) => ({ ...p, name: "", kills: 0, played: false, killer: "" })),
+      prev.map((p) => ({ ...p, name: "", kills: 0, played: false })),
     )
     setAda((prev) =>
-      prev.map((p) => ({ ...p, name: "", kills: 0, played: false, killer: "" })),
+      prev.map((p) => ({ ...p, name: "", kills: 0, played: false })),
     )
     setAnim({})
     setPrevKillsMap({})

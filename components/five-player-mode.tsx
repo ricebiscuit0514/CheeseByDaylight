@@ -45,6 +45,8 @@ export function FivePlayerMode() {
   const [showGuide, setShowGuide] = useState(false)
   const [showResetMenu, setShowResetMenu] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [showKillerResetConfirm, setShowKillerResetConfirm] = useState(false)
+  const [showRosterResetConfirm, setShowRosterResetConfirm] = useState(false)
   const [showFullResetConfirm, setShowFullResetConfirm] = useState(false)
   const [showModeSwitchConfirm, setShowModeSwitchConfirm] = useState(false)
   
@@ -303,9 +305,24 @@ export function FivePlayerMode() {
 
   // Resets
   const resetScores = () => {
-    setPlayers((prev) => prev.map((p) => ({ ...p, kills: 0, played: false, killer: "" })))
+    setPlayers((prev) => prev.map((p) => ({ ...p, kills: 0, played: false })))
     setAnim({})
     setPrevKillsMap({})
+    closeAllResetUI()
+  }
+
+  const resetRoster = () => {
+    setPlayers((prev) =>
+      prev.map((p) => ({ ...p, name: "", kills: 0, played: false })),
+    )
+    setAnim({})
+    setPrevKillsMap({})
+    setRemoveMode(false)
+    closeAllResetUI()
+  }
+
+  const resetKillers = () => {
+    setPlayers((prev) => prev.map((p) => ({ ...p, killer: "" })))
     closeAllResetUI()
   }
 
@@ -327,16 +344,22 @@ export function FivePlayerMode() {
   function closeAllResetUI() {
     setShowResetMenu(false)
     setShowResetConfirm(false)
+    setShowKillerResetConfirm(false)
+    setShowRosterResetConfirm(false)
     setShowFullResetConfirm(false)
   }
 
-  function openResetConfirm(type: "score" | "full") {
+  function openResetConfirm(type: "score" | "killer" | "roster" | "full") {
     setShowResetConfirm(type === "score")
+    setShowKillerResetConfirm(type === "killer")
+    setShowRosterResetConfirm(type === "roster")
     setShowFullResetConfirm(type === "full")
   }
 
   function handleResetClick() {
     setShowResetConfirm(false)
+    setShowKillerResetConfirm(false)
+    setShowRosterResetConfirm(false)
     setShowFullResetConfirm(false)
     setShowResetMenu((open) => !open)
   }
@@ -764,7 +787,7 @@ export function FivePlayerMode() {
         )}
 
         {/* backdrop for closing prompts on background click */}
-        {(showResetMenu || showResetConfirm || showFullResetConfirm) && (
+        {(showResetMenu || showResetConfirm || showKillerResetConfirm || showRosterResetConfirm || showFullResetConfirm) && (
           <div
             className="fixed inset-0 z-40 cursor-default bg-transparent"
             onClick={closeAllResetUI}
@@ -802,6 +825,22 @@ export function FivePlayerMode() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => openResetConfirm("roster")}
+                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                      style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                    >
+                      팀원 초기화
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openResetConfirm("killer")}
+                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                      style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                    >
+                      살인마 초기화
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => openResetConfirm("full")}
                       className="h-8 rounded border border-red-700/70 bg-black/80 px-3 text-sm text-red-400 transition-colors hover:bg-red-900/20"
                       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
@@ -810,7 +849,7 @@ export function FivePlayerMode() {
                     </button>
                   </div>
 
-                  {(showResetConfirm || showFullResetConfirm) && (
+                  {(showResetConfirm || showKillerResetConfirm || showRosterResetConfirm || showFullResetConfirm) && (
                     <div className="flex flex-col gap-1.5 py-2">
                       <div className="flex h-8 items-center">
                         {showResetConfirm && (
@@ -839,8 +878,62 @@ export function FivePlayerMode() {
                       </div>
 
                       <div className="flex h-8 items-center">
-                        {showFullResetConfirm && (
+                        {showRosterResetConfirm && (
                           <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                            <p className="text-xs text-neutral-200">
+                              팀원 목록과 점수를 초기화하시겠습니까?
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={resetRoster}
+                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                예
+                              </button>
+                              <button
+                                type="button"
+                                onClick={closeAllResetUI}
+                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                아니오
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex h-8 items-center">
+                        {showKillerResetConfirm && (
+                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                            <p className="text-xs text-neutral-200">살인마 플레이 기록을 초기화하시겠습니까?</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={resetKillers}
+                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                예
+                              </button>
+                              <button
+                                type="button"
+                                onClick={closeAllResetUI}
+                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                아니오
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex h-8 items-center">
+                        {showFullResetConfirm && (
+                          <div className="flex flex-col gap-2 rounded border border-red-700/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
                             <p className="text-xs text-neutral-200">모두 초기화하시겠습니까?</p>
                             <div className="flex gap-2">
                               <button
