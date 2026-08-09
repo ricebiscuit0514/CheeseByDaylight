@@ -515,6 +515,7 @@ export function Scoreboard() {
   const [showGuide, setShowGuide] = useState(false)
   // 우승 결과 오버레이 닫힘 여부
   const [overlayDismissed, setOverlayDismissed] = useState(false)
+  const [overlayOutcomeKey, setOverlayOutcomeKey] = useState(0)
   // 모드 전환 확인 프롬프트
   const [showModeSwitchConfirm, setShowModeSwitchConfirm] = useState(false)
 
@@ -1147,11 +1148,12 @@ export function Scoreboard() {
       return
     }
 
-    if (currentWinner === "tie" && prevWinner !== "tie") {
+    if (currentWinner === "tie" && prevWinner !== "tie" && prevWinner !== null) {
       setOverlayDismissed(false)
       setShowOverlay(true)
       setShowAceProceedButton(false)
       setShowAcePromptModal(false)
+      setOverlayOutcomeKey((value) => value + 1)
     }
 
     prevGameoverWinnerRef.current = currentWinner
@@ -2156,30 +2158,8 @@ export function Scoreboard() {
         >
           {!utilityUiHidden && (
             <>
-          <div className="relative flex items-center">
-            <FooterBtn
-              onClick={handleOpenGuide}
-              className={cn(!hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold")}
-            >
-              설명서
-            </FooterBtn>
-
-            {!hasSeenGuide && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: [0, 6, 0] }}
-                transition={{ x: { repeat: Infinity, duration: 1.4 }, opacity: { duration: 0.3 } }}
-                className="absolute left-full ml-3 z-50 flex items-center gap-1.5 rounded-md border border-dbd-yellow/80 bg-black/95 px-3 py-1.5 text-xs text-dbd-yellow shadow-[0_0_20px_rgba(234,179,8,0.5)] backdrop-blur-md whitespace-nowrap cursor-pointer hover:brightness-125"
-                onClick={handleOpenGuide}
-                style={{ fontFamily: "var(--font-godo)" }}
-              >
-                <span className="text-sm">👈</span>
-                <span className="font-bold">최초 접속! 사용설명서를 확인해 보세요</span>
-              </motion.div>
-            )}
-          </div>
           {!isViewer && (
-            <div className="relative">
+            <div className="relative mb-2">
               <button
                 type="button"
                 onClick={handleResetClick}
@@ -2339,6 +2319,28 @@ export function Scoreboard() {
               )}
             </div>
           )}
+          <div className="relative flex items-center">
+            <FooterBtn
+              onClick={handleOpenGuide}
+              className={cn(!hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold")}
+            >
+              설명서
+            </FooterBtn>
+
+            {!hasSeenGuide && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: [0, 6, 0] }}
+                transition={{ x: { repeat: Infinity, duration: 1.4 }, opacity: { duration: 0.3 } }}
+                className="absolute left-full ml-3 z-50 flex items-center gap-1.5 rounded-md border border-dbd-yellow/80 bg-black/95 px-3 py-1.5 text-xs text-dbd-yellow shadow-[0_0_20px_rgba(234,179,8,0.5)] backdrop-blur-md whitespace-nowrap cursor-pointer hover:brightness-125"
+                onClick={handleOpenGuide}
+                style={{ fontFamily: "var(--font-godo)" }}
+              >
+                <span className="text-sm">👈</span>
+                <span className="font-bold">최초 접속! 사용설명서를 확인해 보세요</span>
+              </motion.div>
+            )}
+          </div>
             </>
           )}
           <UtilityUiToggle hidden={utilityUiHidden} onToggle={toggleUtilityUi} />
@@ -2354,9 +2356,10 @@ export function Scoreboard() {
           />
         )}
         {showOverlay && !overlayDismissed && !isAceMatchMode && cold.status === "gameover" && (
-          <WinnerOverlay 
-            winnerName={cold.winnerName === "tie" ? "tie" : cold.winnerName} 
-            teamColor={cold.winnerName === "tie" ? undefined : (cold.winnerName === thomasName ? "thomas" : "ada")} 
+          <WinnerOverlay
+            key={`gameover-${cold.winnerName}-${isComebackWin ? "comeback" : "regular"}-${overlayOutcomeKey}`}
+            winnerName={cold.winnerName === "tie" ? "tie" : cold.winnerName}
+            teamColor={cold.winnerName === "tie" ? undefined : (cold.winnerName === thomasName ? "thomas" : "ada")}
             isComeback={isComebackWin}
             isColdGame={Boolean(cold.isCold)}
             onDismiss={() => {
@@ -2364,7 +2367,7 @@ export function Scoreboard() {
               if (cold.winnerName === "tie" && !hasCompletedAceMatch) {
                 setShowAcePromptModal(true)
               }
-            }} 
+            }}
           />
         )}
 

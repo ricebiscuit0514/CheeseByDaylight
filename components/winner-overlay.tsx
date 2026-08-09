@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useRef } from "react"
 import { motion, useAnimationControls } from "motion/react"
 import { cn } from "@/lib/utils"
 
@@ -22,108 +22,116 @@ export function WinnerOverlay({
   const barControls = useAnimationControls()
   const textControls = useAnimationControls()
   const lineControls = useAnimationControls()
-  const hasRun = useRef(false)
+  const onDismissRef = useRef(onDismiss)
 
   useEffect(() => {
-    if (hasRun.current) return
-    hasRun.current = true
+    onDismissRef.current = onDismiss
+  }, [onDismiss])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const wait = (ms: number) =>
+      new Promise<void>((resolve) => {
+        window.setTimeout(() => resolve(), ms)
+      })
 
     const sequence = async () => {
-      console.log("WinnerOverlay sequence starting...")
-      // Wait a tiny bit to ensure Framer Motion has bound the controls to the DOM
-      await new Promise(resolve => setTimeout(resolve, 50))
-      
-      console.log("Starting bar animation...")
-      // 1. Black bar appears as a thin line, then expands vertically
+      if (cancelled) return
+      await wait(50)
+      if (cancelled) return
+
       await barControls.start({
         height: ["0px", "4px", "280px"],
         opacity: [0, 1, 1],
         transition: {
           duration: 0.25,
           times: [0, 0.25, 1],
-          ease: [0.25, 1, 0.5, 1]
-        }
+          ease: [0.25, 1, 0.5, 1],
+        },
       })
+      if (cancelled) return
 
-      // 2. 선명한 full-height 대각선 평행사변형 쉐잎 3개가 먼저 확 지나감!
       const speeds = [0.18, 0.32, 0.38]
-      lineControls.start(i => ({
+      lineControls.start((i) => ({
         x: ["-180%", "280%"],
         skewX: -35,
         opacity: [0, 0.75, 0.75, 0],
         transition: {
           duration: speeds[i % 3],
           delay: i * 0.04,
-          ease: "easeOut"
-        }
+          ease: "easeOut",
+        },
       }))
 
-      // 아까(100ms)보다는 템포가 있으면서 너무 늘어지지 않는 황금 타임 (220ms)
-      await new Promise(resolve => setTimeout(resolve, 220))
+      await wait(220)
+      if (cancelled) return
 
-      // 3. 쉐잎들이 절반 이상 빠져나갈 때 쯤 우승 텍스트가 스피디하게 날아 들어옴 (0.3s)
       await textControls.start({
         x: ["-100vw", "-15px"],
         opacity: [1, 1],
         transition: {
           duration: 0.3,
-          ease: [0.16, 1, 0.3, 1] // Fast entrance -> slow-in to center
-        }
+          ease: [0.16, 1, 0.3, 1],
+        },
       })
+      if (cancelled) return
 
-      // 4. Drift slowly across center with 100% constant linear speed (1.8s)
       await textControls.start({
         x: ["-15px", "25px"],
         transition: {
           duration: 1.8,
-          ease: "linear"
-        }
+          ease: "linear",
+        },
       })
+      if (cancelled) return
 
-      // 5. 텍스트가 먼저 오른쪽으로 날아가서 사라짐
       const textExitPromise = textControls.start({
         x: ["25px", "100vw"],
         opacity: [1, 0],
         transition: {
           duration: 0.3,
-          ease: [0.7, 0, 0.84, 0] // Fast acceleration out
-        }
+          ease: [0.7, 0, 0.84, 0],
+        },
       })
 
-      // 텍스트가 출발하고 0.18초 뒤(충분히 멀어진 후) 사선 쉐잎들이 뒤따라 오른쪽으로 확 지나감!
-      await new Promise(resolve => setTimeout(resolve, 180))
+      await wait(180)
+      if (cancelled) return
 
-      await lineControls.start(i => ({
+      await lineControls.start((i) => ({
         x: ["-180%", "280%"],
         skewX: -35,
         opacity: [0, 0.75, 0.75, 0],
         transition: {
           duration: speeds[i % 3],
           delay: i * 0.04,
-          ease: "easeIn"
-        }
+          ease: "easeIn",
+        },
       }))
 
       await textExitPromise
+      if (cancelled) return
 
-      // 6. Black bar shrinks and disappears (사선 쉐잎이 지나간 후 바 닫힘)
       await barControls.start({
         height: ["280px", "4px", "0px"],
         opacity: [1, 1, 0],
         transition: {
           duration: 0.25,
           times: [0, 0.65, 1],
-          ease: [0.4, 0, 1, 1]
-        }
+          ease: [0.4, 0, 1, 1],
+        },
       })
+      if (cancelled) return
 
-      // 7. Dismiss the overlay
-      console.log("Sequence complete, dismissing...")
-      onDismiss()
+      onDismissRef.current()
     }
 
-    sequence().catch(err => console.error("Animation error:", err))
-  }, [barControls, textControls, lineControls, onDismiss])
+    void sequence().catch((error) => console.error("Animation error:", error))
+
+    return () => {
+      cancelled = true
+    }
+  }, [barControls, lineControls, textControls, winnerName, isComeback, isColdGame])
 
   const isTie = winnerName === "tie"
   const lineBg = teamColor === "thomas" 

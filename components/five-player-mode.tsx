@@ -9,7 +9,7 @@ import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
 import { AppVersionCorner } from "@/components/app-version"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
 import type { FivePlayerSyncState } from "@/lib/firebase/scoreboard-room"
-import { MODE_SWITCH_SESSION_KEY } from "@/lib/firebase/scoreboard-room"
+import { MODE_SWITCH_SESSION_KEY, VIEWER_SESSION_KEY, loadRoomSession } from "@/lib/firebase/scoreboard-room"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { ZoomCompensated } from "@/components/zoom-compensated"
@@ -43,6 +43,7 @@ export function FivePlayerMode() {
   
   // Modals & Confirm Prompts State
   const [showGuide, setShowGuide] = useState(false)
+  const [showResetMenu, setShowResetMenu] = useState(false)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [showFullResetConfirm, setShowFullResetConfirm] = useState(false)
   const [showModeSwitchConfirm, setShowModeSwitchConfirm] = useState(false)
@@ -124,6 +125,12 @@ export function FivePlayerMode() {
       }
     } catch {
       // ignore
+    }
+
+    const viewerSession = loadRoomSession(sessionStorage, VIEWER_SESSION_KEY)
+    if (viewerSession?.gameMode === "5p") {
+      setIsLoaded(true)
+      return
     }
 
     const saved = localStorage.getItem("dbd-5p-state-v2")
@@ -299,7 +306,7 @@ export function FivePlayerMode() {
     setPlayers((prev) => prev.map((p) => ({ ...p, kills: 0, played: false, killer: "" })))
     setAnim({})
     setPrevKillsMap({})
-    setShowResetConfirm(false)
+    closeAllResetUI()
   }
 
   const fullReset = () => {
@@ -309,12 +316,29 @@ export function FivePlayerMode() {
     setAnim({})
     setPrevKillsMap({})
     setRemoveMode(false)
-    setShowFullResetConfirm(false)
+    closeAllResetUI()
     try {
       localStorage.removeItem("dbd-5p-state-v2")
     } catch {
       // ignore
     }
+  }
+
+  function closeAllResetUI() {
+    setShowResetMenu(false)
+    setShowResetConfirm(false)
+    setShowFullResetConfirm(false)
+  }
+
+  function openResetConfirm(type: "score" | "full") {
+    setShowResetConfirm(type === "score")
+    setShowFullResetConfirm(type === "full")
+  }
+
+  function handleResetClick() {
+    setShowResetConfirm(false)
+    setShowFullResetConfirm(false)
+    setShowResetMenu((open) => !open)
   }
 
   const updateConfig = (isReceiving: boolean, killCount: number, numValue: number) => {
@@ -740,13 +764,10 @@ export function FivePlayerMode() {
         )}
 
         {/* backdrop for closing prompts on background click */}
-        {(showResetConfirm || showFullResetConfirm) && (
+        {(showResetMenu || showResetConfirm || showFullResetConfirm) && (
           <div
             className="fixed inset-0 z-40 cursor-default bg-transparent"
-            onClick={() => {
-              setShowResetConfirm(false)
-              setShowFullResetConfirm(false)
-            }}
+            onClick={closeAllResetUI}
           />
         )}
 
@@ -757,6 +778,97 @@ export function FivePlayerMode() {
         >
           {!utilityUiHidden && (
             <>
+          {!isViewer && (
+            <div className="relative mb-2">
+              <button
+                type="button"
+                onClick={handleResetClick}
+                className="rounded border border-neutral-500/70 bg-black/80 px-3 py-1 text-sm text-neutral-200 backdrop-blur-sm transition-colors hover:border-neutral-300 hover:text-white"
+                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+              >
+                초기화
+              </button>
+
+              {showResetMenu && (
+                <div className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2">
+                  <div className="flex flex-col gap-1.5 rounded border border-neutral-600/70 bg-black/95 p-2 backdrop-blur-sm whitespace-nowrap">
+                    <button
+                      type="button"
+                      onClick={() => openResetConfirm("score")}
+                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                      style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                    >
+                      점수 초기화
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openResetConfirm("full")}
+                      className="h-8 rounded border border-red-700/70 bg-black/80 px-3 text-sm text-red-400 transition-colors hover:bg-red-900/20"
+                      style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                    >
+                      모두 초기화
+                    </button>
+                  </div>
+
+                  {(showResetConfirm || showFullResetConfirm) && (
+                    <div className="flex flex-col gap-1.5 py-2">
+                      <div className="flex h-8 items-center">
+                        {showResetConfirm && (
+                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                            <p className="text-xs text-neutral-200">점수를 초기화하시겠습니까?</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={resetScores}
+                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                예
+                              </button>
+                              <button
+                                type="button"
+                                onClick={closeAllResetUI}
+                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                아니오
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex h-8 items-center">
+                        {showFullResetConfirm && (
+                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
+                            <p className="text-xs text-neutral-200">모두 초기화하시겠습니까?</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={fullReset}
+                                className="rounded border border-red-700/70 bg-red-900/20 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-900/40"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                예
+                              </button>
+                              <button
+                                type="button"
+                                onClick={closeAllResetUI}
+                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                              >
+                                아니오
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="relative flex items-center">
             <button
               type="button"
@@ -784,94 +896,6 @@ export function FivePlayerMode() {
               </motion.div>
             )}
           </div>
-          
-          {!isViewer && (
-            <>
-          {/* 점수 초기화 */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => {
-                if (showResetConfirm) {
-                  setShowResetConfirm(false)
-                } else {
-                  setShowFullResetConfirm(false)
-                  setShowResetConfirm(true)
-                }
-              }}
-              className="rounded border border-dbd-yellow/70 bg-black/80 px-3 py-1 text-sm text-dbd-yellow backdrop-blur-sm transition-colors hover:bg-dbd-yellow/10"
-              style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-            >
-              점수 초기화
-            </button>
-            {showResetConfirm && (
-              <div className="absolute left-full bottom-0 ml-2 z-50 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
-                <p className="text-xs text-neutral-200">점수를 초기화하시겠습니까?</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={resetScores}
-                    className="rounded border border-dbd-yellow/70 bg-dbd-yellow/10 px-2 py-1 text-xs text-dbd-yellow transition-colors hover:bg-dbd-yellow/20"
-                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-                  >
-                    예
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowResetConfirm(false)}
-                    className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
-                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-                  >
-                    아니오
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 모두 초기화 */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => {
-                if (showFullResetConfirm) {
-                  setShowFullResetConfirm(false)
-                } else {
-                  setShowResetConfirm(false)
-                  setShowFullResetConfirm(true)
-                }
-              }}
-              className="rounded border border-red-700/70 bg-black/80 px-3 py-1 text-sm text-red-400 backdrop-blur-sm transition-colors hover:bg-red-900/20"
-              style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-            >
-              모두 초기화
-            </button>
-            {showFullResetConfirm && (
-              <div className="absolute left-full bottom-0 ml-2 z-50 flex flex-col gap-2 rounded border border-red-700/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
-                <p className="text-xs text-neutral-200">모두 초기화하시겠습니까?</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={fullReset}
-                    className="rounded border border-red-700/70 bg-red-900/20 px-2 py-1 text-xs text-red-400 transition-colors hover:bg-red-900/40"
-                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-                  >
-                    예
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowFullResetConfirm(false)}
-                    className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
-                    style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-                  >
-                    아니오
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-            </>
-          )}
             </>
           )}
           <UtilityUiToggle hidden={utilityUiHidden} onToggle={toggleUtilityUi} />

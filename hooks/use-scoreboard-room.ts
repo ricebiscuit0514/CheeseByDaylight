@@ -29,6 +29,7 @@ import {
   type ScoreboardGameMode,
   type ScoreboardSyncState,
   type FourVFourSyncState,
+  type ScoreboardRoom,
 } from "@/lib/firebase/scoreboard-room"
 import { claimSingleFirebaseTab } from "@/lib/firebase/single-tab"
 import { markViewerHostDisconnected, markViewerLinkExpired } from "@/lib/viewer-session-notice"
@@ -42,6 +43,9 @@ export type ScoreboardRoomStatus =
   | "offline"
   | "expired"
   | "error"
+
+const MODE_SWITCH_RECHECK_MS = 1500
+const MODE_SWITCH_FRESH_UPDATE_MS = 5000
 
 type UseScoreboardRoomOptions<T extends ScoreboardSyncState> = {
   gameMode: ScoreboardGameMode
@@ -160,7 +164,8 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       }
 
       if (viewerSession && viewerSession.gameMode !== gameMode) {
-        sessionStorage.removeItem(VIEWER_SESSION_KEY)
+        window.location.replace(SCOREBOARD_GAME_PATHS[viewerSession.gameMode])
+        return
       }
 
       const hostSession = loadRoomSession(localStorage, HOST_SESSION_KEY)
@@ -224,6 +229,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     let latestConnectionState = false
     let wasSuperseded = false
     let clearViewerPendingExpire: (() => void) | undefined
+    let clearViewerPendingHostDisconnect: (() => void) | undefined
     const releaseTabClaim =
       role === "host"
         ? claimSingleFirebaseTab(() => {
@@ -315,6 +321,8 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
         if (role === "viewer") {
           let sawValidRoom = false
           let pendingExpireTimeout: number | undefined
+          let pendingHostDisconnectTimeout: number | undefined
+          let latestRoom: ScoreboardRoom | null = null
 
           const clearPendingExpire = () => {
             if (pendingExpireTimeout !== undefined) {
@@ -323,6 +331,45 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
             }
           }
           clearViewerPendingExpire = clearPendingExpire
+
+          const clearPendingHostDisconnect = () => {
+            if (pendingHostDisconnectTimeout !== undefined) {
+              window.clearTimeout(pendingHostDisconnectTimeout)
+              pendingHostDisconnectTimeout = undefined
+            }
+          }
+          clearViewerPendingHostDisconnect = clearPendingHostDisconnect
+
+          const redirectIfModeChanged = (room: ScoreboardRoom) => {
+            if (room.scoreboard.mode === gameMode) return false
+            clearPendingHostDisconnect()
+            clearPendingExpire()
+            redirectViewerToGameMode(
+              room.scoreboard.mode,
+              token,
+              room.expiresAt,
+            )
+            return true
+          }
+
+          const scheduleHostDisconnectRecheck = () => {
+            if (pendingHostDisconnectTimeout !== undefined) return
+            pendingHostDisconnectTimeout = window.setTimeout(() => {
+              pendingHostDisconnectTimeout = undefined
+              if (disposed) return
+              const room = latestRoom
+              if (room && redirectIfModeChanged(room)) return
+              if (
+                room &&
+                sawValidRoom &&
+                Object.keys(room.hostConnections ?? {}).length === 0 &&
+                typeof room.hostDisconnectedAt === "number"
+              ) {
+                clearPendingExpire()
+                returnViewerToLocal({ hostDisconnected: true })
+              }
+            }, MODE_SWITCH_RECHECK_MS)
+          }
 
           const scheduleViewerExpire = () => {
             if (pendingExpireTimeout !== undefined) return
@@ -339,6 +386,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
             token,
             (room) => {
               if (disposed) return
+              latestRoom = room
               if (!room || room.scoreboard.mode !== gameMode) {
                 if (
                   room &&
@@ -368,11 +416,24 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
               const isHostOnline =
                 Object.keys(room.hostConnections ?? {}).length > 0
 
+              if (isHostOnline) {
+                clearPendingHostDisconnect()
+              }
+
               if (
                 sawValidRoom &&
                 !isHostOnline &&
                 typeof room.hostDisconnectedAt === "number"
               ) {
+                if (redirectIfModeChanged(room)) return
+
+                const recentlyUpdated =
+                  Date.now() - room.updatedAt < MODE_SWITCH_FRESH_UPDATE_MS
+                if (recentlyUpdated) {
+                  scheduleHostDisconnectRecheck()
+                  return
+                }
+
                 clearPendingExpire()
                 returnViewerToLocal({ hostDisconnected: true })
                 return
@@ -485,6 +546,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     return () => {
       disposed = true
       clearViewerPendingExpire?.()
+      clearViewerPendingHostDisconnect?.()
       unsubscribeRoom?.()
       unsubscribeConnection?.()
       releaseTabClaim()
