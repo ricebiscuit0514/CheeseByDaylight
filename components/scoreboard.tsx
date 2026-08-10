@@ -54,6 +54,14 @@ import {
   setPlayerKillerPick,
   toggleKillerBan,
 } from "@/lib/fearless"
+import {
+  clearPickerSelection,
+  createInitialPickerUi,
+  nextPickerFeedback,
+  nextPickerSelection,
+  type PickerFeedbackKind,
+  type PickerUiSyncState,
+} from "@/lib/picker-ui-sync"
 import { cn } from "@/lib/utils"
 import {
   RESET_CONFIRM_NO,
@@ -504,6 +512,9 @@ export function Scoreboard() {
   const [fearlessEnabled, setFearlessEnabled] = useState(true)
   const [pickerContext, setPickerContext] =
     useState<KillerPickerContext | null>(null)
+  const [pickerUi, setPickerUi] = useState<PickerUiSyncState>(() =>
+    createInitialPickerUi(),
+  )
   const teamNameLinked = useRef<Record<Team, boolean>>({ thomas: false, ada: false })
   const playerId = useRef(0)
   const [removeMode, setRemoveMode] = useState<Team | null>(null)
@@ -626,6 +637,7 @@ export function Scoreboard() {
           ? aceModalSyncToSetup(aceModalSync)
           : CLOSED_ACE_SETUP),
       },
+      pickerUi,
     }),
     [
       aceAdaBackup,
@@ -644,6 +656,7 @@ export function Scoreboard() {
       isAceMatchMode,
       killerBans,
       fearlessEnabled,
+      pickerUi,
       showAceProceedButton,
       showAceRematchPrompt,
       showAcePromptModal,
@@ -694,6 +707,7 @@ export function Scoreboard() {
     setAda(remote.ada)
     setKillerBans(remote.killerBans)
     setFearlessEnabled(remote.fearlessEnabled)
+    setPickerUi(remote.pickerUi)
     setThomasName(remote.thomasName)
     setAdaName(remote.adaName)
     setFirstAttackerId(
@@ -1436,6 +1450,24 @@ export function Scoreboard() {
     setRemoveMode(null)
   }
 
+  function closeKillerPicker() {
+    setPickerContext(null)
+    if (!isViewer) {
+      setPickerUi((current) => clearPickerSelection(current))
+    }
+  }
+
+  const handlePickerSelectionSync = (killerId: string | null) => {
+    setPickerUi((current) => nextPickerSelection(current, killerId))
+  }
+
+  const handlePickerFeedbackSync = (
+    killerId: string,
+    kind: PickerFeedbackKind,
+  ) => {
+    setPickerUi((current) => nextPickerFeedback(current, killerId, kind))
+  }
+
   function openKillerCatalog() {
     closeAllResetUI()
     closeAllGuideUI()
@@ -1540,6 +1572,7 @@ export function Scoreboard() {
         team={team}
         killerPicks={p.killerPicks ?? []}
         disabled={removeMode === team}
+        readOnly={isViewer}
         onOpen={(slotIndex) => openKillerPicker(team, p, slotIndex)}
       />
     ) : undefined
@@ -2956,10 +2989,13 @@ export function Scoreboard() {
             )?.killerPicks ?? []
           }
           readOnly={isViewer}
+          syncedPickerUi={isViewer ? pickerUi : null}
+          onSelectionSync={isViewer ? undefined : handlePickerSelectionSync}
+          onFeedbackSync={isViewer ? undefined : handlePickerFeedbackSync}
           onPick={handleKillerPick}
           onCancelPick={handleKillerPickCancel}
           onToggleBan={handleKillerBanToggle}
-          onClose={() => setPickerContext(null)}
+          onClose={closeKillerPicker}
         />
       )}
 

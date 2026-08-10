@@ -85,6 +85,9 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
   const prevSyncedFirstAttackerIdRef = useRef<string | null | undefined>(
     undefined,
   )
+  const prevSyncedPickerUiRef = useRef<
+    Pick<FourVFourSyncState["pickerUi"], "selectionSeq" | "feedbackToken"> | undefined
+  >(undefined)
   const databaseRef = useRef<Database | null>(null)
   const tokenRef = useRef<string | null>(null)
 
@@ -725,6 +728,64 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     roomReady,
     state.mode,
     state.mode === "4v4" ? state.firstAttackerId : null,
+    terminalStatus,
+    token,
+  ])
+
+  // 피어리스 picker 하이라이트/피드백은 관전자 화면에 즉시 반영되어야 한다.
+  useEffect(() => {
+    if (gameMode !== "4v4" || state.mode !== "4v4") return
+    if (
+      !enabled ||
+      role !== "host" ||
+      !token ||
+      !roomReady ||
+      terminalStatus
+    ) {
+      return
+    }
+
+    const next = state.pickerUi
+    const prev = prevSyncedPickerUiRef.current
+    prevSyncedPickerUiRef.current = {
+      selectionSeq: next.selectionSeq,
+      feedbackToken: next.feedbackToken,
+    }
+    if (
+      prev &&
+      prev.selectionSeq === next.selectionSeq &&
+      prev.feedbackToken === next.feedbackToken
+    ) {
+      return
+    }
+
+    void (async () => {
+      try {
+        const currentState = stateRef.current
+        const serialized = JSON.stringify(currentState)
+        const { database } = await getAnonymousUser()
+        const expiresAt = await writeScoreboardState(database, token, currentState)
+        lastPublishedRef.current = serialized
+        saveRoomSession(localStorage, HOST_SESSION_KEY, {
+          token,
+          expiresAt,
+          gameMode,
+        })
+        setRoomExpiresAt(expiresAt)
+      } catch (error) {
+        if (databaseRef.current) goOffline(databaseRef.current)
+        setTerminalStatus("error")
+        setErrorMessage(toErrorMessage(error))
+      }
+    })()
+  }, [
+    enabled,
+    gameMode,
+    role,
+    roomReady,
+    state.mode,
+    state.mode === "4v4" ? state.pickerUi.selectionSeq : 0,
+    state.mode === "4v4" ? state.pickerUi.feedbackToken : 0,
     terminalStatus,
     token,
   ])

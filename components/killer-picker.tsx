@@ -14,6 +14,7 @@ import {
   type PickEntry,
   type Team,
 } from "@/lib/fearless"
+import type { PickerFeedbackKind, PickerUiSyncState } from "@/lib/picker-ui-sync"
 import {
   clampPickerZoomLevel,
   getMaxPickerZoomLevel,
@@ -50,6 +51,11 @@ export type KillerPickerProps = {
   onCancelPick: () => void
   onToggleBan: (killerId: string) => void
   onClose: () => void
+  /** Host publishes picker highlight/feedback for synced viewers. */
+  onSelectionSync?: (killerId: string | null) => void
+  onFeedbackSync?: (killerId: string, kind: PickerFeedbackKind) => void
+  /** Viewer replays host picker effects while the catalog is open. */
+  syncedPickerUi?: PickerUiSyncState | null
   /** Team-neutral styling for modes without team colors (e.g. 1v4). */
   monochrome?: boolean
 }
@@ -101,6 +107,9 @@ export function KillerPicker({
   onCancelPick,
   onToggleBan,
   onClose,
+  onSelectionSync,
+  onFeedbackSync,
+  syncedPickerUi = null,
   monochrome = false,
 }: KillerPickerProps) {
   const titleId = useId()
@@ -110,6 +119,8 @@ export function KillerPicker({
   const searchRef = useRef<HTMLInputElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const skipSelectionSyncRef = useRef(false)
+  const lastRemoteSelectionSeqRef = useRef(0)
+  const lastRemoteFeedbackTokenRef = useRef(0)
   const [mounted, setMounted] = useState(false)
   const [filterMode, setFilterMode] =
     useState<FearlessFilterMode>("hard")
@@ -173,14 +184,34 @@ export function KillerPicker({
     setZoomLevel((level) => Math.min(maxZoomLevel, level + 1))
   }, [maxZoomLevel])
 
+  const applySelection = useCallback(
+    (killerId: string | null, options?: { sync?: boolean }) => {
+      setSelectedKillerId(killerId)
+      if (!readOnly && options?.sync !== false) onSelectionSync?.(killerId)
+    },
+    [onSelectionSync, readOnly],
+  )
+
+  const handleSelectKiller = useCallback(
+    (killerId: string) => {
+      setSelectedKillerId((current) => {
+        const next = current === killerId ? null : killerId
+        if (!readOnly) onSelectionSync?.(next)
+        return next
+      })
+    },
+    [onSelectionSync, readOnly],
+  )
+
   useEffect(() => {
     if (!open) return
     if (skipSelectionSyncRef.current) {
       skipSelectionSyncRef.current = false
       return
     }
-    setSelectedKillerId(context.currentKillerId ?? null)
+    applySelection(context.currentKillerId ?? null)
   }, [
+    applySelection,
     open,
     context.mode,
     context.team,
@@ -295,17 +326,12 @@ export function KillerPicker({
     const cellState = pickerCellStates.get(selectedKillerId)
     if (!cellState) return
     if (hidePicked && cellState.visiblePicks.length > 0) {
-      setSelectedKillerId(null)
+      applySelection(null)
     } else if (hideBanned && cellState.isBanned) {
-      setSelectedKillerId(null)
+      applySelection(null)
     }
-  }, [hideBanned, hidePicked, pickerCellStates, selectedKillerId])
+  }, [applySelection, hideBanned, hidePicked, pickerCellStates, selectedKillerId])
 
-  const handleSelectKiller = useCallback((killerId: string) => {
-    setSelectedKillerId((current) =>
-      current === killerId ? null : killerId,
-    )
-  }, [])
   const displayPlayerName = safeName(context.playerName)
   const isCurrentSelection =
     context.slotIndex !== null &&
@@ -331,15 +357,40 @@ export function KillerPicker({
 
   const dismissSelectionAfterAction = useCallback(() => {
     skipSelectionSyncRef.current = true
-    setSelectedKillerId(null)
-  }, [])
+    applySelection(null)
+  }, [applySelection])
 
   const pulseCell = useCallback(
     (killerId: string, kind: "pick" | "ban" | "unban") => {
-      setCellFeedback({ killerId, kind, token: Date.now() })
+      const token = Date.now()
+      setCellFeedback({ killerId, kind, token })
+      onFeedbackSync?.(killerId, kind)
     },
-    [],
+    [onFeedbackSync],
   )
+
+  useEffect(() => {
+    if (!readOnly || !open || !syncedPickerUi) return
+
+    if (syncedPickerUi.selectionSeq !== lastRemoteSelectionSeqRef.current) {
+      lastRemoteSelectionSeqRef.current = syncedPickerUi.selectionSeq
+      setSelectedKillerId(syncedPickerUi.selectedKillerId)
+    }
+
+    if (
+      syncedPickerUi.feedbackToken > 0 &&
+      syncedPickerUi.feedbackToken !== lastRemoteFeedbackTokenRef.current &&
+      syncedPickerUi.feedbackKillerId &&
+      syncedPickerUi.feedbackKind
+    ) {
+      lastRemoteFeedbackTokenRef.current = syncedPickerUi.feedbackToken
+      setCellFeedback({
+        killerId: syncedPickerUi.feedbackKillerId,
+        kind: syncedPickerUi.feedbackKind,
+        token: syncedPickerUi.feedbackToken,
+      })
+    }
+  }, [open, readOnly, syncedPickerUi])
 
   const handlePickAction = useCallback(() => {
     if (!selectedKillerId) return
@@ -403,7 +454,7 @@ export function KillerPicker({
           if (!(target instanceof HTMLElement)) return
           if (target.closest(".fearless-picker-cell")) return
           if (target.closest("button, input, label, [role='group']")) return
-          setSelectedKillerId(null)
+          applySelection(null)
         }}
       >
         <svg className="fearless-picker-svg-filters" aria-hidden="true">
@@ -644,7 +695,7 @@ export function KillerPicker({
           onMouseDown={(event) => {
             if (!selectedKillerId) return
             if (event.target === event.currentTarget) {
-              setSelectedKillerId(null)
+              applySelection(null)
             }
           }}
         >
@@ -667,6 +718,12 @@ export function KillerPicker({
                   isBanned={cellState?.isBanned ?? false}
                   isSelected={selectedKillerId === killer.id}
                   monochrome={monochrome}
+                  selectionPopToken={
+                    readOnly &&
+                    syncedPickerUi?.selectedKillerId === killer.id
+                      ? syncedPickerUi.selectionSeq
+                      : undefined
+                  }
                   feedback={
                     cellFeedback?.killerId === killer.id
                       ? {

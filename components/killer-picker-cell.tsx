@@ -18,6 +18,7 @@ export type KillerPickerCellProps = {
   isBanned: boolean
   isSelected: boolean
   feedback?: KillerPickerCellFeedback | null
+  selectionPopToken?: number
   monochrome?: boolean
   onSelect: (killerId: string) => void
 }
@@ -32,6 +33,7 @@ function KillerPickerCellComponent({
   isBanned,
   isSelected,
   feedback,
+  selectionPopToken,
   monochrome = false,
   onSelect,
 }: KillerPickerCellProps) {
@@ -78,6 +80,16 @@ function KillerPickerCellComponent({
 
     setActiveFlash(feedback.kind)
   }, [feedback?.kind, feedback?.token])
+
+  useEffect(() => {
+    if (!selectionPopToken) return
+
+    const frame = frameRef.current
+    if (!frame) return
+    frame.classList.remove("fearless-picker-cell-frame-pop")
+    void frame.offsetWidth
+    frame.classList.add("fearless-picker-cell-frame-pop")
+  }, [selectionPopToken])
 
   const handleFeedbackFlashEnd = useCallback(
     (event: React.AnimationEvent<HTMLSpanElement>) => {
@@ -173,6 +185,7 @@ export const KillerPickerCell = memo(
     previous.isBanned === next.isBanned &&
     previous.isSelected === next.isSelected &&
     previous.feedback?.token === next.feedback?.token &&
+    previous.selectionPopToken === next.selectionPopToken &&
     previous.pickKey === next.pickKey &&
     previous.onSelect === next.onSelect,
 )

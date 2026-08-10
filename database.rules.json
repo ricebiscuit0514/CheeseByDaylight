@@ -53,6 +53,32 @@
           "fearlessEnabled": {
             ".validate": "newData.parent().child('mode').val() === '4v4' && newData.val() === true"
           },
+          "pickerUi": {
+            ".validate": "newData.parent().child('mode').val() === '4v4'",
+            "sel": {
+              ".validate": "newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+            },
+            "selSeq": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999999"
+            },
+            "fb": {
+              "k": {
+                ".validate": "newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+              },
+              "kind": {
+                ".validate": "newData.val() === 'pick' || newData.val() === 'ban' || newData.val() === 'unban'"
+              },
+              "t": {
+                ".validate": "newData.isNumber() && newData.val() >= 0"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
           "thomasName": {
             ".validate": "newData.isString() && newData.val().length <= 24"
           },

@@ -14,6 +14,8 @@ export type KillerPickSlotsProps = {
   killerPicks: readonly string[]
   maxSlots?: number
   disabled?: boolean
+  /** Spectator/read-only mode adjusts slot affordances and tooltips. */
+  readOnly?: boolean
   /** Team-neutral styling for modes without team colors (e.g. 1v4). */
   monochrome?: boolean
   onOpen: (slotIndex: number | null) => void
@@ -33,10 +35,12 @@ export function KillerPickSlots({
   killerPicks,
   maxSlots = 4,
   disabled = false,
+  readOnly = false,
   monochrome = false,
   onOpen,
 }: KillerPickSlotsProps) {
   const displayName = safePlayerName(playerName)
+  const emptySlotTooltip = readOnly ? "살인마 목록 열기" : "살인마 선택하기"
   const slots = getFearlessRowSlots(killerPicks, maxSlots)
   const singleSlot = maxSlots === 1
 
@@ -51,7 +55,9 @@ export function KillerPickSlots({
     >
       {slots.map((slot) => {
         if (slot.kind === "empty") {
-          const label = `${displayName} 새 살인마 픽 추가`
+          const label = readOnly
+            ? `${displayName} 살인마 목록 열기`
+            : `${displayName} 새 살인마 픽 추가`
           return (
             <button
               key={`slot-empty-${slot.slotIndex}`}
@@ -69,7 +75,7 @@ export function KillerPickSlots({
               <EmptySlotFrame />
               {slot.visible && slot.actionable && (
                 <span className="fearless-slot-tooltip" role="tooltip">
-                  살인마 선택하기
+                  {emptySlotTooltip}
                 </span>
               )}
             </button>

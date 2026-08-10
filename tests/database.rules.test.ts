@@ -169,6 +169,28 @@ describe("Realtime Database scoreboard room rules", () => {
     )
   })
 
+  it("allows synced picker ui highlight and feedback for the owner", async () => {
+    const ownerDatabase = testEnv.authenticatedContext(OWNER_UID).database()
+
+    await assertSucceeds(
+      update(ref(ownerDatabase, `scoreboardRooms/${ROOM_TOKEN}/scoreboard`), {
+        pickerUi: {
+          sel: "nurse",
+          selSeq: 3,
+          fb: { k: "nurse", kind: "pick", t: 1234 },
+        },
+      }),
+    )
+    await assertFails(
+      update(ref(ownerDatabase, `scoreboardRooms/${ROOM_TOKEN}/scoreboard`), {
+        pickerUi: {
+          sel: "Ghost Face",
+          selSeq: 1,
+        },
+      }),
+    )
+  })
+
   it("rejects a fifth pick and invalid fearless slugs or ban values", async () => {
     const database = testEnv.authenticatedContext(OWNER_UID).database()
     const playerRef = ref(

@@ -14,6 +14,15 @@ import {
   resolveKillerId,
 } from "@/lib/killer-catalog"
 import {
+  createInitialPickerUi,
+  normalizePickerUi,
+  pickerUiFromWire,
+  pickerUiToWire,
+  type PickerUiSyncState,
+  type WirePickerUi,
+} from "@/lib/picker-ui-sync"
+export type { PickerFeedbackKind, PickerUiSyncState } from "@/lib/picker-ui-sync"
+import {
   get,
   goOffline,
   goOnline,
@@ -145,6 +154,7 @@ export function createDefaultScoreboardState(
       showRematchPrompt: false,
       ...CLOSED_ACE_SETUP,
     },
+    pickerUi: createInitialPickerUi(),
   }
 }
 
@@ -158,6 +168,7 @@ export type FourVFourSyncState = {
   adaName: string
   firstAttackerId: string | null
   ace: AceSyncState
+  pickerUi: PickerUiSyncState
 }
 
 export type FivePlayerSyncState = {
@@ -213,6 +224,7 @@ export type FourVFourWireState = Omit<
   | "killerBans"
   | "ace"
   | "firstAttackerId"
+  | "pickerUi"
   | "mode"
 > & {
   mode: "4v4"
@@ -223,6 +235,7 @@ export type FourVFourWireState = Omit<
   adaCount: number
   ace: WireAceState
   firstAttackerId?: string
+  pickerUi?: WirePickerUi
 }
 
 export type FivePlayerWireState = {
@@ -460,7 +473,20 @@ function isFourVFourSyncState(
     typeof state.adaName === "string" &&
     state.adaName.length <= 24 &&
     isNullableString(state.firstAttackerId) &&
-    isAceState(state.ace)
+    isAceState(state.ace) &&
+    (state.pickerUi === undefined ||
+      (typeof state.pickerUi.selectionSeq === "number" &&
+        state.pickerUi.selectionSeq >= 0 &&
+        state.pickerUi.selectionSeq <= 999_999 &&
+        typeof state.pickerUi.feedbackToken === "number" &&
+        state.pickerUi.feedbackToken >= 0 &&
+        (state.pickerUi.selectedKillerId === null ||
+          (typeof state.pickerUi.selectedKillerId === "string" &&
+            isKillerId(state.pickerUi.selectedKillerId))) &&
+        (state.pickerUi.feedbackKind === null ||
+          state.pickerUi.feedbackKind === "pick" ||
+          state.pickerUi.feedbackKind === "ban" ||
+          state.pickerUi.feedbackKind === "unban")))
   )
 }
 
@@ -565,6 +591,7 @@ export function normalizeFourVFourState(
         ? normalizeFourVFourPlayer(state.ace.adaBackup)
         : null,
     },
+    pickerUi: normalizePickerUi(state.pickerUi),
   }
 }
 
@@ -666,6 +693,9 @@ function toWireFourVFourState(state: FourVFourSyncState): FourVFourWireState {
     wire.firstAttackerId = normalized.firstAttackerId
   }
 
+  const pickerUiWire = pickerUiToWire(normalized.pickerUi)
+  if (pickerUiWire) wire.pickerUi = pickerUiWire
+
   return wire
 }
 
@@ -697,6 +727,7 @@ function fromWireFourVFourState(
     thomasName: wire.thomasName ?? "",
     adaName: wire.adaName ?? "",
     firstAttackerId: wire.firstAttackerId ?? null,
+    pickerUi: pickerUiFromWire(wire.pickerUi),
     ace: {
       isActive: wire.ace?.isActive ?? false,
       hasCompleted: wire.ace?.hasCompleted ?? false,

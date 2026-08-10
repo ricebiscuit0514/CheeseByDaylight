@@ -8,6 +8,11 @@ import {
   type FivePlayerSyncState,
   type FourVFourSyncState,
 } from "../lib/firebase/scoreboard-room"
+import {
+  createInitialPickerUi,
+  nextPickerFeedback,
+  nextPickerSelection,
+} from "../lib/picker-ui-sync"
 
 function createFourVFourState(): FourVFourSyncState {
   return createDefaultScoreboardState("4v4") as FourVFourSyncState
@@ -77,6 +82,31 @@ describe("scoreboard room fearless normalization", () => {
     expect(restored.thomas[0].killerPicks).toEqual(["nurse", "ghost-face"])
     expect(restored.thomas[1].killerPicks).toEqual(["nurse"])
     expect(restored.killerBans).toEqual(["artist", "xenomorph"])
+  })
+
+  it("round-trips synced picker ui highlight and feedback", () => {
+    const state = createFourVFourState()
+    state.pickerUi = nextPickerFeedback(
+      nextPickerSelection(createInitialPickerUi(), "nurse"),
+      "nurse",
+      "ban",
+      4321,
+    )
+
+    const wire = toWireState(state)
+    expect(wire.mode).toBe("4v4")
+    if (wire.mode !== "4v4") throw new Error("Expected 4v4 wire state")
+    expect(wire.pickerUi).toEqual({
+      selSeq: 2,
+      fb: { k: "nurse", kind: "ban", t: 4321 },
+    })
+
+    const restored = fromWireState(wire)
+    expect(restored?.mode).toBe("4v4")
+    if (!restored || restored.mode !== "4v4") {
+      throw new Error("Expected restored 4v4 state")
+    }
+    expect(restored.pickerUi).toEqual(state.pickerUi)
   })
 
   it("deduplicates bans and removes unknown catalog IDs", () => {

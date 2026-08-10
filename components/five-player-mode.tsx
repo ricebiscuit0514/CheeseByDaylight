@@ -743,6 +743,7 @@ export function FivePlayerMode() {
                           monochrome
                           killerPicks={p.killerPicks ?? []}
                           disabled={removeMode || isViewer}
+                          readOnly={isViewer}
                           onOpen={(slotIndex) => openKillerPicker(p, slotIndex)}
                         />
                       }
