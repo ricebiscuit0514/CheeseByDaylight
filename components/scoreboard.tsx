@@ -1043,81 +1043,105 @@ export function Scoreboard() {
 
     const thomasAce = thomas.find((p) => p.id === aceThomasId)
     const adaAce = ada.find((p) => p.id === aceAdaId)
+    if (!thomasAce || !adaAce) return
 
-    if (thomasAce && adaAce && thomasAce.played && adaAce.played) {
-      const kills = lastScoredKills ?? 0
-      let delayMs = 600
-      if (kills === 1) delayMs = 900
-      else if (kills === 2) delayMs = 1250
-      else if (kills === 3) delayMs = 1650
-      else if (kills === 3.5) delayMs = 2100
-      else if (kills >= 4) delayMs = 2400
+    const bothPlayed = thomasAce.played && adaAce.played
 
-      const timer = setTimeout(() => {
-        const roundKey = buildAceRoundLogKey(
-          aceThomasId,
-          aceAdaId,
-          thomasAce.kills,
-          adaAce.kills,
-        )
-        const firstAttackerTeam =
-          firstAttackerId === aceThomasId
-            ? "thomas"
-            : firstAttackerId === aceAdaId
-              ? "ada"
-              : undefined
-        const logRound = (outcome: "tie" | "thomas" | "ada") => {
-          setAceRoundLog((prev) =>
-            appendAceRoundLogEntry(
-              prev,
-              roundKey,
-              createAceRoundLogEntry(
-                thomasAce,
-                adaAce,
-                outcome,
-                firstAttackerTeam,
-              ),
-            ),
-          )
-        }
-
-        if (thomasAce.kills > adaAce.kills) {
-          logRound("thomas")
-          setAceWinnersMap((prev) => ({
-            ...prev,
-            [thomasAce.id]: "win",
-            [adaAce.id]: "lose",
-          }))
-          setAceWinnerTeam("thomas")
-          setAceVictoryOverlay({
-            winnerTeamName: thomasName,
-            acePlayerName: thomasAce.name || "에이스",
-            teamColor: "thomas",
-          })
-          // Keep isAceMatchMode true while victory overlay is playing!
-        } else if (adaAce.kills > thomasAce.kills) {
-          logRound("ada")
-          setAceWinnersMap((prev) => ({
-            ...prev,
-            [adaAce.id]: "win",
-            [thomasAce.id]: "lose",
-          }))
-          setAceWinnerTeam("ada")
-          setAceVictoryOverlay({
-            winnerTeamName: adaName,
-            acePlayerName: adaAce.name || "에이스",
-            teamColor: "ada",
-          })
-          // Keep isAceMatchMode true while victory overlay is playing!
-        } else {
-          logRound("tie")
-          setAceWinnerTeam(null)
-          setShowAceRematchPrompt(true)
-        }
-      }, delayMs)
-
-      return () => clearTimeout(timer)
+    if (!bothPlayed) {
+      setAceWinnersMap((prev) =>
+        prev[aceThomasId] || prev[aceAdaId] ? {} : prev,
+      )
+      setAceWinnerTeam(null)
+      setAceVictoryOverlay(null)
+      setShowAceRematchPrompt(false)
+      return
     }
+
+    const isTie = thomasAce.kills === adaAce.kills
+    if (isTie) {
+      setAceWinnersMap((prev) =>
+        prev[aceThomasId] || prev[aceAdaId] ? {} : prev,
+      )
+      setAceWinnerTeam(null)
+      setAceVictoryOverlay(null)
+      setHasCompletedAceMatch(false)
+    }
+
+    const kills = lastScoredKills ?? 0
+    let delayMs = 600
+    if (kills === 1) delayMs = 900
+    else if (kills === 2) delayMs = 1250
+    else if (kills === 3) delayMs = 1650
+    else if (kills === 3.5) delayMs = 2100
+    else if (kills >= 4) delayMs = 2400
+
+    const timer = setTimeout(() => {
+      const roundKey = buildAceRoundLogKey(
+        aceThomasId,
+        aceAdaId,
+        thomasAce.kills,
+        adaAce.kills,
+      )
+      const firstAttackerTeam =
+        firstAttackerId === aceThomasId
+          ? "thomas"
+          : firstAttackerId === aceAdaId
+            ? "ada"
+            : undefined
+      const logRound = (outcome: "tie" | "thomas" | "ada") => {
+        setAceRoundLog((prev) =>
+          appendAceRoundLogEntry(
+            prev,
+            roundKey,
+            createAceRoundLogEntry(
+              thomasAce,
+              adaAce,
+              outcome,
+              firstAttackerTeam,
+            ),
+          ),
+        )
+      }
+
+      if (thomasAce.kills > adaAce.kills) {
+        logRound("thomas")
+        setAceWinnersMap((prev) => ({
+          ...prev,
+          [thomasAce.id]: "win",
+          [adaAce.id]: "lose",
+        }))
+        setAceWinnerTeam("thomas")
+        setAceVictoryOverlay({
+          winnerTeamName: thomasName,
+          acePlayerName: thomasAce.name || "에이스",
+          teamColor: "thomas",
+        })
+        // Keep isAceMatchMode true while victory overlay is playing!
+      } else if (adaAce.kills > thomasAce.kills) {
+        logRound("ada")
+        setAceWinnersMap((prev) => ({
+          ...prev,
+          [adaAce.id]: "win",
+          [thomasAce.id]: "lose",
+        }))
+        setAceWinnerTeam("ada")
+        setAceVictoryOverlay({
+          winnerTeamName: adaName,
+          acePlayerName: adaAce.name || "에이스",
+          teamColor: "ada",
+        })
+        // Keep isAceMatchMode true while victory overlay is playing!
+      } else {
+        logRound("tie")
+        setAceWinnersMap({})
+        setAceWinnerTeam(null)
+        setAceVictoryOverlay(null)
+        setHasCompletedAceMatch(false)
+        setShowAceRematchPrompt(true)
+      }
+    }, delayMs)
+
+    return () => clearTimeout(timer)
   }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada, thomasName, adaName, lastScoredKills, firstAttackerId])
 
   const handleAceVictoryDismiss = () => {
