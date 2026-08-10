@@ -2,11 +2,10 @@
   <img src="https://github.com/user-attachments/assets/91153c95-122b-48e0-a9db-2bf907b22aac" width="100%" alt="Cheese by Daylight Banner" />
 </p>
 
-<h1 align="center">🧀 Cheese By Daylight | 치즈 바이 데이라이트</h1>
-
+<h1 align="center">치즈 바이 데이라이트</h1>
 
 <p align="center">
-  <b>데드 바이 데이라이트 스트리머 내전 진행 보조 프로그램</b>
+  <b>데드 바이 데이라이트 스트리머 대전을 도와주는 치즈 바이 데이라이트입니다.</b>
 </p>
 
 <p align="center">
