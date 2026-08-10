@@ -102,6 +102,7 @@ function KillerPickerCellComponent({
   return (
     <button
       type="button"
+      data-killer-id={killer.id}
       className={cn(
         "fearless-picker-cell",
         isPicked && "is-picked",

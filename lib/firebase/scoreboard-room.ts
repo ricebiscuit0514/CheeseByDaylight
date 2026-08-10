@@ -127,6 +127,8 @@ export function createDefaultScoreboardState(
       players: DEFAULT_FIVE_PLAYER_ROSTER(),
       receivingConfig: [5, 8, 10, 12, 15],
       givingConfig: [15, 12, 10, 8, 5],
+      killerBans: [],
+      pickerUi: createInitialPickerUi(),
     }
   }
 
@@ -176,6 +178,8 @@ export type FivePlayerSyncState = {
   players: Player[]
   receivingConfig: number[]
   givingConfig: number[]
+  killerBans: string[]
+  pickerUi: PickerUiSyncState
 }
 
 export type ScoreboardSyncState = FourVFourSyncState | FivePlayerSyncState
@@ -244,6 +248,8 @@ export type FivePlayerWireState = {
   players: Player[] | null
   receivingConfig: number[]
   givingConfig: number[]
+  killerBans?: Record<string, true>
+  pickerUi?: WirePickerUi
 }
 
 export type ScoreboardWireState = FourVFourWireState | FivePlayerWireState
@@ -449,6 +455,26 @@ function isPinballConfig(value: unknown): value is number[] {
   )
 }
 
+function isOptionalPickerUi(value: unknown): boolean {
+  if (value === undefined) return true
+  if (!value || typeof value !== "object") return false
+  const pickerUi = value as Partial<PickerUiSyncState>
+  return (
+    typeof pickerUi.selectionSeq === "number" &&
+    pickerUi.selectionSeq >= 0 &&
+    pickerUi.selectionSeq <= 999_999 &&
+    typeof pickerUi.feedbackToken === "number" &&
+    pickerUi.feedbackToken >= 0 &&
+    (pickerUi.selectedKillerId === null ||
+      (typeof pickerUi.selectedKillerId === "string" &&
+        isKillerId(pickerUi.selectedKillerId))) &&
+    (pickerUi.feedbackKind === null ||
+      pickerUi.feedbackKind === "pick" ||
+      pickerUi.feedbackKind === "ban" ||
+      pickerUi.feedbackKind === "unban")
+  )
+}
+
 function isFourVFourSyncState(
   value: unknown,
 ): value is FourVFourSyncState {
@@ -474,19 +500,7 @@ function isFourVFourSyncState(
     state.adaName.length <= 24 &&
     isNullableString(state.firstAttackerId) &&
     isAceState(state.ace) &&
-    (state.pickerUi === undefined ||
-      (typeof state.pickerUi.selectionSeq === "number" &&
-        state.pickerUi.selectionSeq >= 0 &&
-        state.pickerUi.selectionSeq <= 999_999 &&
-        typeof state.pickerUi.feedbackToken === "number" &&
-        state.pickerUi.feedbackToken >= 0 &&
-        (state.pickerUi.selectedKillerId === null ||
-          (typeof state.pickerUi.selectedKillerId === "string" &&
-            isKillerId(state.pickerUi.selectedKillerId))) &&
-        (state.pickerUi.feedbackKind === null ||
-          state.pickerUi.feedbackKind === "pick" ||
-          state.pickerUi.feedbackKind === "ban" ||
-          state.pickerUi.feedbackKind === "unban")))
+    isOptionalPickerUi(state.pickerUi)
   )
 }
 
@@ -501,7 +515,13 @@ function isFivePlayerSyncState(
     state.players.length <= 5 &&
     state.players.every(isFivePlayerPlayer) &&
     isPinballConfig(state.receivingConfig) &&
-    isPinballConfig(state.givingConfig)
+    isPinballConfig(state.givingConfig) &&
+    (state.killerBans === undefined ||
+      (Array.isArray(state.killerBans) &&
+        state.killerBans.length <= KILLERS.length &&
+        new Set(state.killerBans).size === state.killerBans.length &&
+        state.killerBans.every(isKillerId))) &&
+    isOptionalPickerUi(state.pickerUi)
   )
 }
 
@@ -617,6 +637,8 @@ export function normalizeFivePlayerState(
     players: state.players.slice(0, 5).map(normalizeFivePlayerPlayer),
     receivingConfig: clampConfig(state.receivingConfig),
     givingConfig: clampConfig(state.givingConfig),
+    killerBans: normalizeKillerBans(state.killerBans),
+    pickerUi: normalizePickerUi(state.pickerUi),
   }
 }
 
@@ -701,13 +723,18 @@ function toWireFourVFourState(state: FourVFourSyncState): FourVFourWireState {
 
 function toWireFivePlayerState(state: FivePlayerSyncState): FivePlayerWireState {
   const normalized = normalizeFivePlayerState(state)
-  return {
+  const wire: FivePlayerWireState = {
     mode: "5p",
     playerCount: normalized.players.length,
     players: normalized.players.length > 0 ? normalized.players : null,
     receivingConfig: normalized.receivingConfig,
     givingConfig: normalized.givingConfig,
   }
+  const killerBansWire = killerBansToWire(normalized.killerBans)
+  if (killerBansWire) wire.killerBans = killerBansWire
+  const pickerUiWire = pickerUiToWire(normalized.pickerUi)
+  if (pickerUiWire) wire.pickerUi = pickerUiWire
+  return wire
 }
 
 export function toWireState(state: ScoreboardSyncState): ScoreboardWireState {
@@ -782,12 +809,14 @@ function fromWireFivePlayerState(
       ? wire.receivingConfig
       : [],
     givingConfig: Array.isArray(wire.givingConfig) ? wire.givingConfig : [],
+    killerBans: killerBansFromWire(wire.killerBans),
+    pickerUi: pickerUiFromWire(wire.pickerUi),
   }
 
   if (wire.playerCount !== candidate.players.length || !isFivePlayerSyncState(candidate)) {
     return null
   }
-  return candidate
+  return normalizeFivePlayerState(candidate)
 }
 
 export function fromWireState(value: unknown): ScoreboardSyncState | null {

@@ -113,3 +113,36 @@ export function getPickerUiScale(zoomLevel: number, maxZoom: number): number {
   const t = zoomIntensity(zoomLevel, maxZoom)
   return Number((1 + t * 0.38).toFixed(3))
 }
+
+export type PickerLayoutMetrics = {
+  viewportWidth: number
+  zoomLevel: number
+  maxZoomLevel: number
+  columnCount: number
+  gridGap: { rowGap: string; columnGap: string }
+  pickerUiScale: number
+}
+
+/** Keeps column count, gaps, and UI scale in sync for a viewport/zoom pair. */
+export function measurePickerLayout(
+  viewportWidth: number,
+  audience: PickerZoomAudience,
+  zoomOverride?: number,
+): PickerLayoutMetrics {
+  const baseColumns = getPickerBaseColumns(viewportWidth)
+  const minColumns = getPickerMinColumns(viewportWidth)
+  const maxZoomLevel = getMaxPickerZoomLevel(baseColumns, minColumns)
+  const zoomLevel = clampPickerZoomLevel(
+    zoomOverride ?? readStoredPickerZoomLevel(audience),
+    maxZoomLevel,
+  )
+
+  return {
+    viewportWidth,
+    zoomLevel,
+    maxZoomLevel,
+    columnCount: getPickerColumnCount(viewportWidth, zoomLevel),
+    gridGap: getPickerGridGap(zoomLevel, maxZoomLevel),
+    pickerUiScale: getPickerUiScale(zoomLevel, maxZoomLevel),
+  }
+}

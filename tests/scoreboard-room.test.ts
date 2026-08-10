@@ -151,15 +151,64 @@ describe("scoreboard room fearless normalization", () => {
       ],
       receivingConfig: [5, 8, 10, 12, 15],
       givingConfig: [15, 12, 10, 8, 5],
+      killerBans: ["ghost-face", "xenomorph"],
+      pickerUi: nextPickerFeedback(
+        createInitialPickerUi(),
+        "nurse",
+        "ban",
+      ),
     }
 
     const normalized = normalizeFivePlayerState(state)
     expect(normalized.players[0].killerPicks).toEqual(["nurse"])
     expect(normalized.players[0]).not.toHaveProperty("killer")
+    expect(normalized.killerBans).toEqual(["ghost-face", "xenomorph"])
 
-    const restored = fromWireState(toWireState(state))
+    const wire = toWireState(state)
+    expect(wire.mode === "5p" ? wire.killerBans : null).toEqual({
+      "ghost-face": true,
+      xenomorph: true,
+    })
+
+    const restored = fromWireState(wire)
     expect(
       restored?.mode === "5p" ? restored.players[0].killerPicks : null,
     ).toEqual(["nurse"])
+    expect(restored?.mode === "5p" ? restored.killerBans : null).toEqual([
+      "ghost-face",
+      "xenomorph",
+    ])
+    expect(restored?.mode === "5p" ? restored.pickerUi.feedbackKind : null).toBe(
+      "ban",
+    )
+  })
+
+  it("round-trips 5p picker ui selection and feedback", () => {
+    const state: FivePlayerSyncState = {
+      mode: "5p",
+      players: [
+        {
+          id: "1",
+          name: "Player",
+          kills: 0,
+          played: false,
+        },
+      ],
+      receivingConfig: [5, 8, 10, 12, 15],
+      givingConfig: [15, 12, 10, 8, 5],
+      killerBans: [],
+      pickerUi: nextPickerSelection(createInitialPickerUi(), "nurse"),
+    }
+
+    const wire = toWireState(state)
+    expect(wire.mode === "5p" ? wire.pickerUi : null).toEqual({
+      sel: "nurse",
+      selSeq: 1,
+    })
+
+    const restored = fromWireState(wire)
+    expect(restored?.mode === "5p" ? restored.pickerUi : null).toEqual(
+      state.pickerUi,
+    )
   })
 })

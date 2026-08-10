@@ -10,6 +10,7 @@ import {
   DEFAULT_ACE_MODAL_SYNC,
   type AceModalSyncState,
 } from "@/lib/ace-modal-sync"
+import { buildAceMatchNotice } from "@/lib/ace-match-warning"
 import { AceMatchOverlay } from "@/components/ace-match-overlay"
 import { HoldButton } from "@/components/hold-button"
 import { KillerPicker, type KillerPickerContext } from "@/components/killer-picker"
@@ -788,15 +789,13 @@ export function Scoreboard() {
           : undefined,
     }
   }, [ada, pickerContext, thomas])
-  const viewerPickerTeamCatalogTitle = useMemo(() => {
+  const viewerPickerTeamCatalogTeamLabel = useMemo(() => {
     if (!isViewer || !activePickerContext || activePickerContext.mode === "catalog") {
       return undefined
     }
-    const teamLabel =
-      activePickerContext.team === "thomas"
-        ? thomasName.trim() || "토마스"
-        : adaName.trim() || "아다"
-    return `${teamLabel} 살인마 목록`
+    return activePickerContext.team === "thomas"
+      ? thomasName.trim() || "토마스"
+      : adaName.trim() || "아다"
   }, [activePickerContext, adaName, isViewer, thomasName])
   const { hidden: utilityUiHidden, toggle: toggleUtilityUi } = useUtilityUiHidden()
 
@@ -1030,30 +1029,14 @@ export function Scoreboard() {
     if (!tPlayer || !aPlayer) return null
 
     const getWarningData = (activeP: Player, targetP: Player, targetTeam: Team) => {
-      const k = activeP.kills
       const targetName = targetP.name.trim() || (targetTeam === "thomas" ? thomasName : adaName)
+      const notice = buildAceMatchNotice(activeP.kills)
 
-      if (k < 3) {
-        return {
-          name: targetName,
-          team: targetTeam,
-          killText: `${k + 1}킬`,
-          suffix: " 이상 해야 우승입니다",
-        }
-      } else if (k === 3) {
-        return {
-          name: targetName,
-          team: targetTeam,
-          killText: "올킬",
-          suffix: "을 해야 우승입니다",
-        }
-      } else {
-        return {
-          name: targetName,
-          team: targetTeam,
-          killText: "올킬",
-          suffix: "을 해야 동점입니다",
-        }
+      return {
+        name: targetName,
+        team: targetTeam,
+        killText: notice.killText,
+        suffix: notice.suffix,
       }
     }
 
@@ -2836,12 +2819,24 @@ export function Scoreboard() {
                 <HoldButton
                   onConfirm={() => {
                     setShowAceRematchPrompt(false)
-                    // Restore original 4v4 scores & first attacker before Ace match started
+                    // Restore 4v4 scores only; keep killer picks recorded during ace match.
                     if (aceThomasBackup) {
-                      setThomas((prev) => prev.map((p) => (p.id === aceThomasBackup.id ? { ...aceThomasBackup } : p)))
+                      setThomas((prev) =>
+                        prev.map((p) =>
+                          p.id === aceThomasBackup.id
+                            ? restoreAcePlayerScores(aceThomasBackup, p)
+                            : p,
+                        ),
+                      )
                     }
                     if (aceAdaBackup) {
-                      setAda((prev) => prev.map((p) => (p.id === aceAdaBackup.id ? { ...aceAdaBackup } : p)))
+                      setAda((prev) =>
+                        prev.map((p) =>
+                          p.id === aceAdaBackup.id
+                            ? restoreAcePlayerScores(aceAdaBackup, p)
+                            : p,
+                        ),
+                      )
                     }
                     if (aceFirstAttackerBackup !== null) {
                       setFirstAttackerId(aceFirstAttackerBackup)
@@ -3019,7 +3014,7 @@ export function Scoreboard() {
             )?.killerPicks ?? []
           }
           readOnly={isViewer}
-          viewerTeamCatalogTitle={viewerPickerTeamCatalogTitle}
+          viewerTeamCatalogTeamLabel={viewerPickerTeamCatalogTeamLabel}
           syncedPickerUi={isViewer ? pickerUi : null}
           onSelectionSync={isViewer ? undefined : handlePickerSelectionSync}
           onFeedbackSync={isViewer ? undefined : handlePickerFeedbackSync}

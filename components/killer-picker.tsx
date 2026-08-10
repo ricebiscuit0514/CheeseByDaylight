@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Search, Minus, Plus, X } from "lucide-react"
 import { KillerPickerCell } from "@/components/killer-picker-cell"
@@ -16,15 +16,9 @@ import {
 } from "@/lib/fearless"
 import type { PickerFeedbackKind, PickerUiSyncState } from "@/lib/picker-ui-sync"
 import {
-  clampPickerZoomLevel,
-  getMaxPickerZoomLevel,
-  getPickerBaseColumns,
-  getPickerColumnCount,
-  getPickerGridGap,
-  getPickerMinColumns,
-  getPickerUiScale,
   getPickerZoomAudience,
-  readStoredPickerZoomLevel,
+  measurePickerLayout,
+  type PickerLayoutMetrics,
   writeStoredPickerZoomLevel,
 } from "@/lib/picker-zoom"
 import { cn } from "@/lib/utils"
@@ -56,8 +50,10 @@ export type KillerPickerProps = {
   onFeedbackSync?: (killerId: string, kind: PickerFeedbackKind) => void
   /** Viewer replays host picker effects while the catalog is open. */
   syncedPickerUi?: PickerUiSyncState | null
-  /** Read-only slot/catalog title override for spectators. */
-  viewerTeamCatalogTitle?: string
+  /** Spectator slot picker title — highlighted label; suffix is appended in UI. */
+  viewerTeamCatalogTeamLabel?: string
+  /** Suffix after the highlighted spectator label. Defaults to " 살인마 목록". */
+  viewerCatalogTitleSuffix?: string
   /** Team-neutral styling for modes without team colors (e.g. 1v4). */
   monochrome?: boolean
 }
@@ -98,6 +94,43 @@ function decodePickerPortraits(container: HTMLElement | null) {
   }
 }
 
+function centerScrollOnKillerCell(
+  scrollContainer: HTMLElement,
+  killerId: string,
+) {
+  const cell = scrollContainer.querySelector<HTMLElement>(
+    `[data-killer-id="${CSS.escape(killerId)}"]`,
+  )
+  if (!cell) return false
+
+  if (scrollContainer.scrollHeight === 0) return false
+
+  const containerHeight = scrollContainer.clientHeight
+  const maxScroll = scrollContainer.scrollHeight - containerHeight
+  if (maxScroll <= 0) return true
+
+  const relativeTop =
+    cell.getBoundingClientRect().top -
+    scrollContainer.getBoundingClientRect().top +
+    scrollContainer.scrollTop
+  const cellHeight = cell.offsetHeight
+  const nextTop = Math.min(
+    maxScroll,
+    Math.max(0, relativeTop - (containerHeight - cellHeight) / 2),
+  )
+  scrollContainer.scrollTop = nextTop
+  return true
+}
+
+function buildPickerAutoScrollKey(
+  team: Team,
+  playerId: string,
+  slotIndex: number | null,
+  killerId: string,
+) {
+  return `${team}:${playerId}:${slotIndex ?? "none"}:${killerId}`
+}
+
 export function KillerPicker({
   open,
   context,
@@ -112,13 +145,16 @@ export function KillerPicker({
   onSelectionSync,
   onFeedbackSync,
   syncedPickerUi = null,
-  viewerTeamCatalogTitle,
+  viewerTeamCatalogTeamLabel,
+  viewerCatalogTitleSuffix,
   monochrome = false,
 }: KillerPickerProps) {
   const titleId = useId()
   const bannedColorizeFilterId = useId().replace(/:/g, "")
   const pickedToneFilterId = useId().replace(/:/g, "")
   const panelRef = useRef<HTMLElement>(null)
+  const gridScrollRef = useRef<HTMLDivElement>(null)
+  const lastAutoScrolledKeyRef = useRef<string | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const skipSelectionSyncRef = useRef(false)
@@ -146,16 +182,36 @@ export function KillerPicker({
     kind: "pick" | "ban" | "unban"
     token: number
   } | null>(null)
-  const [viewportWidth, setViewportWidth] = useState(1024)
-  const [zoomLevel, setZoomLevel] = useState(0)
+  const zoomAudience = getPickerZoomAudience(readOnly)
+  const scrollLockPreviousOverflowRef = useRef<string | null>(null)
+  const [layout, setLayout] = useState<PickerLayoutMetrics | null>(() =>
+    typeof window !== "undefined"
+      ? measurePickerLayout(window.innerWidth, getPickerZoomAudience(readOnly))
+      : null,
+  )
+  const [openLayoutReady, setOpenLayoutReady] = useState(false)
   const [hidePicked, setHidePicked] = useState(false)
   const [hideBanned, setHideBanned] = useState(false)
-  const zoomAudience = getPickerZoomAudience(readOnly)
   const filterOptions = monochrome ? SOLO_FILTER_OPTIONS : FILTER_OPTIONS
   const isCatalog = context.mode === "catalog"
   const effectiveFilterMode: FearlessFilterMode = isCatalog ? "hard" : filterMode
 
   useEffect(() => setMounted(true), [])
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (open) return
+      setLayout((current) =>
+        measurePickerLayout(
+          window.innerWidth,
+          zoomAudience,
+          current?.zoomLevel,
+        ),
+      )
+    }
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [open, zoomAudience])
 
   useEffect(() => {
     if (monochrome && filterMode === "personal") {
@@ -164,38 +220,31 @@ export function KillerPicker({
   }, [monochrome, filterMode])
 
   useEffect(() => {
-    setViewportWidth(window.innerWidth)
-    setZoomLevel(readStoredPickerZoomLevel(zoomAudience))
-    const handleResize = () => setViewportWidth(window.innerWidth)
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [zoomAudience])
-
-  const baseColumns = getPickerBaseColumns(viewportWidth)
-  const minColumns = getPickerMinColumns(viewportWidth)
-  const maxZoomLevel = getMaxPickerZoomLevel(baseColumns, minColumns)
-  const clampedZoomLevel = clampPickerZoomLevel(zoomLevel, maxZoomLevel)
-  const columnCount = getPickerColumnCount(viewportWidth, clampedZoomLevel)
-  const gridGap = getPickerGridGap(clampedZoomLevel, maxZoomLevel)
-  const pickerUiScale = getPickerUiScale(clampedZoomLevel, maxZoomLevel)
-
-  useEffect(() => {
-    if (zoomLevel !== clampedZoomLevel) {
-      setZoomLevel(clampedZoomLevel)
-    }
-  }, [clampedZoomLevel, zoomLevel])
-
-  useEffect(() => {
-    writeStoredPickerZoomLevel(zoomAudience, clampedZoomLevel)
-  }, [clampedZoomLevel, zoomAudience])
+    if (!layout) return
+    writeStoredPickerZoomLevel(zoomAudience, layout.zoomLevel)
+  }, [layout, zoomAudience])
 
   const handleZoomOut = useCallback(() => {
-    setZoomLevel((level) => Math.max(0, level - 1))
-  }, [])
+    setLayout((current) => {
+      if (!current) return current
+      return measurePickerLayout(
+        current.viewportWidth,
+        zoomAudience,
+        current.zoomLevel - 1,
+      )
+    })
+  }, [zoomAudience])
 
   const handleZoomIn = useCallback(() => {
-    setZoomLevel((level) => Math.min(maxZoomLevel, level + 1))
-  }, [maxZoomLevel])
+    setLayout((current) => {
+      if (!current) return current
+      return measurePickerLayout(
+        current.viewportWidth,
+        zoomAudience,
+        current.zoomLevel + 1,
+      )
+    })
+  }, [zoomAudience])
 
   const applySelection = useCallback(
     (killerId: string | null, options?: { sync?: boolean }) => {
@@ -222,7 +271,10 @@ export function KillerPicker({
   )
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      lastAutoScrolledKeyRef.current = null
+      return
+    }
     if (skipSelectionSyncRef.current) {
       skipSelectionSyncRef.current = false
       return
@@ -240,26 +292,33 @@ export function KillerPicker({
     context.currentKillerId,
   ])
 
-  useEffect(() => {
-    if (!open) return
+  useLayoutEffect(() => {
+    if (!open) {
+      setOpenLayoutReady(false)
+      if (scrollLockPreviousOverflowRef.current !== null) {
+        document.body.style.overflow = scrollLockPreviousOverflowRef.current
+        scrollLockPreviousOverflowRef.current = null
+      }
+      restoreFocusRef.current?.focus()
+      restoreFocusRef.current = null
+      return
+    }
 
     restoreFocusRef.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
-    const focusFrame = window.requestAnimationFrame(() => {
-      searchRef.current?.focus()
-    })
 
-    return () => {
-      window.cancelAnimationFrame(focusFrame)
-      document.body.style.overflow = previousOverflow
-      restoreFocusRef.current?.focus()
-      restoreFocusRef.current = null
+    if (scrollLockPreviousOverflowRef.current === null) {
+      scrollLockPreviousOverflowRef.current = document.body.style.overflow
+      document.body.style.overflow = "hidden"
     }
-  }, [open])
+
+    setLayout((current) =>
+      measurePickerLayout(window.innerWidth, zoomAudience, current?.zoomLevel),
+    )
+    setOpenLayoutReady(true)
+  }, [open, zoomAudience])
 
   useEffect(() => {
     if (!open) return
@@ -342,6 +401,62 @@ export function KillerPicker({
   )
 
   useEffect(() => {
+    if (!open || !mounted) return
+
+    const killerId = context.currentKillerId
+    if (!killerId || selectedKillerId !== killerId) return
+    if (!displayedKillers.some((killer) => killer.id === killerId)) return
+
+    const scrollKey = buildPickerAutoScrollKey(
+      context.team,
+      context.playerId,
+      context.slotIndex,
+      killerId,
+    )
+    if (lastAutoScrolledKeyRef.current === scrollKey) return
+
+    let cancelled = false
+    let retryTimer = 0
+    let raf2 = 0
+
+    const attempt = () => {
+      if (cancelled) return false
+      const scrollContainer = gridScrollRef.current
+      if (!scrollContainer) return false
+      if (!centerScrollOnKillerCell(scrollContainer, killerId)) return false
+      lastAutoScrolledKeyRef.current = scrollKey
+      decodePickerPortraits(scrollContainer)
+      return true
+    }
+
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (attempt()) return
+        retryTimer = window.setTimeout(() => {
+          attempt()
+        }, 120)
+      })
+    })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf1)
+      if (raf2) cancelAnimationFrame(raf2)
+      if (retryTimer) window.clearTimeout(retryTimer)
+    }
+  }, [
+    mounted,
+    open,
+    selectedKillerId,
+    context.currentKillerId,
+    context.team,
+    context.playerId,
+    context.slotIndex,
+    displayedKillers,
+    layout?.columnCount,
+  ])
+
+  useEffect(() => {
     if (!selectedKillerId) return
     const cellState = pickerCellStates.get(selectedKillerId)
     if (!cellState) return
@@ -395,6 +510,12 @@ export function KillerPicker({
     if (syncedPickerUi.selectionSeq !== lastRemoteSelectionSeqRef.current) {
       lastRemoteSelectionSeqRef.current = syncedPickerUi.selectionSeq
       setSelectedKillerId(syncedPickerUi.selectedKillerId)
+      if (
+        syncedPickerUi.selectedKillerId &&
+        syncedPickerUi.selectedKillerId === context.currentKillerId
+      ) {
+        lastAutoScrolledKeyRef.current = null
+      }
     }
 
     if (
@@ -443,7 +564,7 @@ export function KillerPicker({
     selectedKillerId,
   ])
 
-  if (!mounted || !open) return null
+  if (!mounted || !open || !layout || !openLayoutReady) return null
 
   return createPortal(
     <div
@@ -467,6 +588,9 @@ export function KillerPicker({
         style={{
           ["--fearless-banned-filter" as string]: `url(#${bannedColorizeFilterId})`,
           ["--fearless-picked-filter" as string]: `url(#${pickedToneFilterId})`,
+          ["--picker-row-gap" as string]: layout.gridGap.rowGap,
+          ["--picker-col-gap" as string]: layout.gridGap.columnGap,
+          ["--picker-ui-scale" as string]: String(layout.pickerUiScale),
         }}
         onMouseDown={(event) => {
           if (!selectedKillerId) return
@@ -546,10 +670,15 @@ export function KillerPicker({
             <h2 id={titleId} className="fearless-picker-title">
               {isCatalog ? (
                 <span className="fearless-picker-title-catalog">살인마 목록</span>
-              ) : readOnly && viewerTeamCatalogTitle ? (
-                <span className="fearless-picker-title-catalog">
-                  {viewerTeamCatalogTitle}
-                </span>
+              ) : readOnly && viewerTeamCatalogTeamLabel ? (
+                <>
+                  <span className="fearless-picker-title-name">
+                    {viewerTeamCatalogTeamLabel}
+                  </span>
+                  <span className="fearless-picker-title-pick">
+                    {viewerCatalogTitleSuffix ?? " 살인마 목록"}
+                  </span>
+                </>
               ) : (
                 <>
                   <span className="fearless-picker-title-name">
@@ -628,7 +757,7 @@ export function KillerPicker({
               </label>
             </div>
 
-            {maxZoomLevel > 0 && (
+            {layout.maxZoomLevel > 0 && (
               <div
                 className="fearless-picker-zoom"
                 role="group"
@@ -639,7 +768,7 @@ export function KillerPicker({
                   className="fearless-picker-zoom-btn"
                   aria-label="목록 축소"
                   title="목록 축소"
-                  disabled={clampedZoomLevel <= 0}
+                  disabled={layout.zoomLevel <= 0}
                   onClick={handleZoomOut}
                 >
                   <Minus aria-hidden="true" />
@@ -649,7 +778,7 @@ export function KillerPicker({
                   className="fearless-picker-zoom-btn"
                   aria-label="목록 확대"
                   title="목록 확대"
-                  disabled={clampedZoomLevel >= maxZoomLevel}
+                  disabled={layout.zoomLevel >= layout.maxZoomLevel}
                   onClick={handleZoomIn}
                 >
                   <Plus aria-hidden="true" />
@@ -724,11 +853,10 @@ export function KillerPicker({
           }}
         >
           <div
+            ref={gridScrollRef}
             className="fearless-picker-grid"
             style={{
-              gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
-              gap: `${gridGap.rowGap} ${gridGap.columnGap}`,
-              ["--picker-ui-scale" as string]: pickerUiScale,
+              gridTemplateColumns: `repeat(${layout.columnCount}, minmax(0, 1fr))`,
             }}
           >
             {displayedKillers.map((killer) => {

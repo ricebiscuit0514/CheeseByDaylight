@@ -8,6 +8,7 @@ import {
   getPickerMinColumns,
   getPickerUiScale,
   getPickerZoomStorageKey,
+  measurePickerLayout,
 } from "@/lib/picker-zoom"
 
 describe("picker zoom", () => {
@@ -56,5 +57,17 @@ describe("picker zoom", () => {
   it("uses separate storage keys for host and viewer", () => {
     expect(getPickerZoomStorageKey("host")).toBe("fearless-picker-zoom-host")
     expect(getPickerZoomStorageKey("viewer")).toBe("fearless-picker-zoom-viewer")
+  })
+
+  it("keeps column count, gaps, and ui scale in sync", () => {
+    const layout = measurePickerLayout(1280, "host", 2)
+    expect(layout).toEqual({
+      viewportWidth: 1280,
+      zoomLevel: 2,
+      maxZoomLevel: 3,
+      columnCount: 5,
+      gridGap: getPickerGridGap(2, 3),
+      pickerUiScale: getPickerUiScale(2, 3),
+    })
   })
 })

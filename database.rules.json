@@ -45,7 +45,7 @@
             ".validate": "newData.isNumber() && ((newData.val() === 0 && !newData.parent().child('ada').exists()) || (newData.val() === 1 && newData.parent().child('ada').child('0').exists() && !newData.parent().child('ada').child('1').exists() && !newData.parent().child('ada').child('2').exists() && !newData.parent().child('ada').child('3').exists()) || (newData.val() === 2 && newData.parent().child('ada').child('0').exists() && newData.parent().child('ada').child('1').exists() && !newData.parent().child('ada').child('2').exists() && !newData.parent().child('ada').child('3').exists()) || (newData.val() === 3 && newData.parent().child('ada').child('0').exists() && newData.parent().child('ada').child('1').exists() && newData.parent().child('ada').child('2').exists() && !newData.parent().child('ada').child('3').exists()) || (newData.val() === 4 && newData.parent().child('ada').child('0').exists() && newData.parent().child('ada').child('1').exists() && newData.parent().child('ada').child('2').exists() && newData.parent().child('ada').child('3').exists()))"
           },
           "killerBans": {
-            ".validate": "newData.parent().child('mode').val() === '4v4'",
+            ".validate": "newData.parent().child('mode').val() === '4v4' || newData.parent().child('mode').val() === '5p'",
             "$killerId": {
               ".validate": "$killerId.matches(/^[a-z0-9]+(-[a-z0-9]+)*$/) && $killerId.matches(/^.{1,30}$/) && newData.val() === true"
             }
@@ -54,7 +54,7 @@
             ".validate": "newData.parent().child('mode').val() === '4v4' && newData.val() === true"
           },
           "pickerUi": {
-            ".validate": "newData.parent().child('mode').val() === '4v4'",
+            ".validate": "newData.parent().child('mode').val() === '4v4' || newData.parent().child('mode').val() === '5p'",
             "sel": {
               ".validate": "newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
             },
@@ -340,6 +340,12 @@
               },
               "killer": {
                 ".validate": "newData.isString() && newData.val().length <= 30"
+              },
+              "killerPicks": {
+                ".validate": "newData.parent().parent().parent().child('mode').val() === '5p'",
+                "$pickIndex": {
+                  ".validate": "$pickIndex.matches(/^[0-3]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                }
               },
               "$other": {
                 ".validate": false

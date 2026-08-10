@@ -223,6 +223,7 @@
     padding: 0;
     width: 100%;
     min-height: 100vh;
+    scrollbar-gutter: stable;
     @apply bg-background text-foreground;
   }
 }
@@ -1119,6 +1120,9 @@ input[type="number"] {
   --fearless-team: var(--dbd-orange);
   --fearless-banned-filter: none;
   --fearless-picked-filter: none;
+  --picker-row-gap: .8rem;
+  --picker-col-gap: .65rem;
+  --picker-ui-scale: 1;
   position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -1396,11 +1400,11 @@ input[type="number"] {
   min-height: 0;
   grid-auto-rows: max-content;
   align-content: start;
-  --picker-ui-scale: 1;
-  gap: .8rem .65rem;
+  gap: var(--picker-row-gap) var(--picker-col-gap);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   padding: .55rem 1.5rem 1.5rem;
   scrollbar-color: color-mix(in oklch, var(--fearless-team), transparent 45%) transparent;
   scrollbar-width: thin;
@@ -1897,7 +1901,7 @@ input[type="number"] {
   from { opacity: 0; }
 }
 @keyframes fearless-panel-in {
-  from { opacity: 0; transform: translateY(.7rem) scale(.985); }
+  from { opacity: 0; }
 }
 
 @media (min-width: 768px) {
@@ -2000,7 +2004,7 @@ input[type="number"] {
     max-width: 100%;
   }
   .fearless-filter-tab { min-width: 0; }
-  .fearless-picker-grid { gap: .8rem .65rem; padding-inline: 1.1rem; }
+  .fearless-picker-grid { padding-inline: 1.1rem; }
   .fearless-picker-actions {
     display: inline-flex;
     justify-content: center;
@@ -2008,7 +2012,7 @@ input[type="number"] {
   }
 }
 @media (max-width: 420px) {
-  .fearless-picker-grid { gap: .35rem; }
+  .fearless-picker-grid { padding-inline: .75rem; }
 }
 
 .cold-game-box { 

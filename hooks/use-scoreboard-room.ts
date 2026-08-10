@@ -757,7 +757,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
 
   // 피어리스 picker 하이라이트/피드백은 관전자 화면에 즉시 반영되어야 한다.
   useEffect(() => {
-    if (gameMode !== "4v4" || state.mode !== "4v4") return
+    if (state.mode !== "4v4" && state.mode !== "5p") return
     if (
       !enabled ||
       role !== "host" ||
@@ -807,8 +807,12 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     role,
     roomReady,
     state.mode,
-    state.mode === "4v4" ? state.pickerUi.selectionSeq : 0,
-    state.mode === "4v4" ? state.pickerUi.feedbackToken : 0,
+    state.mode === "4v4" || state.mode === "5p"
+      ? state.pickerUi.selectionSeq
+      : 0,
+    state.mode === "4v4" || state.mode === "5p"
+      ? state.pickerUi.feedbackToken
+      : 0,
     terminalStatus,
     token,
   ])

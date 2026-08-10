@@ -28,6 +28,14 @@ import {
   type ViewerSessionEndReason,
 } from "@/lib/viewer-session-notice"
 import { useUtilityUiHidden } from "@/hooks/use-utility-ui-hidden"
+import {
+  clearPickerSelection,
+  createInitialPickerUi,
+  nextPickerFeedback,
+  nextPickerSelection,
+  type PickerFeedbackKind,
+  type PickerUiSyncState,
+} from "@/lib/picker-ui-sync"
 import { useAutoDismiss, RESET_MENU_IDLE_MS } from "@/hooks/use-auto-dismiss"
 import { useDismissOnOutsideInteraction } from "@/hooks/use-dismiss-on-outside-interaction"
 import { cn } from "@/lib/utils"
@@ -72,6 +80,9 @@ export function FivePlayerMode() {
   const [killerBans, setKillerBans] = useState<string[]>([])
   const [pickerContext, setPickerContext] = useState<KillerPickerContext | null>(
     null,
+  )
+  const [pickerUi, setPickerUi] = useState<PickerUiSyncState>(() =>
+    createInitialPickerUi(),
   )
   const [anim, setAnim] = useState<Record<string, number>>({})
   const [prevKillsMap, setPrevKillsMap] = useState<Record<string, number>>({})
@@ -174,13 +185,12 @@ export function FivePlayerMode() {
             givingConfig: Array.isArray(parsed.givingConfig)
               ? parsed.givingConfig
               : DEFAULT_GIVING,
+            killerBans: Array.isArray(parsed.killerBans) ? parsed.killerBans : [],
           })
           setPlayers(normalized.players)
           setReceivingConfig(normalized.receivingConfig)
           setGivingConfig(normalized.givingConfig)
-          if (Array.isArray(parsed.killerBans)) {
-            setKillerBans(parsed.killerBans)
-          }
+          setKillerBans(normalized.killerBans)
         }
       } catch (e) {
         console.error("Failed to parse saved state", e)
@@ -195,8 +205,10 @@ export function FivePlayerMode() {
       players,
       receivingConfig,
       givingConfig,
+      killerBans,
+      pickerUi,
     }),
-    [players, receivingConfig, givingConfig],
+    [players, receivingConfig, givingConfig, killerBans, pickerUi],
   )
 
   const applyRemoteState = useCallback((remote: FivePlayerSyncState) => {
@@ -226,6 +238,8 @@ export function FivePlayerMode() {
     setPlayers(remote.players)
     setReceivingConfig(remote.receivingConfig)
     setGivingConfig(remote.givingConfig)
+    setKillerBans(remote.killerBans)
+    setPickerUi(remote.pickerUi)
     setRemoveMode(false)
     setIsEditingPinball(false)
     const maxId = remote.players.reduce((max, player) => {
@@ -442,6 +456,24 @@ export function FivePlayerMode() {
     setShowResetMenu((open) => !open)
   }
 
+  function closeKillerPicker() {
+    setPickerContext(null)
+    if (!isViewer) {
+      setPickerUi((current) => clearPickerSelection(current))
+    }
+  }
+
+  const handlePickerSelectionSync = (killerId: string | null) => {
+    setPickerUi((current) => nextPickerSelection(current, killerId))
+  }
+
+  const handlePickerFeedbackSync = (
+    killerId: string,
+    kind: PickerFeedbackKind,
+  ) => {
+    setPickerUi((current) => nextPickerFeedback(current, killerId, kind))
+  }
+
   function openKillerCatalog() {
     closeAllResetUI()
     setShowModeSwitchConfirm(false)
@@ -556,6 +588,13 @@ export function FivePlayerMode() {
           : undefined,
     }
   }, [pickerContext, players])
+
+  const viewerPlayerCatalogLabel = useMemo(() => {
+    if (!isViewer || !activePickerContext || activePickerContext.mode === "catalog") {
+      return undefined
+    }
+    return activePickerContext.playerName.trim() || "이름 미입력"
+  }, [activePickerContext, isViewer])
 
   const updateConfig = (isReceiving: boolean, killCount: number, numValue: number) => {
     if (isReceiving) {
@@ -742,7 +781,7 @@ export function FivePlayerMode() {
                           team="thomas"
                           monochrome
                           killerPicks={p.killerPicks ?? []}
-                          disabled={removeMode || isViewer}
+                          disabled={removeMode}
                           readOnly={isViewer}
                           onOpen={(slotIndex) => openKillerPicker(p, slotIndex)}
                         />
@@ -1339,10 +1378,15 @@ export function FivePlayerMode() {
                 )?.killerPicks ?? [])
           }
           readOnly={isViewer}
+          viewerTeamCatalogTeamLabel={viewerPlayerCatalogLabel}
+          viewerCatalogTitleSuffix="의 살인마 목록"
+          syncedPickerUi={isViewer ? pickerUi : null}
+          onSelectionSync={isViewer ? undefined : handlePickerSelectionSync}
+          onFeedbackSync={isViewer ? undefined : handlePickerFeedbackSync}
           onPick={handleKillerPick}
           onCancelPick={handleKillerPickCancel}
           onToggleBan={handleKillerBanToggle}
-          onClose={() => setPickerContext(null)}
+          onClose={closeKillerPicker}
         />
       )}
     </main>

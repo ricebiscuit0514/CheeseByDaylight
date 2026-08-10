@@ -64,6 +64,33 @@ function roomData(expiresAt = Date.now() + 30 * 60 * 1000) {
   }
 }
 
+function fivePlayerRoomData(expiresAt = Date.now() + 30 * 60 * 1000) {
+  const now = Date.now()
+  return {
+    version: 1,
+    ownerUid: OWNER_UID,
+    status: "active",
+    createdAt: now,
+    updatedAt: now,
+    expiresAt,
+    hostConnections: { [CONNECTION_ID]: true },
+    scoreboard: {
+      mode: "5p",
+      playerCount: 1,
+      players: [
+        {
+          id: "1",
+          name: "Player",
+          kills: 0,
+          played: false,
+        },
+      ],
+      receivingConfig: [5, 8, 10, 12, 15],
+      givingConfig: [15, 12, 10, 8, 5],
+    },
+  }
+}
+
 beforeAll(async () => {
   testEnv = await initializeTestEnvironment({
     projectId: PROJECT_ID,
@@ -341,6 +368,39 @@ describe("Realtime Database scoreboard room rules", () => {
 
     await assertSucceeds(
       set(ref(database, `scoreboardRooms/${token}`), roomData()),
+    )
+  })
+
+  it("allows killer picks on 5p players for the owner", async () => {
+    const token = "5".repeat(48)
+    const ownerDatabase = testEnv.authenticatedContext(OWNER_UID).database()
+
+    await assertSucceeds(
+      set(ref(ownerDatabase, `scoreboardRooms/${token}`), fivePlayerRoomData()),
+    )
+    await assertSucceeds(
+      set(
+        ref(
+          ownerDatabase,
+          `scoreboardRooms/${token}/scoreboard/players/0/killerPicks`,
+        ),
+        ["nurse", "ghost-face"],
+      ),
+    )
+    await assertSucceeds(
+      set(
+        ref(ownerDatabase, `scoreboardRooms/${token}/scoreboard/killerBans`),
+        { xenomorph: true },
+      ),
+    )
+    await assertSucceeds(
+      update(ref(ownerDatabase, `scoreboardRooms/${token}/scoreboard`), {
+        pickerUi: {
+          sel: "nurse",
+          selSeq: 2,
+          fb: { k: "nurse", kind: "pick", t: 4321 },
+        },
+      }),
     )
   })
 
