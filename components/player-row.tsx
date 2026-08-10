@@ -456,10 +456,10 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
             <>
               <div className="player-plate-leading flex min-w-0 flex-1 items-center overflow-hidden gap-[inherit]">
                 <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
-                <div className={cn(
-                  "player-name-cell flex-none flex items-center w-32 sm:w-36",
-                )}>{nameInput}</div>
-                <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
+                <div className="player-name-cell flex min-w-0 flex-1 items-center max-w-32 sm:max-w-36">
+                  {nameInput}
+                </div>
+                <div className="min-w-0 flex-1 pointer-events-none" aria-hidden="true" />
               </div>
               <NoKillButton team={team} played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
               {skullGroup}
@@ -468,11 +468,13 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
             <>
               {skullGroup}
               <NoKillButton team={team} played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
-              <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
-              <div className={cn(
-                "player-name-cell flex-none flex items-center justify-end w-32 sm:w-36",
-              )}>{nameInput}</div>
-              <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+              <div className="player-plate-trailing flex min-w-0 flex-1 items-center overflow-hidden gap-[inherit]">
+                <div className="min-w-0 flex-1 pointer-events-none" aria-hidden="true" />
+                <div className="player-name-cell flex min-w-0 flex-1 items-center justify-end max-w-32 sm:max-w-36">
+                  {nameInput}
+                </div>
+                <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+              </div>
             </>
           )}
           {isRevealed && (

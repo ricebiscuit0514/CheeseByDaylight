@@ -209,11 +209,14 @@ export function KillerPicker({
 
   const handleSelectKiller = useCallback(
     (killerId: string) => {
+      let nextSelection: string | null = null
       setSelectedKillerId((current) => {
-        const next = current === killerId ? null : killerId
-        if (!readOnly) onSelectionSyncRef.current?.(next)
-        return next
+        nextSelection = current === killerId ? null : killerId
+        return nextSelection
       })
+      if (!readOnly) {
+        onSelectionSyncRef.current?.(nextSelection)
+      }
     },
     [readOnly],
   )

@@ -233,6 +233,84 @@
 .arena-fog { position: absolute; inset: 22% -15% 0; opacity: .28; background: radial-gradient(ellipse at center, color-mix(in oklch, var(--muted-foreground), transparent 91%), transparent 65%); filter: blur(32px); }
 .arena-scratches { position: absolute; inset: 0; opacity: .11; pointer-events: none; background: repeating-linear-gradient(112deg, transparent 0 42px, color-mix(in oklch, var(--foreground), transparent 90%) 43px, transparent 44px 76px); mask-image: linear-gradient(to bottom, transparent, black 25%, black 80%, transparent); }
 
+/* Landing Fearless art — shrink early; full size only on very wide screens */
+.landing-fearless-art-frame {
+  --landing-art-cap: 570px;
+  width: clamp(
+    4rem,
+    min(32vw, calc(50vw - 14rem), var(--landing-art-cap)),
+    var(--landing-art-cap)
+  );
+}
+.landing-fearless-art-image {
+  max-height: min(58vh, 520px);
+}
+
+@media (min-width: 1680px) {
+  .landing-fearless-art-frame {
+    width: clamp(
+      5rem,
+      min(43.5vw, calc(50vw - 11rem), var(--landing-art-cap)),
+      var(--landing-art-cap)
+    );
+  }
+  .landing-fearless-art-image {
+    max-height: min(66vh, 615px);
+  }
+}
+
+@media (max-width: 1535px) {
+  .landing-fearless-art-frame {
+    width: clamp(
+      4rem,
+      min(28vw, calc(50vw - 16rem), 440px),
+      440px
+    );
+  }
+  .landing-fearless-art-image {
+    max-height: min(52vh, 440px);
+  }
+}
+
+@media (max-width: 1279px) {
+  .landing-fearless-art-frame {
+    width: clamp(
+      3.75rem,
+      min(26vw, calc(50vw - 17rem), 340px),
+      340px
+    );
+  }
+  .landing-fearless-art-image {
+    max-height: min(46vh, 340px);
+  }
+}
+
+@media (max-width: 1023px) {
+  .landing-fearless-art-frame {
+    width: clamp(
+      3.5rem,
+      min(24vw, calc(50vw - 18rem), 260px),
+      260px
+    );
+  }
+  .landing-fearless-art-image {
+    max-height: min(40vh, 260px);
+  }
+}
+
+@media (max-width: 767px) {
+  .landing-fearless-art-frame {
+    width: clamp(
+      3rem,
+      min(22vw, calc(50vw - 19rem), 200px),
+      200px
+    );
+  }
+  .landing-fearless-art-image {
+    max-height: min(36vh, 200px);
+  }
+}
+
 .versus-stage {
   display: grid;
   grid-template-columns: minmax(9rem, 1fr) auto minmax(9rem, 1fr);
@@ -376,6 +454,9 @@
   z-index: 10;
   isolation: isolate;
 }
+.roster-stage > * {
+  min-width: 0;
+}
 .score-stage {
   position: relative;
   z-index: 0;
@@ -390,7 +471,7 @@
 .versus-sub { position: relative; margin-top: .35rem; white-space: nowrap; color: var(--muted-foreground); font-size: .55rem; font-weight: 900; letter-spacing: .22em; }
 
 .plate-motion-shell { position: relative; width: 100%; transform-origin: center; overflow: visible; }
-.player-plate { --team: var(--dbd-orange); position: relative; display: flex; min-height: 4.2rem; width: 100%; align-items: center; gap: .65rem; overflow: hidden; border: 1px solid color-mix(in oklch, var(--foreground), transparent 86%); border-left: 3px solid color-mix(in oklch, var(--team), transparent 32%); padding: .65rem .8rem; background: linear-gradient(104deg, color-mix(in oklch, var(--team), transparent 84%), color-mix(in oklch, var(--background), transparent 4%) 38%, color-mix(in oklch, var(--card), transparent 14%)); clip-path: polygon(0 0, calc(100% - .7rem) 0, 100% .7rem, 100% 100%, .55rem 100%, 0 calc(100% - .55rem)); }
+.player-plate { --team: var(--dbd-orange); position: relative; display: flex; min-width: 0; min-height: 4.2rem; width: 100%; align-items: center; gap: .65rem; overflow: hidden; border: 1px solid color-mix(in oklch, var(--foreground), transparent 86%); border-left: 3px solid color-mix(in oklch, var(--team), transparent 32%); padding: .65rem .8rem; background: linear-gradient(104deg, color-mix(in oklch, var(--team), transparent 84%), color-mix(in oklch, var(--background), transparent 4%) 38%, color-mix(in oklch, var(--card), transparent 14%)); clip-path: polygon(0 0, calc(100% - .7rem) 0, 100% .7rem, 100% 100%, .55rem 100%, 0 calc(100% - .55rem)); }
 .player-plate-ada {
   --team: var(--dbd-blue);
   border-left: 1px solid color-mix(in oklch, var(--foreground), transparent 86%);
@@ -419,7 +500,14 @@
 .player-plate.is-exalted.is-removing { border-color: var(--dbd-red); background: linear-gradient(105deg, color-mix(in oklch, var(--dbd-red), transparent 82%), color-mix(in oklch, var(--dbd-red), transparent 91%) 40%, color-mix(in oklch, var(--background), transparent 3%)); }
 .plate-grain { position: absolute; inset: 0; opacity: .2; pointer-events: none; background: repeating-linear-gradient(167deg, transparent 0 7px, color-mix(in oklch, var(--foreground), transparent 92%) 8px, transparent 9px 15px); }
 .player-plate > *:not(.plate-grain):not(.plate-whiteout):not(.exalted-flash):not(.exalted-corners):not(.exalted-rank) { position: relative; z-index: 2; }
-.player-name-input { width: 0; min-width: 0; flex: 1 1 0%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; color: var(--foreground); font-family: var(--font-godo); font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; outline: none; }
+.player-plate-leading,
+.player-plate-trailing {
+  min-width: 0;
+}
+.player-name-cell {
+  max-width: 100%;
+}
+.player-name-input { width: 100%; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; color: var(--foreground); font-family: var(--font-godo); font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; outline: none; }
 .player-name-input::placeholder { color: color-mix(in oklch, var(--muted-foreground), transparent 62%); }
 .pinball-command-input {
   font-family: var(--font-s-core);
@@ -674,9 +762,11 @@ input[type="number"] {
 .fearless-player-row-thomas .player-plate {
   padding-right: var(--fearless-plate-skull-inset);
   gap: .65rem;
+  min-width: 0;
 }
 .fearless-player-row-ada .player-plate {
   padding-left: var(--fearless-plate-skull-inset);
+  min-width: 0;
 }
 .fearless-team-titles {
   --fearless-slot-size: clamp(2.33rem, 10.8vw, 3rem);

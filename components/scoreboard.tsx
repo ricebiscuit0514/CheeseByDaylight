@@ -89,6 +89,8 @@ const INITIAL_ADA: Player[] = [
 ]
 const SCORE_BEAT_MS = 355
 const SCORE_BEAT_DOWN_MS = 40  // 점수 감소 시 빠르게 주르륵
+/** 에결 무승부 확정 후 리매치 선택창까지 추가 대기 (실수 수정 여유) */
+const ACE_TIE_REMATCH_EXTRA_DELAY_MS = 1000
 const MAX_PLAYERS_PER_TEAM = 4
 const LS_KEY = "dbd-scoreboard-v1"
 const GUIDE_SEEN_4V4_KEY = "dbd-fearless-guide-seen-4v4"
@@ -100,6 +102,11 @@ function clearPlayerKillers(player: Player): Player {
   const next = { ...player, killerPicks: [] }
   delete next.killer
   return next
+}
+
+/** 에결 종료 시 4v4 점수만 복원하고, 에결 중 기록한 살인마 픽 등은 유지한다. */
+function restoreAcePlayerScores(backup: Player, current: Player): Player {
+  return { ...current, kills: backup.kills, played: backup.played }
 }
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
@@ -1098,6 +1105,7 @@ export function Scoreboard() {
     else if (kills === 3) delayMs = 1650
     else if (kills === 3.5) delayMs = 2100
     else if (kills >= 4) delayMs = 2400
+    if (isTie) delayMs += ACE_TIE_REMATCH_EXTRA_DELAY_MS
 
     const timer = setTimeout(() => {
       const roundKey = buildAceRoundLogKey(
@@ -1200,12 +1208,24 @@ export function Scoreboard() {
   }
 
   const handleExitAceMatch = () => {
-    // Restore original 4v4 scores & first attacker of the 2 Ace players
+    // Restore original 4v4 scores of the 2 Ace players; keep killer picks from ace match.
     if (aceThomasBackup) {
-      setThomas((prev) => prev.map((p) => (p.id === aceThomasBackup.id ? { ...aceThomasBackup } : p)))
+      setThomas((prev) =>
+        prev.map((p) =>
+          p.id === aceThomasBackup.id
+            ? restoreAcePlayerScores(aceThomasBackup, p)
+            : p,
+        ),
+      )
     }
     if (aceAdaBackup) {
-      setAda((prev) => prev.map((p) => (p.id === aceAdaBackup.id ? { ...aceAdaBackup } : p)))
+      setAda((prev) =>
+        prev.map((p) =>
+          p.id === aceAdaBackup.id
+            ? restoreAcePlayerScores(aceAdaBackup, p)
+            : p,
+        ),
+      )
     }
     if (aceFirstAttackerBackup !== null) {
       setFirstAttackerId(aceFirstAttackerBackup)
@@ -2111,8 +2131,8 @@ export function Scoreboard() {
             </div>
           </motion.div>
         ) : (
-          <div className="roster-stage mt-1 grid grid-cols-1 gap-[2.8125rem] md:h-96 md:grid-cols-2 md:gap-[4.5rem] lg:gap-[6.75rem]">
-            <div className="flex w-full max-w-[42rem] flex-col justify-self-end gap-2">
+          <div className="roster-stage mt-1 grid grid-cols-1 gap-[2.8125rem] md:h-96 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-[4.5rem] lg:gap-[6.75rem]">
+            <div className="flex w-full min-w-0 max-w-[42rem] flex-col justify-self-end gap-2">
               <div
                 className={cn(
                   "fearless-roster-controls fearless-roster-controls-thomas flex items-center gap-1 text-neutral-400",
@@ -2159,7 +2179,7 @@ export function Scoreboard() {
               </div>
             </div>
 
-            <div className="flex w-full max-w-[42rem] flex-col gap-2">
+            <div className="flex w-full min-w-0 max-w-[42rem] flex-col justify-self-start gap-2">
               <div
                 className={cn(
                   "fearless-roster-controls fearless-roster-controls-ada flex items-center justify-end gap-1 text-neutral-400",

@@ -111,22 +111,22 @@ export default function LandingPage() {
       <div className="arena-fog opacity-35 pointer-events-none" aria-hidden="true" />
       <div className="arena-scratches opacity-25 pointer-events-none" aria-hidden="true" />
 
-      {/* Landing feature art */}
+      {/* Landing feature art — fluid width; reserves center zone so overlap starts later */}
       <div
-        className="pointer-events-none absolute inset-y-0 right-0 z-[5] flex items-center justify-end pe-16 sm:pe-24 md:pe-32 -translate-y-6 sm:-translate-y-8 md:-translate-y-10"
+        className="landing-fearless-art pointer-events-none absolute inset-y-0 right-0 z-[5] flex items-center justify-end pe-3 sm:pe-8 md:pe-12 lg:pe-16 xl:pe-24 -translate-y-4 sm:-translate-y-6 md:-translate-y-8 lg:-translate-y-10"
         aria-hidden="true"
       >
-        <div className="pointer-events-auto relative transition-transform duration-300 hover:scale-105">
+        <div className="pointer-events-auto relative landing-fearless-art-frame transition-transform duration-300 hover:scale-105">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[58%] -z-10 h-[min(40vh,360px)] w-[min(26vw,340px)] -translate-x-[40%] -translate-y-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.92)_0%,rgba(0,0,0,0.78)_45%,transparent_68%)] blur-[18px]"
+            className="pointer-events-none absolute left-1/2 top-[58%] -z-10 h-full w-[88%] -translate-x-[40%] -translate-y-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.92)_0%,rgba(0,0,0,0.78)_45%,transparent_68%)] blur-[18px]"
           />
           <Image
             src="/images/Fearlesslandingart.webp"
             alt=""
             width={720}
             height={900}
-            className="relative h-[min(66vh,615px)] w-auto max-w-[min(43.5vw,570px)] object-contain object-right [filter:drop-shadow(0_18px_36px_rgba(0,0,0,0.92))_drop-shadow(0_0_24px_rgba(0,0,0,0.75))]"
+            className="landing-fearless-art-image relative h-auto w-full object-contain object-right [filter:drop-shadow(0_18px_36px_rgba(0,0,0,0.92))_drop-shadow(0_0_24px_rgba(0,0,0,0.75))]"
             priority
           />
         </div>

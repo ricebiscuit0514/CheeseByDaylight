@@ -39,6 +39,14 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
   const direction = side === "left" ? -1 : 1
   const hideFlare = isGameOver && !lit
 
+  /** 정수와 .5 사이 간격 — 양 팀 동일. .5 위치는 flex 기준으로 고정되고 정수만 밀린다. */
+  const halfMarginLeft =
+    whole === 11
+      ? "-0.1em"
+      : String(whole).endsWith("7")
+        ? "-0.22em"
+        : undefined
+
   const leftWholeNudgeX =
     side === "left" && hasHalf
       ? whole === 12
@@ -51,19 +59,6 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
               ? 11
               : 0
       : 0
-
-  const halfMarginLeft =
-    side === "left"
-      ? String(whole).length >= 2
-        ? "0.02em"
-        : String(whole).endsWith("7")
-          ? "-0.06em"
-          : "-0.02em"
-      : whole === 11
-        ? "-0.1em"
-        : String(whole).endsWith("7")
-          ? "-0.22em"
-          : undefined
 
   return (
     <section
