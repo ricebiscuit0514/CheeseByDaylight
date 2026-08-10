@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Copy, Link2, Unplug, Wifi } from "lucide-react"
 import { motion } from "motion/react"
+import { useAutoDismiss } from "@/hooks/use-auto-dismiss"
 import { cn } from "@/lib/utils"
 import { buildDiscordInviteMessage } from "@/lib/firebase/scoreboard-room"
 import type {
@@ -118,6 +119,8 @@ export function ScoreboardSyncPanel({
     setConfirmStop(false)
   }
 
+  const syncPanelDismissBind = useAutoDismiss(open || confirmStop, closePanel)
+
   const openPanel = () => {
     setOpen((current) => !current)
     setConfirmStop(false)
@@ -167,9 +170,9 @@ export function ScoreboardSyncPanel({
 
   if (role === "viewer") {
     return (
-      <div className="mb-1 flex max-w-[calc(100vw-3rem)] flex-col items-end gap-1">
+      <div className="mb-1 flex w-full flex-col gap-1">
         <div
-          className="rounded border border-red-800/70 bg-black/90 px-3 py-2 text-right shadow-lg backdrop-blur-sm"
+          className="scoreboard-utility-btn border border-red-800/70 bg-black/90 px-3 py-2 text-right shadow-lg whitespace-normal"
           style={{ fontFamily: "var(--font-godo)" }}
         >
           <p className="text-xs font-bold text-red-300">
@@ -190,7 +193,7 @@ export function ScoreboardSyncPanel({
         <button
           type="button"
           onClick={onStopViewing}
-          className="flex items-center gap-2 rounded border border-red-600/80 bg-red-950/90 px-4 py-2 text-sm font-bold text-red-300 shadow-lg transition-colors hover:bg-red-900"
+          className="scoreboard-utility-btn flex items-center justify-center gap-2 border border-red-600/80 bg-red-950/90 text-sm font-bold text-red-300 shadow-lg transition-colors hover:bg-red-900 hover:text-red-200"
           style={{ fontFamily: "var(--font-godo)" }}
         >
           <Unplug size={15} />
@@ -204,7 +207,7 @@ export function ScoreboardSyncPanel({
     status === "connecting" ? "공유 준비 중..." : "점수판 공유 중"
 
   return (
-    <div className="relative flex flex-col items-end">
+    <div className="relative flex w-full flex-col">
       {!hasSeenGuide && (
         <motion.button
           type="button"
@@ -230,11 +233,11 @@ export function ScoreboardSyncPanel({
         onClick={openPanel}
         aria-expanded={open}
         className={cn(
-          "flex items-center gap-2 rounded border px-4 py-2 text-sm shadow-lg transition-colors",
+          "scoreboard-utility-btn flex items-center justify-center gap-2 shadow-lg",
           role === "host"
-            ? "border-emerald-500 bg-emerald-500 font-bold text-white hover:border-emerald-400 hover:bg-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.45)]"
+            ? "border border-emerald-500 bg-emerald-500 font-bold text-white shadow-[0_0_16px_rgba(16,185,129,0.45)] hover:border-emerald-400 hover:bg-emerald-400 hover:text-white"
             : cn(
-                "bg-black/85 backdrop-blur-sm",
+                "border bg-black/85",
                 CHZZK_GREEN_BUTTON,
                 !hasSeenGuide && CHZZK_GREEN_PULSE,
               ),
@@ -256,9 +259,10 @@ export function ScoreboardSyncPanel({
           />
           <div
             className={cn(
-              "fixed bottom-20 left-4 right-4 z-50 flex max-h-[calc(100dvh-6rem)] flex-col gap-3 overflow-y-auto rounded-md border p-4 text-left shadow-2xl backdrop-blur-md sm:absolute sm:bottom-full sm:left-auto sm:right-0 sm:mb-2 sm:w-80",
+              "fixed bottom-20 left-4 right-4 z-50 flex max-h-[calc(100dvh-6rem)] flex-col gap-3 overflow-y-auto rounded-md border p-4 text-left shadow-2xl backdrop-blur-md sm:absolute sm:bottom-0 sm:right-full sm:top-auto sm:left-auto sm:mr-2 sm:w-80 sm:max-h-[min(32rem,calc(100dvh-4rem))]",
               CHZZK_GREEN_PANEL,
             )}
+            {...syncPanelDismissBind}
           >
           <div>
             <div className="flex items-center justify-between gap-3">

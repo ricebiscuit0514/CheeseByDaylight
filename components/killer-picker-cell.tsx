@@ -1,10 +1,15 @@
 "use client"
 
-import { memo, useCallback, useRef } from "react"
+import { memo, useCallback, useEffect, useRef, useState } from "react"
 import { useCheeseBurst } from "@/components/cheese-burst"
 import type { PickEntry } from "@/lib/fearless"
 import type { KillerDefinition } from "@/lib/killer-catalog"
 import { cn } from "@/lib/utils"
+
+export type KillerPickerCellFeedback = {
+  kind: "pick" | "ban" | "unban"
+  token: number
+}
 
 export type KillerPickerCellProps = {
   killer: KillerDefinition
@@ -12,6 +17,7 @@ export type KillerPickerCellProps = {
   pickKey: string
   isBanned: boolean
   isSelected: boolean
+  feedback?: KillerPickerCellFeedback | null
   onSelect: (killerId: string) => void
 }
 
@@ -24,10 +30,15 @@ function KillerPickerCellComponent({
   visiblePicks,
   isBanned,
   isSelected,
+  feedback,
   onSelect,
 }: KillerPickerCellProps) {
   const isPicked = visiblePicks.length > 0
   const frameRef = useRef<HTMLSpanElement>(null)
+  const [activeFlash, setActiveFlash] = useState<
+    KillerPickerCellFeedback["kind"] | null
+  >(null)
+  const [banStamp, setBanStamp] = useState(false)
   const { burst: burstCheese, layer: cheeseBurstLayer } = useCheeseBurst()
   const killerName =
     killer.koreanName || killer.englishName || killer.id
@@ -54,11 +65,37 @@ function KillerPickerCellComponent({
   const handlePopEnd = useCallback((event: React.AnimationEvent<HTMLSpanElement>) => {
     if (
       event.animationName === "fearless-cell-pop" ||
-      event.animationName === "fearless-cell-pop-hover"
+      event.animationName === "fearless-cell-pop-hover" ||
+      event.animationName === "fearless-cell-pop-selected"
     ) {
       event.currentTarget.classList.remove("fearless-picker-cell-frame-pop")
     }
   }, [])
+
+  useEffect(() => {
+    if (!feedback) return
+
+    setActiveFlash(feedback.kind)
+    if (feedback.kind === "ban") {
+      setBanStamp(true)
+    }
+  }, [feedback?.kind, feedback?.token])
+
+  const handleFeedbackFlashEnd = useCallback(
+    (event: React.AnimationEvent<HTMLSpanElement>) => {
+      if (!event.animationName.startsWith("fearless-glow-")) return
+      setActiveFlash(null)
+    },
+    [],
+  )
+
+  const handleBanStampEnd = useCallback(
+    (event: React.AnimationEvent<HTMLSpanElement>) => {
+      if (event.animationName !== "fearless-ban-stamp") return
+      setBanStamp(false)
+    },
+    [],
+  )
 
   return (
     <button
@@ -82,11 +119,33 @@ function KillerPickerCellComponent({
         >
           <span className="fearless-picker-portrait">
             <img
+              className="fearless-picker-portrait-shadow"
+              src={killer.bigPortrait}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              loading="lazy"
+              decoding="async"
+            />
+            <img
+              className="fearless-picker-portrait-face"
               src={killer.bigPortrait}
               alt=""
               draggable={false}
               loading="lazy"
               decoding="async"
+            />
+            <img
+              className={cn(
+                "fearless-picker-portrait-glow",
+                activeFlash && `is-${activeFlash}`,
+              )}
+              src={killer.bigPortrait}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              decoding="async"
+              onAnimationEnd={handleFeedbackFlashEnd}
             />
           </span>
           <span className="fearless-picker-label-block">
@@ -105,10 +164,12 @@ function KillerPickerCellComponent({
             <span className="fearless-picker-label-row">
               <span className="fearless-picker-killer-name">{killerName}</span>
               {isBanned && (
-                <span className="fearless-picker-status-marks">
-                  <span className="fearless-ban-mark" aria-hidden="true">
-                    BAN
-                  </span>
+                <span
+                  className={cn("fearless-ban-mark", banStamp && "is-stamping")}
+                  aria-hidden="true"
+                  onAnimationEnd={handleBanStampEnd}
+                >
+                  BAN
                 </span>
               )}
             </span>
@@ -125,6 +186,7 @@ export const KillerPickerCell = memo(
     previous.killer.id === next.killer.id &&
     previous.isBanned === next.isBanned &&
     previous.isSelected === next.isSelected &&
+    previous.feedback?.token === next.feedback?.token &&
     previous.pickKey === next.pickKey &&
     previous.onSelect === next.onSelect,
 )

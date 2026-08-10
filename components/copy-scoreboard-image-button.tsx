@@ -116,15 +116,15 @@ export function CopyScoreboardImageButton({
     <>
       {mounted ? createPortal(captureHost, document.body) : null}
 
-      <div className={cn("flex flex-col items-end gap-1", className)}>
+      <div className={cn("flex w-full flex-col gap-1", className)}>
         <button
           type="button"
           onClick={() => void handleCopy()}
           disabled={status === "copying"}
-          className="flex items-center gap-2 rounded border border-neutral-600/80 bg-black/80 px-4 py-2 text-sm text-neutral-300 shadow-lg backdrop-blur-sm transition-colors hover:border-neutral-400 hover:text-white disabled:cursor-wait disabled:opacity-60"
+          className="scoreboard-utility-btn flex items-center justify-center gap-2 border border-neutral-600/80 bg-black/80 text-neutral-300 shadow-lg hover:border-neutral-400 hover:text-white disabled:cursor-wait disabled:opacity-60"
           style={{ fontFamily: "var(--font-godo)" }}
         >
-          <Copy size={15} />
+          <Copy size={14} />
           <span>{label}</span>
         </button>
         {errorMessage && (

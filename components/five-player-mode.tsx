@@ -20,7 +20,11 @@ import {
   type ViewerSessionEndReason,
 } from "@/lib/viewer-session-notice"
 import { useUtilityUiHidden } from "@/hooks/use-utility-ui-hidden"
+import { useAutoDismiss } from "@/hooks/use-auto-dismiss"
 import { cn } from "@/lib/utils"
+
+const RESET_ROSTER_KILLER_BTN =
+  "h-8 rounded border border-dbd-yellow/70 bg-black/80 px-3 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/10 hover:text-dbd-yellow"
 
 const DEFAULT_RECEIVING = [5, 8, 10, 12, 15]
 const DEFAULT_GIVING = [15, 12, 10, 8, 5]
@@ -348,6 +352,17 @@ export function FivePlayerMode() {
     setShowRosterResetConfirm(false)
     setShowFullResetConfirm(false)
   }
+
+  const resetUiOpen =
+    showResetMenu ||
+    showResetConfirm ||
+    showKillerResetConfirm ||
+    showRosterResetConfirm ||
+    showFullResetConfirm
+  const resetUiDismissBind = useAutoDismiss(resetUiOpen, closeAllResetUI)
+  const modeSwitchDismissBind = useAutoDismiss(showModeSwitchConfirm, () => {
+    setShowModeSwitchConfirm(false)
+  })
 
   function openResetConfirm(type: "score" | "killer" | "roster" | "full") {
     setShowResetConfirm(type === "score")
@@ -813,7 +828,10 @@ export function FivePlayerMode() {
               </button>
 
               {showResetMenu && (
-                <div className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2">
+                <div
+                  className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2"
+                  {...resetUiDismissBind}
+                >
                   <div className="flex flex-col gap-1.5 rounded border border-neutral-600/70 bg-black/95 p-2 backdrop-blur-sm whitespace-nowrap">
                     <button
                       type="button"
@@ -826,7 +844,7 @@ export function FivePlayerMode() {
                     <button
                       type="button"
                       onClick={() => openResetConfirm("roster")}
-                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                      className={RESET_ROSTER_KILLER_BTN}
                       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                     >
                       팀원 초기화
@@ -834,7 +852,7 @@ export function FivePlayerMode() {
                     <button
                       type="button"
                       onClick={() => openResetConfirm("killer")}
-                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                      className={RESET_ROSTER_KILLER_BTN}
                       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                     >
                       살인마 초기화
@@ -1022,7 +1040,10 @@ export function FivePlayerMode() {
             <span>4vs4 모드로 전환</span>
           </button>
           {showModeSwitchConfirm && (
-            <div className="absolute right-0 bottom-full mb-2 z-50 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap shadow-2xl">
+            <div
+              className="absolute right-0 bottom-full mb-2 z-50 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap shadow-2xl"
+              {...modeSwitchDismissBind}
+            >
               <p className="text-xs text-neutral-200">4vs4 모드로 넘어가시겠습니까?</p>
               <div className="flex gap-2 justify-end">
                 <button

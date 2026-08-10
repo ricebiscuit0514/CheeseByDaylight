@@ -50,7 +50,7 @@ export function KillerPickSlots({
               key={`slot-empty-${slot.slotIndex}`}
               type="button"
               className={cn(
-                "fearless-killer-slot is-empty",
+                "fearless-killer-slot is-empty fearless-slot-tooltip-wrap",
                 !slot.visible && "is-slot-hidden",
               )}
               disabled={disabled || !slot.actionable}
@@ -60,6 +60,11 @@ export function KillerPickSlots({
               onClick={() => onOpen(slot.slotIndex)}
             >
               <EmptySlotFrame />
+              {slot.visible && slot.actionable && (
+                <span className="fearless-slot-tooltip" role="tooltip">
+                  살인마 선택하기
+                </span>
+              )}
             </button>
           )
         }

@@ -14,9 +14,9 @@ export function UtilityUiToggle({ hidden, onToggle }: UtilityUiToggleProps) {
       onClick={onToggle}
       aria-pressed={hidden}
       className={cn(
-        "rounded border border-neutral-600 bg-black/50 px-3 py-1 text-sm text-neutral-300 backdrop-blur-sm transition-all hover:border-neutral-400 hover:text-white",
+        "scoreboard-utility-btn scoreboard-utility-btn-neutral",
         hidden &&
-          "border-neutral-600/50 bg-black/35 text-neutral-400 opacity-45 hover:opacity-70",
+          "border-neutral-600/50 bg-black/35 text-neutral-400 opacity-45 hover:opacity-70 hover:text-neutral-300 hover:border-neutral-500",
       )}
       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
     >

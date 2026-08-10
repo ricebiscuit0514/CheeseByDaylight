@@ -29,6 +29,8 @@ import {
 import { cn } from "@/lib/utils"
 
 export type KillerPickerContext = {
+  /** Pick flow from player slots, or read-only catalog with ban controls. */
+  mode?: "pick" | "catalog"
   team: Team
   playerId: string
   playerName: string
@@ -80,6 +82,7 @@ export function KillerPicker({
   const panelRef = useRef<HTMLElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
+  const skipSelectionSyncRef = useRef(false)
   const [mounted, setMounted] = useState(false)
   const [filterMode, setFilterMode] =
     useState<FearlessFilterMode>("hard")
@@ -87,6 +90,11 @@ export function KillerPicker({
   const [selectedKillerId, setSelectedKillerId] = useState<string | null>(
     context.currentKillerId ?? null,
   )
+  const [cellFeedback, setCellFeedback] = useState<{
+    killerId: string
+    kind: "pick" | "ban" | "unban"
+    token: number
+  } | null>(null)
   const [viewportWidth, setViewportWidth] = useState(1024)
   const [zoomLevel, setZoomLevel] = useState(0)
   const zoomAudience = getPickerZoomAudience(readOnly)
@@ -129,9 +137,14 @@ export function KillerPicker({
 
   useEffect(() => {
     if (!open) return
+    if (skipSelectionSyncRef.current) {
+      skipSelectionSyncRef.current = false
+      return
+    }
     setSelectedKillerId(context.currentKillerId ?? null)
   }, [
     open,
+    context.mode,
     context.team,
     context.playerId,
     context.slotIndex,
@@ -229,6 +242,7 @@ export function KillerPicker({
     )
   }, [])
   const displayPlayerName = safeName(context.playerName)
+  const isCatalog = context.mode === "catalog"
   const isCurrentSelection =
     context.slotIndex !== null &&
     selectedKillerId === context.currentKillerId
@@ -251,6 +265,49 @@ export function KillerPicker({
   const selectedIsBanned =
     selectedKillerId !== null && killerBans.includes(selectedKillerId)
 
+  const dismissSelectionAfterAction = useCallback(() => {
+    skipSelectionSyncRef.current = true
+    setSelectedKillerId(null)
+  }, [])
+
+  const pulseCell = useCallback(
+    (killerId: string, kind: "pick" | "ban" | "unban") => {
+      setCellFeedback({ killerId, kind, token: Date.now() })
+    },
+    [],
+  )
+
+  const handlePickAction = useCallback(() => {
+    if (!selectedKillerId) return
+    if (isCurrentSelection) onCancelPick()
+    else {
+      onPick(selectedKillerId)
+      pulseCell(selectedKillerId, "pick")
+    }
+    dismissSelectionAfterAction()
+  }, [
+    dismissSelectionAfterAction,
+    isCurrentSelection,
+    onCancelPick,
+    onPick,
+    pulseCell,
+    selectedKillerId,
+  ])
+
+  const handleBanAction = useCallback(() => {
+    if (!selectedKillerId) return
+    const wasBanned = killerBans.includes(selectedKillerId)
+    onToggleBan(selectedKillerId)
+    pulseCell(selectedKillerId, wasBanned ? "unban" : "ban")
+    dismissSelectionAfterAction()
+  }, [
+    dismissSelectionAfterAction,
+    killerBans,
+    onToggleBan,
+    pulseCell,
+    selectedKillerId,
+  ])
+
   if (!mounted || !open) return null
 
   return createPortal(
@@ -264,21 +321,37 @@ export function KillerPicker({
         ref={panelRef}
         className={cn(
           "fearless-picker-panel",
-          `fearless-picker-panel-${context.team}`,
+          isCatalog
+            ? "fearless-picker-panel-catalog"
+            : `fearless-picker-panel-${context.team}`,
         )}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        onMouseDown={(event) => {
+          if (!selectedKillerId) return
+          const target = event.target
+          if (!(target instanceof HTMLElement)) return
+          if (target.closest(".fearless-picker-cell")) return
+          if (target.closest("button, input, label, [role='group']")) return
+          setSelectedKillerId(null)
+        }}
       >
         <header className="fearless-picker-header">
           <div className="fearless-picker-heading">
             <h2 id={titleId} className="fearless-picker-title">
-              <span className="fearless-picker-title-name">
-                {displayPlayerName}
-              </span>{" "}
-              <span className="fearless-picker-title-pick">
-                {formatFearlessPickSlotLabel(context.slotIndex)}
-              </span>
+              {isCatalog ? (
+                <span className="fearless-picker-title-catalog">살인마 목록</span>
+              ) : (
+                <>
+                  <span className="fearless-picker-title-name">
+                    {displayPlayerName}
+                  </span>{" "}
+                  <span className="fearless-picker-title-pick">
+                    {formatFearlessPickSlotLabel(context.slotIndex)}
+                  </span>
+                </>
+              )}
             </h2>
           </div>
           <button
@@ -316,34 +389,43 @@ export function KillerPicker({
           </div>
 
           {!readOnly && (
-            <div className="fearless-picker-toolbar-actions">
-              {selectedKillerId ? (
-                <div className="fearless-picker-actions">
+            <div
+              className={cn(
+                "fearless-picker-toolbar-actions",
+                isCatalog && "is-ban-only",
+              )}
+            >
+              <div className="fearless-picker-actions">
+                {!isCatalog && (
                   <button
                     type="button"
                     className="fearless-picker-action is-primary"
-                    disabled={alreadyOwnedByPlayer}
+                    disabled={!selectedKillerId || alreadyOwnedByPlayer}
                     title={
                       alreadyOwnedByPlayer
                         ? "이미 이 플레이어가 픽한 살인마입니다"
                         : undefined
                     }
-                    onClick={() => {
-                      if (isCurrentSelection) onCancelPick()
-                      else onPick(selectedKillerId)
-                    }}
+                    onClick={handlePickAction}
                   >
-                    {alreadyOwnedByPlayer ? "이미 픽함" : pickActionLabel}
+                    {!selectedKillerId
+                      ? "픽 하기"
+                      : alreadyOwnedByPlayer
+                        ? "이미 픽함"
+                        : pickActionLabel}
                   </button>
-                  <button
-                    type="button"
-                    className="fearless-picker-action is-ban"
-                    onClick={() => onToggleBan(selectedKillerId)}
-                  >
-                    {selectedIsBanned ? "밴 취소하기" : "밴 하기"}
-                  </button>
-                </div>
-              ) : null}
+                )}
+                <button
+                  type="button"
+                  className="fearless-picker-action is-ban"
+                  disabled={!selectedKillerId}
+                  onClick={handleBanAction}
+                >
+                  {selectedKillerId && selectedIsBanned
+                    ? "밴 취소하기"
+                    : "밴 하기"}
+                </button>
+              </div>
             </div>
           )}
 
@@ -405,7 +487,15 @@ export function KillerPicker({
           </div>
         </div>
 
-        <div className="fearless-picker-grid-wrap">
+        <div
+          className="fearless-picker-grid-wrap"
+          onMouseDown={(event) => {
+            if (!selectedKillerId) return
+            if (event.target === event.currentTarget) {
+              setSelectedKillerId(null)
+            }
+          }}
+        >
           <div
             className="fearless-picker-grid"
             style={{
@@ -424,6 +514,14 @@ export function KillerPicker({
                   pickKey={cellState?.pickKey ?? ""}
                   isBanned={cellState?.isBanned ?? false}
                   isSelected={selectedKillerId === killer.id}
+                  feedback={
+                    cellFeedback?.killerId === killer.id
+                      ? {
+                          kind: cellFeedback.kind,
+                          token: cellFeedback.token,
+                        }
+                      : null
+                  }
                   onSelect={handleSelectKiller}
                 />
               )

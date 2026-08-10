@@ -27,6 +27,14 @@
 
 @font-face {
   font-family: 'S-Core Dream';
+  src: url('/fonts/S-CoreDream-5Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'S-Core Dream';
   src: url('/fonts/S-CoreDream-7ExtraBold.woff') format('woff');
   font-weight: 700;
   font-style: normal;
@@ -475,12 +483,59 @@ input[type="number"] {
 }
 
 /* Fearless killer slots and picker */
+.scoreboard-utility-btn {
+  width: 100%;
+  border-radius: .25rem;
+  padding: .25rem .75rem;
+  font-size: .875rem;
+  line-height: 1.25rem;
+  text-align: center;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+  transition:
+    border-color .15s ease,
+    color .15s ease,
+    background-color .15s ease,
+    box-shadow .15s ease;
+}
+.scoreboard-utility-btn-neutral {
+  border: 1px solid rgb(115 115 115 / 70%);
+  background: rgb(0 0 0 / 80%);
+  color: rgb(229 229 229);
+}
+.scoreboard-utility-btn-neutral:hover {
+  border-color: rgb(212 212 212);
+  color: white;
+}
+.scoreboard-utility-stack {
+  display: inline-flex;
+  width: max-content;
+  flex-direction: column;
+  gap: .5rem;
+}
+.scoreboard-utility-stack-top {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+.scoreboard-utility-stack-bottom {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: .5rem;
+}
+
 .fearless-player-row {
+  --fearless-slot-plate-gap: clamp(.5rem, 1.1vw, .7rem);
   display: flex;
   width: 100%;
   min-width: 0;
   align-items: center;
-  gap: clamp(.2rem, .7vw, .45rem);
+  gap: var(--fearless-slot-plate-gap);
 }
 .fearless-player-row-ada { flex-direction: row-reverse; }
 .fearless-player-row .plate-motion-shell {
@@ -496,11 +551,50 @@ input[type="number"] {
   flex: 0 0 auto;
   align-items: center;
 }
+.fearless-player-row-thomas .player-plate {
+  padding-right: 1.05rem;
+  gap: .5rem;
+}
+.fearless-player-row .skull-slot {
+  width: 2.15rem;
+  height: 2.35rem;
+}
+.fearless-player-row .skull-group {
+  gap: .1rem;
+}
+.fearless-team-titles {
+  --fearless-slot-size: clamp(2.33rem, 10.8vw, 3rem);
+  --fearless-slot-gap: 2px;
+  --fearless-slot-plate-gap: clamp(.5rem, 1.1vw, .7rem);
+  --fearless-slot-track: calc(var(--fearless-slot-size) * 4 + var(--fearless-slot-gap) * 3);
+  --fearless-roster-inset: calc(var(--fearless-slot-track) + var(--fearless-slot-plate-gap));
+  --fearless-title-outset: clamp(2.35rem, 4.5vw, 3.55rem);
+}
+.fearless-team-titles > h1:first-child {
+  padding-left: calc(var(--fearless-roster-inset) - var(--fearless-title-outset));
+}
+.fearless-team-titles > h1:last-child {
+  padding-right: calc(var(--fearless-roster-inset) - var(--fearless-title-outset));
+}
+@media (min-width: 1200px) {
+  .fearless-team-titles {
+    --fearless-slot-size: 3.375rem;
+  }
+}
+@media (max-width: 639px) {
+  .fearless-team-titles > h1:first-child,
+  .fearless-team-titles > h1:last-child {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
 .fearless-roster-controls {
   --fearless-slot-size: clamp(2.33rem, 10.8vw, 3rem);
-  --fearless-slot-gap: 10px;
+  --fearless-slot-gap: 2px;
+  --fearless-slot-plate-gap: clamp(.5rem, 1.1vw, .7rem);
   --fearless-slot-track: calc(var(--fearless-slot-size) * 4 + var(--fearless-slot-gap) * 3);
-  --fearless-roster-inset: calc(var(--fearless-slot-track) + clamp(.2rem, .7vw, .45rem));
+  --fearless-roster-inset: calc(var(--fearless-slot-track) + var(--fearless-slot-plate-gap));
 }
 .fearless-roster-controls-thomas {
   padding-left: 0;
@@ -518,7 +612,7 @@ input[type="number"] {
 .fearless-killer-slots {
   --fearless-team: var(--dbd-orange);
   --fearless-slot-size: clamp(2.33rem, 10.8vw, 3rem);
-  --fearless-slot-gap: 10px;
+  --fearless-slot-gap: 2px;
   display: flex;
   width: calc(var(--fearless-slot-size) * 4 + var(--fearless-slot-gap) * 3);
   min-width: calc(var(--fearless-slot-size) * 4 + var(--fearless-slot-gap) * 3);
@@ -599,6 +693,9 @@ input[type="number"] {
   border-color: rgb(148 148 148 / 35%);
   background: rgb(0 0 0 / 48%);
 }
+.fearless-killer-slot.is-empty.fearless-slot-tooltip-wrap {
+  overflow: visible;
+}
 .fearless-killer-slot.is-slot-hidden {
   visibility: hidden;
   pointer-events: none;
@@ -612,7 +709,7 @@ input[type="number"] {
 }
 .fearless-killer-slot-face {
   position: absolute;
-  inset: -6%;
+  inset: 0;
   overflow: visible;
 }
 .fearless-killer-slot-face img {
@@ -620,24 +717,20 @@ input[type="number"] {
   height: 100%;
   object-fit: contain;
   object-position: center center;
-  filter:
-    saturate(.8) brightness(.72) contrast(1.1)
-    drop-shadow(0 0 0.55px rgb(255 255 255 / 78%))
-    drop-shadow(0 0 0.55px rgb(255 255 255 / 78%));
+  filter: saturate(.92) brightness(1) contrast(1.05);
   transition: filter .16s ease, transform .16s ease;
 }
 .fearless-killer-slot.is-filled:hover:not(:disabled),
 .fearless-killer-slot.is-filled:focus-visible {
   z-index: 2;
-  filter: brightness(1.22);
-  background: color-mix(in oklch, #050505, var(--fearless-team) 10%);
+  filter: none;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 .fearless-killer-slot.is-filled:hover:not(:disabled) .fearless-killer-slot-face img,
 .fearless-killer-slot.is-filled:focus-visible .fearless-killer-slot-face img {
-  filter:
-    saturate(.88) brightness(.82) contrast(1.08)
-    drop-shadow(0 0 0.65px rgb(255 255 255 / 72%))
-    drop-shadow(0 0 0.65px rgb(255 255 255 / 72%));
+  filter: saturate(.98) brightness(1.18) contrast(1.06);
   transform: none;
 }
 .fearless-empty-frame {
@@ -647,14 +740,15 @@ input[type="number"] {
 .fearless-empty-frame::before {
   content: "";
   position: absolute;
-  inset: -.2rem;
+  top: 50%;
+  left: 50%;
+  width: 130%;
+  height: 1px;
   pointer-events: none;
-  background:
-    linear-gradient(#929292, #929292) left top / 35% 1px no-repeat,
-    linear-gradient(#929292, #929292) left top / 1px 35% no-repeat,
-    linear-gradient(#929292, #929292) right bottom / 35% 1px no-repeat,
-    linear-gradient(#929292, #929292) right bottom / 1px 35% no-repeat;
+  background: #929292;
   opacity: .55;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  transform-origin: center center;
   transition: opacity .16s ease;
 }
 .fearless-killer-slot.is-empty:hover:not(:disabled) .fearless-empty-frame::before,
@@ -775,6 +869,36 @@ input[type="number"] {
   animation: fearless-panel-in .2s cubic-bezier(.16, 1, .3, 1);
 }
 .fearless-picker-panel-ada { --fearless-team: var(--dbd-blue); }
+.fearless-picker-panel-catalog {
+  --fearless-team: #8a8a8a;
+  border-color: rgb(255 255 255 / 14%);
+  background:
+    linear-gradient(118deg, rgb(255 255 255 / 4%), transparent 38%),
+    rgb(8 8 9 / 98%);
+  box-shadow:
+    0 24px 80px rgb(0 0 0 / 72%),
+    inset 0 0 45px rgb(255 255 255 / 2%);
+}
+.fearless-picker-panel-catalog .fearless-filter-tab.is-active {
+  background: rgb(255 255 255 / 10%);
+  color: rgb(255 255 255 / 90%);
+  box-shadow: inset 0 -2px rgb(255 255 255 / 32%);
+}
+.fearless-picker-panel-catalog .fearless-picker-close:hover,
+.fearless-picker-panel-catalog .fearless-picker-close:focus-visible {
+  border-color: rgb(255 255 255 / 24%);
+  background: rgb(255 255 255 / 8%);
+}
+.fearless-picker-panel-catalog .fearless-picker-search:focus-within {
+  border-color: rgb(255 255 255 / 24%);
+  color: rgb(255 255 255 / 72%);
+}
+.fearless-picker-panel-catalog .fearless-picker-grid {
+  scrollbar-color: rgb(255 255 255 / 28%) transparent;
+}
+.fearless-picker-panel-catalog .fearless-picker-grid::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 28%);
+}
 .fearless-picker-header {
   display: flex;
   align-items: flex-start;
@@ -799,6 +923,9 @@ input[type="number"] {
   color: var(--fearless-team);
 }
 .fearless-picker-title-pick {
+  color: white;
+}
+.fearless-picker-title-catalog {
   color: white;
 }
 .fearless-picker-close {
@@ -988,6 +1115,7 @@ input[type="number"] {
 }
 .fearless-picker-cell {
   position: relative;
+  z-index: 0;
   display: block;
   width: 100%;
   min-width: 0;
@@ -999,6 +1127,17 @@ input[type="number"] {
   padding: .42rem .36rem;
   isolation: isolate;
   -webkit-tap-highlight-color: transparent;
+}
+.fearless-picker-cell:hover,
+.fearless-picker-cell:focus-visible {
+  z-index: 2;
+}
+.fearless-picker-cell.is-selected {
+  z-index: 8;
+}
+.fearless-picker-cell.is-selected:hover,
+.fearless-picker-cell.is-selected:focus-visible {
+  z-index: 8;
 }
 .fearless-picker-cell-sizer {
   position: relative;
@@ -1015,21 +1154,25 @@ input[type="number"] {
   transform-origin: center center;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  transition:
-    transform .24s cubic-bezier(.25, .1, .25, 1),
-    filter .16s ease;
+  transition: transform .24s cubic-bezier(.25, .1, .25, 1);
 }
 .fearless-picker-cell:hover .fearless-picker-cell-frame,
 .fearless-picker-cell:focus-visible .fearless-picker-cell-frame {
-  transform: translate3d(0, 0, 0) scale(1.04);
+  transform: translate3d(0, 0, 0) scale(1.05);
 }
 .fearless-picker-cell-frame-pop {
   animation: fearless-cell-pop .28s cubic-bezier(.34, 1.45, .64, 1);
-  transition: filter .16s ease;
+}
+.fearless-picker-cell.is-selected .fearless-picker-cell-frame-pop {
+  animation: fearless-cell-pop-selected .28s cubic-bezier(.34, 1.45, .64, 1);
 }
 .fearless-picker-cell:hover .fearless-picker-cell-frame-pop,
 .fearless-picker-cell:focus-visible .fearless-picker-cell-frame-pop {
   animation: fearless-cell-pop-hover .28s cubic-bezier(.34, 1.45, .64, 1);
+}
+.fearless-picker-cell.is-selected:hover .fearless-picker-cell-frame-pop,
+.fearless-picker-cell.is-selected:focus-visible .fearless-picker-cell-frame-pop {
+  animation: fearless-cell-pop-selected .28s cubic-bezier(.34, 1.45, .64, 1);
 }
 .fearless-picker-portrait {
   position: absolute;
@@ -1038,137 +1181,199 @@ input[type="number"] {
   overflow: visible;
   background: transparent;
   pointer-events: none;
+  isolation: isolate;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  filter:
-    drop-shadow(0 0 0.85px rgb(255 255 255 / 56%))
-    drop-shadow(0 0 0.85px rgb(255 255 255 / 56%));
-  transition: filter .16s ease;
 }
-.fearless-picker-portrait::before {
-  display: none;
-}
-.fearless-picker-portrait::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  opacity: 0;
-  background: linear-gradient(to bottom, transparent 46%, rgb(0 0 0 / 86%) 100%);
-}
-.fearless-picker-portrait img {
+.fearless-picker-portrait-shadow,
+.fearless-picker-portrait-face,
+.fearless-picker-portrait-glow {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
   object-position: center center;
-  filter: none;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   image-rendering: auto;
+}
+.fearless-picker-portrait-shadow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  filter:
+    drop-shadow(0 7px 18px rgb(0 0 0 / 96%))
+    drop-shadow(0 4px 10px rgb(0 0 0 / 90%));
+  transition: opacity .16s ease;
+}
+.fearless-picker-cell:hover .fearless-picker-portrait-shadow,
+.fearless-picker-cell:focus-visible .fearless-picker-portrait-shadow,
+.fearless-picker-cell.is-selected .fearless-picker-portrait-shadow,
+.fearless-picker-cell:active .fearless-picker-portrait-shadow,
+.fearless-picker-cell-frame-pop .fearless-picker-portrait-shadow {
+  opacity: 1;
+}
+.fearless-picker-portrait-face {
+  position: relative;
+  z-index: 1;
+  filter:
+    drop-shadow(1px 0 0 rgb(255 255 255 / 24%))
+    drop-shadow(-1px 0 0 rgb(255 255 255 / 24%))
+    drop-shadow(0 1px 0 rgb(255 255 255 / 24%))
+    drop-shadow(0 -1px 0 rgb(255 255 255 / 24%))
+    drop-shadow(1px 1px 0 rgb(255 255 255 / 24%))
+    drop-shadow(-1px -1px 0 rgb(255 255 255 / 24%))
+    drop-shadow(1px -1px 0 rgb(255 255 255 / 24%))
+    drop-shadow(-1px 1px 0 rgb(255 255 255 / 24%));
   transition: filter .16s ease;
 }
-.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned) .fearless-picker-portrait {
+.fearless-picker-portrait-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: opacity, filter;
+}
+.fearless-picker-portrait-glow.is-pick {
+  animation: fearless-glow-pick .92s cubic-bezier(.22, 1, .36, 1);
+}
+.fearless-picker-portrait-glow.is-ban {
+  mix-blend-mode: plus-lighter;
+  filter: sepia(1) saturate(10) hue-rotate(328deg) brightness(1.12);
+  animation: fearless-glow-ban .92s cubic-bezier(.22, 1, .36, 1);
+}
+.fearless-picker-portrait-glow.is-unban {
+  mix-blend-mode: screen;
+  animation: fearless-glow-unban .72s cubic-bezier(.22, 1, .36, 1);
+}
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned) .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.85px rgb(255 214 88 / 100%))
-    drop-shadow(0 0 0.85px rgb(255 214 88 / 100%));
+    brightness(1.16) saturate(1.04)
+    drop-shadow(1px 0 0 rgb(255 255 255 / 62%))
+    drop-shadow(-1px 0 0 rgb(255 255 255 / 62%))
+    drop-shadow(0 1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(0 -1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(1px 1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(-1px -1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(1px -1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(-1px 1px 0 rgb(255 255 255 / 62%));
 }
-.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned) .fearless-picker-portrait img {
-  filter: saturate(.96) brightness(.9);
-}
-.fearless-picker-cell.is-selected.is-picked:not(.is-banned) .fearless-picker-portrait {
+.fearless-picker-cell.is-selected.is-picked:not(.is-banned) .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.7px rgb(178 178 178 / 52%))
-    drop-shadow(0 0 0.7px rgb(178 178 178 / 52%));
+    grayscale(1) brightness(.54)
+    drop-shadow(1px 0 0 rgb(105 105 105 / 20%))
+    drop-shadow(-1px 0 0 rgb(105 105 105 / 20%))
+    drop-shadow(0 1px 0 rgb(105 105 105 / 20%))
+    drop-shadow(0 -1px 0 rgb(105 105 105 / 20%))
+    drop-shadow(1px 1px 0 rgb(105 105 105 / 20%))
+    drop-shadow(-1px -1px 0 rgb(105 105 105 / 20%))
+    drop-shadow(1px -1px 0 rgb(105 105 105 / 20%))
+    drop-shadow(-1px 1px 0 rgb(105 105 105 / 20%));
 }
-.fearless-picker-cell.is-selected.is-picked:not(.is-banned) .fearless-picker-portrait img {
-  filter: grayscale(1) brightness(.46);
-}
-.fearless-picker-cell.is-selected.is-picked:not(.is-banned):hover .fearless-picker-portrait,
-.fearless-picker-cell.is-selected.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait {
+.fearless-picker-cell.is-picked:not(.is-selected):not(.is-banned) .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.75px rgb(192 192 192 / 62%))
-    drop-shadow(0 0 0.75px rgb(192 192 192 / 62%));
+    grayscale(1) brightness(.42)
+    drop-shadow(1px 0 0 rgb(88 88 88 / 14%))
+    drop-shadow(-1px 0 0 rgb(88 88 88 / 14%))
+    drop-shadow(0 1px 0 rgb(88 88 88 / 14%))
+    drop-shadow(0 -1px 0 rgb(88 88 88 / 14%))
+    drop-shadow(1px 1px 0 rgb(88 88 88 / 14%))
+    drop-shadow(-1px -1px 0 rgb(88 88 88 / 14%))
+    drop-shadow(1px -1px 0 rgb(88 88 88 / 14%))
+    drop-shadow(-1px 1px 0 rgb(88 88 88 / 14%));
 }
-.fearless-picker-cell.is-selected.is-picked:not(.is-banned):hover .fearless-picker-portrait img,
-.fearless-picker-cell.is-selected.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait img {
-  filter: grayscale(1) brightness(.54);
-}
-.fearless-picker-cell.is-picked:not(.is-selected):not(.is-banned) .fearless-picker-portrait {
+.fearless-picker-cell.is-picked:not(.is-banned):hover .fearless-picker-portrait-face,
+.fearless-picker-cell.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.65px rgb(150 150 150 / 30%))
-    drop-shadow(0 0 0.65px rgb(150 150 150 / 30%));
+    grayscale(1) brightness(.5)
+    drop-shadow(1px 0 0 rgb(98 98 98 / 18%))
+    drop-shadow(-1px 0 0 rgb(98 98 98 / 18%))
+    drop-shadow(0 1px 0 rgb(98 98 98 / 18%))
+    drop-shadow(0 -1px 0 rgb(98 98 98 / 18%))
+    drop-shadow(1px 1px 0 rgb(98 98 98 / 18%))
+    drop-shadow(-1px -1px 0 rgb(98 98 98 / 18%))
+    drop-shadow(1px -1px 0 rgb(98 98 98 / 18%))
+    drop-shadow(-1px 1px 0 rgb(98 98 98 / 18%));
 }
-.fearless-picker-cell.is-picked:not(.is-selected):not(.is-banned) .fearless-picker-portrait img {
-  filter: grayscale(1) brightness(.42);
-}
-.fearless-picker-cell.is-picked:not(.is-banned):hover .fearless-picker-portrait,
-.fearless-picker-cell.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait {
+.fearless-picker-cell:hover:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait-face,
+.fearless-picker-cell:focus-visible:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.7px rgb(182 182 182 / 56%))
-    drop-shadow(0 0 0.7px rgb(182 182 182 / 56%));
+    brightness(1.16) saturate(1.04)
+    drop-shadow(1px 0 0 rgb(255 255 255 / 52%))
+    drop-shadow(-1px 0 0 rgb(255 255 255 / 52%))
+    drop-shadow(0 1px 0 rgb(255 255 255 / 52%))
+    drop-shadow(0 -1px 0 rgb(255 255 255 / 52%))
+    drop-shadow(1px 1px 0 rgb(255 255 255 / 52%))
+    drop-shadow(-1px -1px 0 rgb(255 255 255 / 52%))
+    drop-shadow(1px -1px 0 rgb(255 255 255 / 52%))
+    drop-shadow(-1px 1px 0 rgb(255 255 255 / 52%));
 }
-.fearless-picker-cell.is-picked:not(.is-banned):hover .fearless-picker-portrait img,
-.fearless-picker-cell.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait img {
-  filter: grayscale(1) brightness(.5);
-}
-.fearless-picker-cell:hover:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait,
-.fearless-picker-cell:focus-visible:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait {
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):hover .fearless-picker-portrait-face,
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):focus-visible .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 1px rgb(255 255 255 / 92%))
-    drop-shadow(0 0 1px rgb(255 255 255 / 92%));
-}
-.fearless-picker-cell:hover:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait img,
-.fearless-picker-cell:focus-visible:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait img {
-  filter: brightness(1.16) saturate(1.04);
-}
-.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):hover .fearless-picker-portrait,
-.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):focus-visible .fearless-picker-portrait {
-  filter:
-    drop-shadow(0 0 0.9px rgb(255 224 96 / 100%))
-    drop-shadow(0 0 0.9px rgb(255 224 96 / 100%));
-}
-.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):hover .fearless-picker-portrait img,
-.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):focus-visible .fearless-picker-portrait img {
-  filter: saturate(.98) brightness(1.02);
+    brightness(1.2) saturate(1.06)
+    drop-shadow(1px 0 0 rgb(255 255 255 / 62%))
+    drop-shadow(-1px 0 0 rgb(255 255 255 / 62%))
+    drop-shadow(0 1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(0 -1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(1px 1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(-1px -1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(1px -1px 0 rgb(255 255 255 / 62%))
+    drop-shadow(-1px 1px 0 rgb(255 255 255 / 62%));
 }
 .fearless-picker-cell.is-selected .fearless-picker-cell-frame {
-  filter: none;
+  transform: translate3d(0, 0, 0) scale(1.06);
+}
+.fearless-picker-cell.is-selected:hover .fearless-picker-cell-frame,
+.fearless-picker-cell.is-selected:focus-visible .fearless-picker-cell-frame {
+  transform: translate3d(0, 0, 0) scale(1.06);
 }
 .fearless-picker-cell.is-banned.is-selected .fearless-picker-cell-frame {
-  filter: none;
+  transform: translate3d(0, 0, 0) scale(1.06);
 }
 .fearless-picker-cell.is-selected.is-picked .fearless-picker-cell-frame {
-  filter: none;
+  transform: translate3d(0, 0, 0) scale(1.06);
 }
-.fearless-picker-cell.is-banned .fearless-picker-portrait {
+.fearless-picker-cell.is-banned .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.75px rgb(200 70 70 / 56%))
-    drop-shadow(0 0 0.75px rgb(200 70 70 / 56%));
+    sepia(.45) saturate(1.85) hue-rotate(330deg) brightness(.26)
+    drop-shadow(1px 0 0 rgb(110 35 35 / 18%))
+    drop-shadow(-1px 0 0 rgb(110 35 35 / 18%))
+    drop-shadow(0 1px 0 rgb(110 35 35 / 18%))
+    drop-shadow(0 -1px 0 rgb(110 35 35 / 18%))
+    drop-shadow(1px 1px 0 rgb(110 35 35 / 18%))
+    drop-shadow(-1px -1px 0 rgb(110 35 35 / 18%))
+    drop-shadow(1px -1px 0 rgb(110 35 35 / 18%))
+    drop-shadow(-1px 1px 0 rgb(110 35 35 / 18%));
 }
-.fearless-picker-cell.is-banned .fearless-picker-portrait img {
-  filter: sepia(.45) saturate(1.85) hue-rotate(330deg) brightness(.26);
-}
-.fearless-picker-cell.is-banned:hover .fearless-picker-portrait,
-.fearless-picker-cell.is-banned:focus-visible .fearless-picker-portrait {
+.fearless-picker-cell.is-banned:hover .fearless-picker-portrait-face,
+.fearless-picker-cell.is-banned:focus-visible .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.85px rgb(220 85 85 / 64%))
-    drop-shadow(0 0 0.85px rgb(220 85 85 / 64%));
+    sepia(.5) saturate(2) hue-rotate(330deg) brightness(.32)
+    drop-shadow(1px 0 0 rgb(130 45 45 / 28%))
+    drop-shadow(-1px 0 0 rgb(130 45 45 / 28%))
+    drop-shadow(0 1px 0 rgb(130 45 45 / 28%))
+    drop-shadow(0 -1px 0 rgb(130 45 45 / 28%))
+    drop-shadow(1px 1px 0 rgb(130 45 45 / 28%))
+    drop-shadow(-1px -1px 0 rgb(130 45 45 / 28%))
+    drop-shadow(1px -1px 0 rgb(130 45 45 / 28%))
+    drop-shadow(-1px 1px 0 rgb(130 45 45 / 28%));
 }
-.fearless-picker-cell.is-banned:hover .fearless-picker-portrait img,
-.fearless-picker-cell.is-banned:focus-visible .fearless-picker-portrait img {
-  filter: sepia(.5) saturate(2) hue-rotate(330deg) brightness(.32);
-}
-.fearless-picker-cell.is-banned.is-selected .fearless-picker-portrait {
+.fearless-picker-cell.is-banned.is-selected .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.9px rgb(255 120 120 / 96%))
-    drop-shadow(0 0 0.9px rgb(255 120 120 / 96%));
-}
-.fearless-picker-cell.is-banned.is-selected .fearless-picker-portrait img {
-  filter: sepia(.55) saturate(2.1) hue-rotate(330deg) brightness(.24);
-}
-.fearless-picker-cell.is-banned .fearless-picker-portrait::after {
-  opacity: 0;
+    sepia(.5) saturate(2) hue-rotate(330deg) brightness(.32)
+    drop-shadow(1px 0 0 rgb(145 50 50 / 34%))
+    drop-shadow(-1px 0 0 rgb(145 50 50 / 34%))
+    drop-shadow(0 1px 0 rgb(145 50 50 / 34%))
+    drop-shadow(0 -1px 0 rgb(145 50 50 / 34%))
+    drop-shadow(1px 1px 0 rgb(145 50 50 / 34%))
+    drop-shadow(-1px -1px 0 rgb(145 50 50 / 34%))
+    drop-shadow(1px -1px 0 rgb(145 50 50 / 34%))
+    drop-shadow(-1px 1px 0 rgb(145 50 50 / 34%));
 }
 .fearless-picker-cell-frame::after {
   content: "";
@@ -1187,51 +1392,63 @@ input[type="number"] {
   border-radius: 99px;
   background: color-mix(in oklch, var(--fearless-team), transparent 48%);
 }
-.fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait {
+.fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.75px rgb(185 70 70 / 52%))
-    drop-shadow(0 0 0.75px rgb(185 70 70 / 52%));
+    grayscale(.55) sepia(.55) saturate(1.9) hue-rotate(330deg) brightness(.22)
+    drop-shadow(1px 0 0 rgb(100 32 32 / 16%))
+    drop-shadow(-1px 0 0 rgb(100 32 32 / 16%))
+    drop-shadow(0 1px 0 rgb(100 32 32 / 16%))
+    drop-shadow(0 -1px 0 rgb(100 32 32 / 16%))
+    drop-shadow(1px 1px 0 rgb(100 32 32 / 16%))
+    drop-shadow(-1px -1px 0 rgb(100 32 32 / 16%))
+    drop-shadow(1px -1px 0 rgb(100 32 32 / 16%))
+    drop-shadow(-1px 1px 0 rgb(100 32 32 / 16%));
 }
-.fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait img {
-  filter: grayscale(.55) sepia(.55) saturate(1.9) hue-rotate(330deg) brightness(.22);
-}
-.fearless-picker-cell.is-banned.is-picked:hover .fearless-picker-portrait,
-.fearless-picker-cell.is-banned.is-picked:focus-visible .fearless-picker-portrait {
+.fearless-picker-cell.is-banned.is-picked:hover .fearless-picker-portrait-face,
+.fearless-picker-cell.is-banned.is-picked:focus-visible .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.85px rgb(205 80 80 / 62%))
-    drop-shadow(0 0 0.85px rgb(205 80 80 / 62%));
+    grayscale(.45) sepia(.6) saturate(2) hue-rotate(330deg) brightness(.28)
+    drop-shadow(1px 0 0 rgb(120 38 38 / 26%))
+    drop-shadow(-1px 0 0 rgb(120 38 38 / 26%))
+    drop-shadow(0 1px 0 rgb(120 38 38 / 26%))
+    drop-shadow(0 -1px 0 rgb(120 38 38 / 26%))
+    drop-shadow(1px 1px 0 rgb(120 38 38 / 26%))
+    drop-shadow(-1px -1px 0 rgb(120 38 38 / 26%))
+    drop-shadow(1px -1px 0 rgb(120 38 38 / 26%))
+    drop-shadow(-1px 1px 0 rgb(120 38 38 / 26%));
 }
-.fearless-picker-cell.is-banned.is-picked:hover .fearless-picker-portrait img,
-.fearless-picker-cell.is-banned.is-picked:focus-visible .fearless-picker-portrait img {
-  filter: grayscale(.45) sepia(.6) saturate(2) hue-rotate(330deg) brightness(.28);
-}
-.fearless-picker-cell.is-banned.is-picked.is-selected .fearless-picker-portrait {
+.fearless-picker-cell.is-banned.is-picked.is-selected .fearless-picker-portrait-face {
   filter:
-    drop-shadow(0 0 0.9px rgb(255 120 120 / 96%))
-    drop-shadow(0 0 0.9px rgb(255 120 120 / 96%));
-}
-.fearless-picker-cell.is-banned.is-picked.is-selected .fearless-picker-portrait img {
-  filter: grayscale(.45) sepia(.65) saturate(2.05) hue-rotate(330deg) brightness(.24);
+    grayscale(.45) sepia(.6) saturate(2) hue-rotate(330deg) brightness(.28)
+    drop-shadow(1px 0 0 rgb(135 42 42 / 32%))
+    drop-shadow(-1px 0 0 rgb(135 42 42 / 32%))
+    drop-shadow(0 1px 0 rgb(135 42 42 / 32%))
+    drop-shadow(0 -1px 0 rgb(135 42 42 / 32%))
+    drop-shadow(1px 1px 0 rgb(135 42 42 / 32%))
+    drop-shadow(-1px -1px 0 rgb(135 42 42 / 32%))
+    drop-shadow(1px -1px 0 rgb(135 42 42 / 32%))
+    drop-shadow(-1px 1px 0 rgb(135 42 42 / 32%));
 }
 .fearless-picker-label-block {
   position: absolute;
   right: calc(.35rem * var(--picker-ui-scale, 1));
-  bottom: calc(.3rem * var(--picker-ui-scale, 1));
+  bottom: calc(.28rem * var(--picker-ui-scale, 1));
   left: calc(.35rem * var(--picker-ui-scale, 1));
   z-index: 3;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: flex-start;
   justify-content: flex-end;
-  gap: calc(.18rem * var(--picker-ui-scale, 1));
+  gap: calc(.22rem * var(--picker-ui-scale, 1));
   pointer-events: none;
 }
 .fearless-picker-label-row {
   position: static;
   display: flex;
+  width: 100%;
   align-items: center;
-  justify-content: space-between;
-  gap: calc(.4rem * var(--picker-ui-scale, 1));
+  justify-content: flex-start;
+  gap: calc(.35rem * var(--picker-ui-scale, 1));
 }
 .fearless-picker-killer-name {
   position: static;
@@ -1239,8 +1456,9 @@ input[type="number"] {
   flex: 1 1 auto;
   overflow: hidden;
   color: rgb(255 255 255 / 92%);
-  font-size: calc(clamp(.82rem, 1.7vw, 1.06rem) * var(--picker-ui-scale, 1));
-  font-weight: 400;
+  font-family: var(--font-s-core);
+  font-size: calc(clamp(.98rem, 2vw, 1.28rem) * var(--picker-ui-scale, 1));
+  font-weight: 500;
   line-height: 1.2;
   text-align: left;
   text-overflow: ellipsis;
@@ -1268,16 +1486,20 @@ input[type="number"] {
 .fearless-ban-mark {
   position: static;
   flex: 0 0 auto;
+  margin-left: auto;
   border: 1px solid rgb(255 110 110 / 42%);
   background: rgb(65 0 0 / 52%);
-  padding: calc(.14rem * var(--picker-ui-scale, 1)) calc(.48rem * var(--picker-ui-scale, 1));
+  padding: calc(.18rem * var(--picker-ui-scale, 1)) calc(.56rem * var(--picker-ui-scale, 1));
   color: rgb(255 178 178 / 88%);
-  font-size: calc(clamp(.58rem, 1.2vw, .72rem) * var(--picker-ui-scale, 1));
+  font-size: calc(clamp(.68rem, 1.35vw, .84rem) * var(--picker-ui-scale, 1));
   font-weight: 400;
   letter-spacing: .08em;
   line-height: 1;
   transform: none;
   box-shadow: 0 2px 10px rgb(0 0 0 / 34%);
+}
+.fearless-ban-mark.is-stamping {
+  animation: fearless-ban-stamp .42s cubic-bezier(.34, 1.45, .64, 1);
 }
 .fearless-pick-stack {
   position: static;
@@ -1285,7 +1507,7 @@ input[type="number"] {
   width: 100%;
   flex-direction: column;
   align-items: flex-start;
-  gap: calc(.12rem * var(--picker-ui-scale, 1));
+  gap: calc(.14rem * var(--picker-ui-scale, 1));
   overflow: hidden;
 }
 .fearless-pick-name {
@@ -1293,10 +1515,11 @@ input[type="number"] {
   max-width: 100%;
   overflow: hidden;
   background: rgb(0 0 0 / 78%);
-  padding: calc(.16rem * var(--picker-ui-scale, 1)) calc(.36rem * var(--picker-ui-scale, 1));
-  font-size: calc(clamp(.7rem, 1.4vw, .86rem) * var(--picker-ui-scale, 1));
+  padding: calc(.2rem * var(--picker-ui-scale, 1)) calc(.42rem * var(--picker-ui-scale, 1));
+  font-size: calc(clamp(.84rem, 1.65vw, 1.02rem) * var(--picker-ui-scale, 1));
   font-weight: 400;
   line-height: 1.2;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
   box-shadow: 0 1px 5px rgb(0 0 0 / 48%);
@@ -1316,18 +1539,21 @@ input[type="number"] {
   justify-content: center;
   gap: .45rem;
 }
+.fearless-picker-toolbar-actions.is-ban-only .fearless-picker-actions {
+  justify-content: center;
+}
 .fearless-picker-action {
   display: inline-flex;
   width: 7.75rem;
   min-width: 7.75rem;
-  min-height: 2.75rem;
+  min-height: 2.85rem;
   align-items: center;
   justify-content: center;
   border: 1px solid rgb(255 255 255 / 16%);
   background: rgb(255 255 255 / 5%);
-  padding: .5rem .55rem;
+  padding: .55rem .6rem;
   color: rgb(255 255 255 / 74%);
-  font-size: .86rem;
+  font-size: 1.02rem;
   font-weight: 700;
   line-height: 1.15;
   text-align: center;
@@ -1356,13 +1582,41 @@ input[type="number"] {
 
 @keyframes fearless-cell-pop {
   0% { transform: translate3d(0, 0, 0) scale(1); }
-  45% { transform: translate3d(0, 0, 0) scale(1.07); }
+  45% { transform: translate3d(0, 0, 0) scale(1.04); }
   100% { transform: translate3d(0, 0, 0) scale(1); }
 }
 @keyframes fearless-cell-pop-hover {
-  0% { transform: translate3d(0, 0, 0) scale(1.04); }
-  45% { transform: translate3d(0, 0, 0) scale(1.07); }
-  100% { transform: translate3d(0, 0, 0) scale(1.04); }
+  0% { transform: translate3d(0, 0, 0) scale(1.05); }
+  45% { transform: translate3d(0, 0, 0) scale(1.08); }
+  100% { transform: translate3d(0, 0, 0) scale(1.05); }
+}
+@keyframes fearless-cell-pop-selected {
+  0% { transform: translate3d(0, 0, 0) scale(1.06); }
+  45% { transform: translate3d(0, 0, 0) scale(1.09); }
+  100% { transform: translate3d(0, 0, 0) scale(1.06); }
+}
+@keyframes fearless-glow-pick {
+  0% { opacity: 0; filter: brightness(1.15); }
+  22% { opacity: .98; filter: brightness(2.75); }
+  55% { opacity: .48; filter: brightness(1.75); }
+  100% { opacity: 0; filter: brightness(1); }
+}
+@keyframes fearless-glow-ban {
+  0% { opacity: 0; filter: sepia(1) saturate(8) hue-rotate(328deg) brightness(1.05); }
+  22% { opacity: .92; filter: sepia(1) saturate(14) hue-rotate(328deg) brightness(1.42); }
+  55% { opacity: .42; filter: sepia(1) saturate(11) hue-rotate(328deg) brightness(1.2); }
+  100% { opacity: 0; filter: sepia(1) saturate(10) hue-rotate(328deg) brightness(1.12); }
+}
+@keyframes fearless-glow-unban {
+  0% { opacity: .28; filter: brightness(1.15); }
+  32% { opacity: .58; filter: brightness(1.75); }
+  100% { opacity: 0; filter: brightness(1); }
+}
+@keyframes fearless-ban-stamp {
+  0% { opacity: 0; transform: scale(1.65) rotate(-5deg); }
+  55% { opacity: 1; transform: scale(.92) rotate(0deg); }
+  78% { transform: scale(1.04) rotate(0deg); }
+  100% { transform: scale(1) rotate(0deg); }
 }
 @keyframes fearless-backdrop-in {
   from { opacity: 0; }

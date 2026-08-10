@@ -25,6 +25,7 @@ import { TeamScore } from "@/components/team-score"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { WinnerOverlay } from "@/components/winner-overlay"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
+import { useAutoDismiss } from "@/hooks/use-auto-dismiss"
 import { useUtilityUiHidden } from "@/hooks/use-utility-ui-hidden"
 import type { FourVFourSyncState, ScoreboardSyncState } from "@/lib/firebase/scoreboard-room"
 import {
@@ -496,6 +497,9 @@ function resolveFirstAttackerId(
   return rosterIds.has(firstAttackerId) ? firstAttackerId : null
 }
 
+const RESET_ROSTER_KILLER_BTN =
+  "h-8 rounded border border-dbd-yellow/70 bg-black/80 px-3 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/10 hover:text-dbd-yellow"
+
 export function Scoreboard() {
   const router = useRouter()
   // SSR/CSR hydration mismatch 방지: 초기값은 항상 서버와 동일한 기본값으로 시작하고,
@@ -747,6 +751,8 @@ export function Scoreboard() {
   )
   const activePickerContext = useMemo<KillerPickerContext | null>(() => {
     if (!pickerContext) return null
+    if (pickerContext.mode === "catalog") return pickerContext
+
     const roster = pickerContext.team === "thomas" ? thomas : ada
     const player = roster.find((candidate) => candidate.id === pickerContext.playerId)
     if (!player) return null
@@ -1420,7 +1426,7 @@ export function Scoreboard() {
       const next = [...prev]
       const [moved] = next.splice(from, 1)
       next.splice(to, 0, moved)
-      if (firstAttackTeam === team && next.length > 0) {
+      if (firstAttackTeam === team && next.length > 0 && !hasAnyScore) {
         setFirstAttackerId(next[0].id)
       }
       return next
@@ -1442,7 +1448,7 @@ export function Scoreboard() {
         const randomIndex = Math.floor(Math.random() * (index + 1))
         ;[shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]]
       }
-      if (firstAttackTeam === team && shuffled.length > 0) {
+      if (firstAttackTeam === team && shuffled.length > 0 && !hasAnyScore) {
         setFirstAttackerId(shuffled[0].id)
       }
       return shuffled
@@ -1469,6 +1475,16 @@ export function Scoreboard() {
     }
     setTeam((prev) => [...prev, player])
     setRemoveMode(null)
+  }
+
+  function openKillerCatalog() {
+    setPickerContext({
+      mode: "catalog",
+      team: "thomas",
+      playerId: "__catalog__",
+      playerName: "",
+      slotIndex: null,
+    })
   }
 
   function openKillerPicker(
@@ -1777,6 +1793,20 @@ export function Scoreboard() {
     setShowFullResetConfirm(false)
   }
 
+  const resetUiOpen =
+    showResetMenu ||
+    showResetConfirm ||
+    showKillerResetConfirm ||
+    showRosterResetConfirm ||
+    showFullResetConfirm
+  const resetUiDismissBind = useAutoDismiss(resetUiOpen, closeAllResetUI)
+  const guideMenuDismissBind = useAutoDismiss(showGuideMenu, () => {
+    setShowGuideMenu(false)
+  })
+  const modeSwitchDismissBind = useAutoDismiss(showModeSwitchConfirm, () => {
+    setShowModeSwitchConfirm(false)
+  })
+
   function openResetConfirm(type: "score" | "killer" | "roster" | "full") {
     setShowResetConfirm(type === "score")
     setShowKillerResetConfirm(type === "killer")
@@ -1946,7 +1976,12 @@ export function Scoreboard() {
               />
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div
+            className={cn(
+              "grid grid-cols-2 gap-4",
+              fearlessEnabled && "fearless-team-titles",
+            )}
+          >
           <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
             {/* 숨겨진 span으로 실제 렌더 폭을 측정해 input에 적용 */}
             <span className="relative inline-block pr-[0.35em]">
@@ -1959,13 +1994,15 @@ export function Scoreboard() {
                 value={thomasName}
                 readOnly={isViewer}
                 onChange={(e) => setThomasName(e.target.value)}
+                onFocus={(e) => e.currentTarget.select()}
+                onClick={(e) => e.currentTarget.select()}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
                 aria-label="왼쪽 팀 이름"
                 className={cn("absolute inset-0 w-full bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-orange),transparent_55%)] focus:opacity-80 text-dbd-orange pr-[0.35em]", isViewer && "cursor-default")}
                 style={{ fontFamily: "var(--font-aldrich)" }}
               />
             </span>
-            <span className="font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
+            <span className="select-none font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
           </h1>
           <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
             <span className="relative inline-block pr-[0.35em]">
@@ -1978,13 +2015,15 @@ export function Scoreboard() {
                 value={adaName}
                 readOnly={isViewer}
                 onChange={(e) => setAdaName(e.target.value)}
+                onFocus={(e) => e.currentTarget.select()}
+                onClick={(e) => e.currentTarget.select()}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
                 aria-label="오른쪽 팀 이름"
                 className={cn("absolute inset-0 w-full bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-blue),transparent_55%)] focus:opacity-80 text-dbd-blue pr-[0.35em]", isViewer && "cursor-default")}
                 style={{ fontFamily: "var(--font-aldrich)" }}
               />
             </span>
-            <span className="font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
+            <span className="select-none font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
           </h1>
         </div>
       </div>
@@ -2361,23 +2400,46 @@ export function Scoreboard() {
         {/* fixed utility controls */}
         <ZoomCompensated
           origin="bottom left"
-          className="fixed bottom-5 left-4 z-50 flex flex-col gap-2 text-neutral-300 md:bottom-6 md:left-8"
+          className="scoreboard-utility-stack fixed bottom-5 left-4 z-50 text-neutral-300 md:bottom-6 md:left-8"
         >
           {!utilityUiHidden && (
-            <>
+          <div className="scoreboard-utility-stack-top">
+          {fearlessEnabled && isViewer && (
+            <button
+              type="button"
+              onClick={openKillerCatalog}
+              className="scoreboard-utility-btn scoreboard-utility-btn-neutral"
+              style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+            >
+              살인마 목록 열기
+            </button>
+          )}
           {!isViewer && (
-            <div className="relative mb-2">
+            <div className="relative flex w-full flex-col gap-2">
+              {fearlessEnabled && (
+                <button
+                  type="button"
+                  onClick={openKillerCatalog}
+                  className="scoreboard-utility-btn scoreboard-utility-btn-neutral"
+                  style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+                >
+                  살인마 목록 열기
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleResetClick}
-                className="rounded border border-neutral-500/70 bg-black/80 px-3 py-1 text-sm text-neutral-200 backdrop-blur-sm transition-colors hover:border-neutral-300 hover:text-white"
+                className="scoreboard-utility-btn scoreboard-utility-btn-neutral"
                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
               >
                 초기화
               </button>
 
               {showResetMenu && (
-                <div className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2">
+                <div
+                  className="absolute left-full top-0 z-50 ml-2 flex items-start gap-2"
+                  {...resetUiDismissBind}
+                >
                   <div className="flex flex-col gap-1.5 rounded border border-neutral-600/70 bg-black/95 p-2 backdrop-blur-sm whitespace-nowrap">
                     <button
                       type="button"
@@ -2390,7 +2452,7 @@ export function Scoreboard() {
                     <button
                       type="button"
                       onClick={() => openResetConfirm("roster")}
-                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                      className={RESET_ROSTER_KILLER_BTN}
                       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                     >
                       팀원 초기화
@@ -2398,7 +2460,7 @@ export function Scoreboard() {
                     <button
                       type="button"
                       onClick={() => openResetConfirm("killer")}
-                      className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                      className={RESET_ROSTER_KILLER_BTN}
                       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                     >
                       살인마 초기화
@@ -2526,16 +2588,26 @@ export function Scoreboard() {
               )}
             </div>
           )}
-          <div className="relative flex items-center">
+          </div>
+          )}
+          <div className="scoreboard-utility-stack-bottom">
+          {!utilityUiHidden && (
+          <div className="relative flex w-full items-center">
             <FooterBtn
               onClick={handleOpenGuide}
-              className={cn(!hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold")}
+              className={cn(
+                "scoreboard-utility-btn scoreboard-utility-btn-neutral border-neutral-600 bg-black/50",
+                !hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold",
+              )}
             >
               설명서
             </FooterBtn>
 
             {showGuideMenu && (
-              <div className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2">
+              <div
+                className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2"
+                {...guideMenuDismissBind}
+              >
                 <div className="flex flex-col gap-1.5 rounded border border-neutral-600/70 bg-black/95 p-2 backdrop-blur-sm whitespace-nowrap">
                   <button
                     type="button"
@@ -2548,7 +2620,7 @@ export function Scoreboard() {
                   <button
                     type="button"
                     onClick={() => openGuideView("fearless")}
-                    className="h-8 rounded border border-neutral-400/70 bg-black/80 px-3 text-sm text-white transition-colors hover:bg-white/10"
+                    className="h-8 rounded border border-dbd-yellow/70 bg-black/80 px-3 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/10 hover:text-dbd-yellow"
                     style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                   >
                     피어리스 설명서
@@ -2608,9 +2680,9 @@ export function Scoreboard() {
               </motion.div>
             )}
           </div>
-            </>
           )}
           <UtilityUiToggle hidden={utilityUiHidden} onToggle={toggleUtilityUi} />
+          </div>
         </ZoomCompensated>
 
         {/* 우승 오버레이 */}
@@ -2831,7 +2903,7 @@ export function Scoreboard() {
       {!utilityUiHidden && (
       <ZoomCompensated
         origin="bottom right"
-        className="fixed bottom-5 right-4 z-50 flex flex-col items-end gap-2 md:bottom-6 md:right-8"
+        className="scoreboard-utility-stack fixed bottom-5 right-4 z-50 md:bottom-6 md:right-8"
       >
         <CopyScoreboardImageButton
           thomas={thomas}
@@ -2855,17 +2927,20 @@ export function Scoreboard() {
           onStopViewing={sync.stopViewing}
         />
         {!isViewer && (
-          <>
+          <div className="relative w-full">
             <button
               type="button"
               onClick={() => setShowModeSwitchConfirm((prev) => !prev)}
-              className="rounded border border-dbd-yellow/70 bg-black/80 px-4 py-2 text-sm text-dbd-yellow backdrop-blur-sm transition-colors hover:bg-dbd-yellow/10 shadow-lg cursor-pointer flex items-center space-x-2"
+              className="scoreboard-utility-btn border border-dbd-yellow/70 bg-black/80 text-dbd-yellow shadow-lg hover:bg-dbd-yellow/10 hover:text-dbd-yellow"
               style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
             >
-              <span>5인 내전 모드로 전환</span>
+              5인 내전 모드로 전환
             </button>
             {showModeSwitchConfirm && (
-              <div className="absolute right-0 bottom-full mb-2 z-50 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap shadow-2xl">
+              <div
+                className="absolute right-full bottom-0 z-50 mr-2 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 whitespace-nowrap shadow-2xl backdrop-blur-sm"
+                {...modeSwitchDismissBind}
+              >
                 <p className="text-xs text-neutral-200">5인 내전 모드로 넘어가시겠습니까?</p>
                 <div className="flex gap-2 justify-end">
                   <button
@@ -2894,7 +2969,7 @@ export function Scoreboard() {
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </ZoomCompensated>
       )}
@@ -2964,10 +3039,7 @@ function FooterBtn({ children, onClick, className }: { children: React.ReactNode
     <button
       type="button"
       onClick={onClick}
-      className={cn(
-        "rounded border border-neutral-600 bg-black/50 px-3 py-1 text-sm transition-colors hover:border-neutral-400 hover:text-white",
-        className
-      )}
+      className={cn("scoreboard-utility-btn", className)}
       style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
     >
       {children}
