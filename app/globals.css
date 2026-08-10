@@ -1586,15 +1586,7 @@ input[type="number"] {
     drop-shadow(-1px 1px 0 rgb(145 50 50 / 34%));
 }
 .fearless-picker-cell-frame::after {
-  content: "";
-  position: absolute;
-  right: calc(-1 * var(--picker-overlay-bleed));
-  bottom: calc(-1 * var(--picker-overlay-bleed));
-  left: calc(-1 * var(--picker-overlay-bleed));
-  z-index: 1;
-  height: calc(42% + var(--picker-overlay-bleed));
-  pointer-events: none;
-  background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 82%) 78%);
+  content: none;
 }
 .fearless-picker-grid::-webkit-scrollbar { width: 5px; }
 .fearless-picker-grid::-webkit-scrollbar-track { background: transparent; }
@@ -1629,21 +1621,23 @@ input[type="number"] {
   z-index: 3;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-end;
   gap: calc(.22rem * var(--picker-ui-scale, 1));
   pointer-events: none;
+  transform: translateY(-3px);
 }
 .fearless-picker-label-row {
   position: static;
   display: flex;
   width: 100%;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   gap: calc(.35rem * var(--picker-ui-scale, 1));
 }
 .fearless-picker-killer-name {
   position: static;
+  width: 100%;
   min-width: 0;
   flex: 1 1 auto;
   overflow: hidden;
@@ -1652,7 +1646,7 @@ input[type="number"] {
   font-size: calc(clamp(.98rem, 2vw, 1.28rem) * var(--picker-ui-scale, 1));
   font-weight: 500;
   line-height: 1.2;
-  text-align: left;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-shadow: 0 1px 4px #000, 0 0 8px rgb(0 0 0 / 65%);
@@ -1696,18 +1690,19 @@ input[type="number"] {
   display: flex;
   width: 100%;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: calc(.14rem * var(--picker-ui-scale, 1));
   overflow: hidden;
 }
 .fearless-pick-name {
   display: block;
+  width: 100%;
   max-width: 100%;
   overflow: hidden;
   font-size: calc(clamp(.84rem, 1.65vw, 1.02rem) * var(--picker-ui-scale, 1));
   font-weight: 400;
   line-height: 1.2;
-  text-align: left;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-shadow: 0 1px 4px rgb(0 0 0 / 92%), 0 0 6px rgb(0 0 0 / 65%);

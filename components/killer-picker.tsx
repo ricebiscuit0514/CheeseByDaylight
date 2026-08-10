@@ -425,15 +425,15 @@ export function KillerPicker({
               <feComponentTransfer in="colorized" colorInterpolationFilters="sRGB">
                 <feFuncR
                   type="table"
-                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.54 0.55 0.55 0.55"
+                  tableValues="0.03 0.13 0.23 0.33 0.42 0.50 0.58 0.62 0.66 0.69 0.72"
                 />
                 <feFuncG
                   type="table"
-                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.54 0.55 0.55 0.55"
+                  tableValues="0.03 0.13 0.23 0.33 0.42 0.50 0.58 0.62 0.66 0.69 0.72"
                 />
                 <feFuncB
                   type="table"
-                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.54 0.55 0.55 0.55"
+                  tableValues="0.03 0.13 0.23 0.33 0.42 0.50 0.58 0.62 0.66 0.69 0.72"
                 />
               </feComponentTransfer>
             </filter>
@@ -455,15 +455,15 @@ export function KillerPicker({
               <feComponentTransfer in="grayscale" colorInterpolationFilters="sRGB">
                 <feFuncR
                   type="table"
-                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.54 0.55 0.55 0.55"
+                  tableValues="0.03 0.13 0.23 0.33 0.42 0.50 0.58 0.62 0.66 0.69 0.72"
                 />
                 <feFuncG
                   type="table"
-                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.54 0.55 0.55 0.55"
+                  tableValues="0.03 0.13 0.23 0.33 0.42 0.50 0.58 0.62 0.66 0.69 0.72"
                 />
                 <feFuncB
                   type="table"
-                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.54 0.55 0.55 0.55"
+                  tableValues="0.03 0.13 0.23 0.33 0.42 0.50 0.58 0.62 0.66 0.69 0.72"
                 />
               </feComponentTransfer>
             </filter>
