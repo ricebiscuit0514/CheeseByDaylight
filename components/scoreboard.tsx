@@ -781,6 +781,16 @@ export function Scoreboard() {
           : undefined,
     }
   }, [ada, pickerContext, thomas])
+  const viewerPickerTeamCatalogTitle = useMemo(() => {
+    if (!isViewer || !activePickerContext || activePickerContext.mode === "catalog") {
+      return undefined
+    }
+    const teamLabel =
+      activePickerContext.team === "thomas"
+        ? thomasName.trim() || "토마스"
+        : adaName.trim() || "아다"
+    return `${teamLabel} 살인마 목록`
+  }, [activePickerContext, adaName, isViewer, thomasName])
   const { hidden: utilityUiHidden, toggle: toggleUtilityUi } = useUtilityUiHidden()
 
   useEffect(() => {
@@ -2989,6 +2999,7 @@ export function Scoreboard() {
             )?.killerPicks ?? []
           }
           readOnly={isViewer}
+          viewerTeamCatalogTitle={viewerPickerTeamCatalogTitle}
           syncedPickerUi={isViewer ? pickerUi : null}
           onSelectionSync={isViewer ? undefined : handlePickerSelectionSync}
           onFeedbackSync={isViewer ? undefined : handlePickerFeedbackSync}

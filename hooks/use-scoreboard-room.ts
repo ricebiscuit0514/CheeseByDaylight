@@ -46,8 +46,19 @@ export type ScoreboardRoomStatus =
   | "expired"
   | "error"
 
-const MODE_SWITCH_RECHECK_MS = 1500
-const MODE_SWITCH_FRESH_UPDATE_MS = 5000
+const HOST_DISCONNECT_RECHECK_MS = 3000
+
+function hostDisconnectGraceRemainingMs(
+  room: ScoreboardRoom,
+  now = Date.now(),
+) {
+  if (typeof room.hostDisconnectedAt !== "number") return 0
+  return Math.max(0, HOST_DISCONNECT_GRACE_MS - (now - room.hostDisconnectedAt))
+}
+
+function isHostWithinDisconnectGrace(room: ScoreboardRoom, now = Date.now()) {
+  return hostDisconnectGraceRemainingMs(room, now) > 0
+}
 
 type UseScoreboardRoomOptions<T extends ScoreboardSyncState> = {
   gameMode: ScoreboardGameMode
@@ -382,23 +393,34 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
             return true
           }
 
-          const scheduleHostDisconnectRecheck = () => {
-            if (pendingHostDisconnectTimeout !== undefined) return
+          const scheduleHostDisconnectRecheck = (room: ScoreboardRoom) => {
+            clearPendingHostDisconnect()
+            const remaining = hostDisconnectGraceRemainingMs(room)
+            if (remaining <= 0) {
+              clearPendingExpire()
+              returnViewerToLocal({ hostDisconnected: true })
+              return
+            }
+
             pendingHostDisconnectTimeout = window.setTimeout(() => {
               pendingHostDisconnectTimeout = undefined
               if (disposed) return
-              const room = latestRoom
-              if (room && redirectIfModeChanged(room)) return
-              if (
-                room &&
-                sawValidRoom &&
-                Object.keys(room.hostConnections ?? {}).length === 0 &&
-                typeof room.hostDisconnectedAt === "number"
-              ) {
-                clearPendingExpire()
-                returnViewerToLocal({ hostDisconnected: true })
+              const current = latestRoom
+              if (!current) return
+              if (redirectIfModeChanged(current)) return
+
+              const hostBackOnline =
+                Object.keys(current.hostConnections ?? {}).length > 0
+              if (hostBackOnline) return
+
+              if (isHostWithinDisconnectGrace(current)) {
+                scheduleHostDisconnectRecheck(current)
+                return
               }
-            }, MODE_SWITCH_RECHECK_MS)
+
+              clearPendingExpire()
+              returnViewerToLocal({ hostDisconnected: true })
+            }, Math.min(HOST_DISCONNECT_RECHECK_MS, remaining))
           }
 
           const scheduleViewerExpire = () => {
@@ -457,10 +479,11 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
               ) {
                 if (redirectIfModeChanged(room)) return
 
-                const recentlyUpdated =
-                  Date.now() - room.updatedAt < MODE_SWITCH_FRESH_UPDATE_MS
-                if (recentlyUpdated) {
-                  scheduleHostDisconnectRecheck()
+                if (isHostWithinDisconnectGrace(room)) {
+                  setRoomReady(true)
+                  setRoomExpiresAt(room.expiresAt)
+                  setHostOnline(false)
+                  scheduleHostDisconnectRecheck(room)
                   return
                 }
 

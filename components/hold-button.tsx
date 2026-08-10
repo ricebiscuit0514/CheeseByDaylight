@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 
 interface HoldButtonProps {
@@ -20,33 +20,21 @@ export function HoldButton({
   style,
   children,
 }: HoldButtonProps) {
-  const [holding, setHolding] = useState(false)
-  const [progress, setProgress] = useState(0) // 0 ~ 100
-  const timerRef = useRef<number | null>(null)
+  const holdingRef = useRef(false)
   const startTimeRef = useRef<number>(0)
   const animFrameRef = useRef<number | null>(null)
+  const fillRef = useRef<HTMLSpanElement>(null)
+  const onConfirmRef = useRef(onConfirm)
 
-  const startHold = () => {
-    if (disabled || holding) return
-    setHolding(true)
-    setProgress(0)
-    startTimeRef.current = Date.now()
+  useEffect(() => {
+    onConfirmRef.current = onConfirm
+  }, [onConfirm])
 
-    const updateProgress = () => {
-      const elapsed = Date.now() - startTimeRef.current
-      const pct = Math.min(100, (elapsed / holdDurationMs) * 100)
-      setProgress(pct)
-
-      if (elapsed >= holdDurationMs) {
-        setHolding(false)
-        setProgress(0)
-        onConfirm()
-      } else {
-        animFrameRef.current = requestAnimationFrame(updateProgress)
-      }
-    }
-
-    animFrameRef.current = requestAnimationFrame(updateProgress)
+  const setFillProgress = (progress: number) => {
+    const fill = fillRef.current
+    if (!fill) return
+    fill.style.transform = `scaleX(${Math.max(0, Math.min(1, progress))})`
+    fill.style.opacity = progress > 0 ? "1" : "0"
   }
 
   const stopHold = () => {
@@ -54,8 +42,32 @@ export function HoldButton({
       cancelAnimationFrame(animFrameRef.current)
       animFrameRef.current = null
     }
-    setHolding(false)
-    setProgress(0)
+    holdingRef.current = false
+    setFillProgress(0)
+  }
+
+  const startHold = () => {
+    if (disabled || holdingRef.current) return
+    holdingRef.current = true
+    startTimeRef.current = Date.now()
+    setFillProgress(0)
+
+    const updateProgress = () => {
+      if (!holdingRef.current) return
+
+      const elapsed = Date.now() - startTimeRef.current
+      const progress = elapsed / holdDurationMs
+      setFillProgress(progress)
+
+      if (elapsed >= holdDurationMs) {
+        stopHold()
+        onConfirmRef.current()
+      } else {
+        animFrameRef.current = requestAnimationFrame(updateProgress)
+      }
+    }
+
+    animFrameRef.current = requestAnimationFrame(updateProgress)
   }
 
   useEffect(() => {
@@ -78,17 +90,16 @@ export function HoldButton({
       onTouchCancel={stopHold}
       className={cn(
         "relative overflow-hidden select-none active:scale-[0.98] transition-transform duration-100 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40",
-        className
+        className,
       )}
       style={style}
     >
-      {/* Progress Fill Overlay */}
-      {holding && (
-        <span
-          className="absolute inset-0 bg-dbd-yellow/30 pointer-events-none transition-all duration-75 ease-linear"
-          style={{ width: `${progress}%` }}
-        />
-      )}
+      <span
+        ref={fillRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute left-0 top-0 bottom-0 w-full origin-left bg-dbd-yellow/30 opacity-0"
+        style={{ transform: "scaleX(0)" }}
+      />
       <span className="relative z-10">{children}</span>
     </button>
   )

@@ -56,6 +56,8 @@ export type KillerPickerProps = {
   onFeedbackSync?: (killerId: string, kind: PickerFeedbackKind) => void
   /** Viewer replays host picker effects while the catalog is open. */
   syncedPickerUi?: PickerUiSyncState | null
+  /** Read-only slot/catalog title override for spectators. */
+  viewerTeamCatalogTitle?: string
   /** Team-neutral styling for modes without team colors (e.g. 1v4). */
   monochrome?: boolean
 }
@@ -110,6 +112,7 @@ export function KillerPicker({
   onSelectionSync,
   onFeedbackSync,
   syncedPickerUi = null,
+  viewerTeamCatalogTitle,
   monochrome = false,
 }: KillerPickerProps) {
   const titleId = useId()
@@ -540,6 +543,10 @@ export function KillerPicker({
             <h2 id={titleId} className="fearless-picker-title">
               {isCatalog ? (
                 <span className="fearless-picker-title-catalog">살인마 목록</span>
+              ) : readOnly && viewerTeamCatalogTitle ? (
+                <span className="fearless-picker-title-catalog">
+                  {viewerTeamCatalogTitle}
+                </span>
               ) : (
                 <>
                   <span className="fearless-picker-title-name">
