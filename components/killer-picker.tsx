@@ -21,6 +21,10 @@ import {
   type PickerLayoutMetrics,
   writeStoredPickerZoomLevel,
 } from "@/lib/picker-zoom"
+import {
+  readStoredPickerFilterMode,
+  writeStoredPickerFilterMode,
+} from "@/lib/picker-filter-mode"
 import { cn } from "@/lib/utils"
 
 export type KillerPickerContext = {
@@ -171,8 +175,6 @@ export function KillerPicker({
     onFeedbackSyncRef.current = onFeedbackSync
   }, [onFeedbackSync])
   const [mounted, setMounted] = useState(false)
-  const [filterMode, setFilterMode] =
-    useState<FearlessFilterMode>("hard")
   const [query, setQuery] = useState("")
   const [selectedKillerId, setSelectedKillerId] = useState<string | null>(
     context.currentKillerId ?? null,
@@ -184,6 +186,9 @@ export function KillerPicker({
   } | null>(null)
   const zoomAudience = getPickerZoomAudience(readOnly)
   const scrollLockPreviousOverflowRef = useRef<string | null>(null)
+  const [filterMode, setFilterMode] = useState<FearlessFilterMode>(() =>
+    readStoredPickerFilterMode(zoomAudience, monochrome),
+  )
   const [layout, setLayout] = useState<PickerLayoutMetrics | null>(() =>
     typeof window !== "undefined"
       ? measurePickerLayout(window.innerWidth, getPickerZoomAudience(readOnly))
@@ -216,8 +221,13 @@ export function KillerPicker({
   useEffect(() => {
     if (monochrome && filterMode === "personal") {
       setFilterMode("hard")
+      writeStoredPickerFilterMode(zoomAudience, "hard", monochrome)
     }
-  }, [monochrome, filterMode])
+  }, [monochrome, filterMode, zoomAudience])
+
+  useEffect(() => {
+    writeStoredPickerFilterMode(zoomAudience, filterMode, monochrome)
+  }, [filterMode, zoomAudience, monochrome])
 
   useEffect(() => {
     if (!layout) return
