@@ -1039,6 +1039,8 @@ input[type="number"] {
 }
 .fearless-picker-panel {
   --fearless-team: var(--dbd-orange);
+  --fearless-banned-filter: none;
+  --fearless-picked-filter: none;
   position: relative;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
@@ -1119,6 +1121,12 @@ input[type="number"] {
 .fearless-picker-title-catalog {
   color: white;
 }
+.fearless-picker-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2.75rem;
+}
 .fearless-picker-close {
   display: grid;
   width: 2.75rem;
@@ -1183,12 +1191,52 @@ input[type="number"] {
   color: color-mix(in oklch, var(--fearless-team), white 46%);
   box-shadow: inset 0 -2px var(--fearless-team);
 }
+.fearless-picker-hide-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .55rem 1.25rem;
+  margin-inline-end: 1.5rem;
+}
+.fearless-picker-hide-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  color: rgb(255 255 255 / 58%);
+  font-size: .95rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color .15s ease;
+}
+.fearless-picker-hide-filter:hover {
+  color: rgb(255 255 255 / 86%);
+}
+.fearless-picker-hide-filter input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  accent-color: var(--fearless-team, white);
+  cursor: pointer;
+}
+.fearless-picker-panel-catalog .fearless-picker-hide-filter input {
+  accent-color: rgb(255 255 255 / 82%);
+}
 .fearless-picker-toolbar-actions {
   display: flex;
   justify-self: center;
   align-items: center;
   justify-content: center;
   min-height: 2.75rem;
+}
+.fearless-picker-toolbar-catalog .fearless-picker-toolbar-actions {
+  grid-column: 2;
+}
+.fearless-picker-toolbar-catalog .fearless-picker-toolbar-end {
+  grid-column: 3;
 }
 .fearless-picker-toolbar-end {
   justify-self: end;
@@ -1342,6 +1390,8 @@ input[type="number"] {
   padding-bottom: 125%;
 }
 .fearless-picker-cell-frame {
+  --picker-portrait-bleed: 7%;
+  --picker-overlay-bleed: 3%;
   position: absolute;
   inset: 0;
   overflow: visible;
@@ -1371,7 +1421,7 @@ input[type="number"] {
 }
 .fearless-picker-portrait {
   position: absolute;
-  inset: -5%;
+  inset: calc(-1 * var(--picker-portrait-bleed));
   z-index: 0;
   overflow: visible;
   background: transparent;
@@ -1413,15 +1463,6 @@ input[type="number"] {
 .fearless-picker-portrait-face {
   position: relative;
   z-index: 1;
-  filter:
-    drop-shadow(1px 0 0 rgb(48 48 52 / 68%))
-    drop-shadow(-1px 0 0 rgb(48 48 52 / 68%))
-    drop-shadow(0 1px 0 rgb(48 48 52 / 68%))
-    drop-shadow(0 -1px 0 rgb(48 48 52 / 68%))
-    drop-shadow(1px 1px 0 rgb(48 48 52 / 68%))
-    drop-shadow(-1px -1px 0 rgb(48 48 52 / 68%))
-    drop-shadow(1px -1px 0 rgb(48 48 52 / 68%))
-    drop-shadow(-1px 1px 0 rgb(48 48 52 / 68%));
   transition: filter .16s ease;
 }
 .fearless-picker-portrait-glow {
@@ -1459,7 +1500,7 @@ input[type="number"] {
 }
 .fearless-picker-cell.is-selected.is-picked:not(.is-banned) .fearless-picker-portrait-face {
   filter:
-    grayscale(1) brightness(.54)
+    var(--fearless-picked-filter) contrast(0.9) brightness(0.69)
     drop-shadow(1px 0 0 rgb(105 105 105 / 20%))
     drop-shadow(-1px 0 0 rgb(105 105 105 / 20%))
     drop-shadow(0 1px 0 rgb(105 105 105 / 20%))
@@ -1470,47 +1511,20 @@ input[type="number"] {
     drop-shadow(-1px 1px 0 rgb(105 105 105 / 20%));
 }
 .fearless-picker-cell.is-picked:not(.is-selected):not(.is-banned) .fearless-picker-portrait-face {
-  filter:
-    grayscale(1) brightness(.42)
-    drop-shadow(1px 0 0 rgb(88 88 88 / 14%))
-    drop-shadow(-1px 0 0 rgb(88 88 88 / 14%))
-    drop-shadow(0 1px 0 rgb(88 88 88 / 14%))
-    drop-shadow(0 -1px 0 rgb(88 88 88 / 14%))
-    drop-shadow(1px 1px 0 rgb(88 88 88 / 14%))
-    drop-shadow(-1px -1px 0 rgb(88 88 88 / 14%))
-    drop-shadow(1px -1px 0 rgb(88 88 88 / 14%))
-    drop-shadow(-1px 1px 0 rgb(88 88 88 / 14%));
+  filter: var(--fearless-picked-filter) contrast(0.88) brightness(0.66);
 }
-.fearless-picker-cell.is-picked:not(.is-banned):hover .fearless-picker-portrait-face,
-.fearless-picker-cell.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait-face {
-  filter:
-    grayscale(1) brightness(.5)
-    drop-shadow(1px 0 0 rgb(98 98 98 / 18%))
-    drop-shadow(-1px 0 0 rgb(98 98 98 / 18%))
-    drop-shadow(0 1px 0 rgb(98 98 98 / 18%))
-    drop-shadow(0 -1px 0 rgb(98 98 98 / 18%))
-    drop-shadow(1px 1px 0 rgb(98 98 98 / 18%))
-    drop-shadow(-1px -1px 0 rgb(98 98 98 / 18%))
-    drop-shadow(1px -1px 0 rgb(98 98 98 / 18%))
-    drop-shadow(-1px 1px 0 rgb(98 98 98 / 18%));
+.fearless-picker-cell.is-picked:not(.is-banned):not(.is-selected):hover .fearless-picker-portrait-face,
+.fearless-picker-cell.is-picked:not(.is-banned):not(.is-selected):focus-visible .fearless-picker-portrait-face {
+  filter: var(--fearless-picked-filter) contrast(0.9) brightness(0.72);
 }
 .fearless-picker-cell:hover:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait-face,
 .fearless-picker-cell:focus-visible:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait-face {
-  filter:
-    brightness(1.16) saturate(1.04)
-    drop-shadow(1px 0 0 rgb(255 255 255 / 52%))
-    drop-shadow(-1px 0 0 rgb(255 255 255 / 52%))
-    drop-shadow(0 1px 0 rgb(255 255 255 / 52%))
-    drop-shadow(0 -1px 0 rgb(255 255 255 / 52%))
-    drop-shadow(1px 1px 0 rgb(255 255 255 / 52%))
-    drop-shadow(-1px -1px 0 rgb(255 255 255 / 52%))
-    drop-shadow(1px -1px 0 rgb(255 255 255 / 52%))
-    drop-shadow(-1px 1px 0 rgb(255 255 255 / 52%));
+  filter: brightness(1.24) saturate(1.06);
 }
 .fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):hover .fearless-picker-portrait-face,
 .fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):focus-visible .fearless-picker-portrait-face {
   filter:
-    brightness(1.2) saturate(1.06)
+    brightness(1.28) saturate(1.08)
     drop-shadow(1px 0 0 rgb(255 255 255 / 62%))
     drop-shadow(-1px 0 0 rgb(255 255 255 / 62%))
     drop-shadow(0 1px 0 rgb(255 255 255 / 62%))
@@ -1533,34 +1547,22 @@ input[type="number"] {
 .fearless-picker-cell.is-selected.is-picked .fearless-picker-cell-frame {
   transform: translate3d(0, 0, 0) scale(1.06);
 }
-.fearless-picker-cell.is-banned .fearless-picker-portrait-face {
-  filter:
-    sepia(.45) saturate(1.85) hue-rotate(330deg) brightness(.26)
-    drop-shadow(1px 0 0 rgb(110 35 35 / 18%))
-    drop-shadow(-1px 0 0 rgb(110 35 35 / 18%))
-    drop-shadow(0 1px 0 rgb(110 35 35 / 18%))
-    drop-shadow(0 -1px 0 rgb(110 35 35 / 18%))
-    drop-shadow(1px 1px 0 rgb(110 35 35 / 18%))
-    drop-shadow(-1px -1px 0 rgb(110 35 35 / 18%))
-    drop-shadow(1px -1px 0 rgb(110 35 35 / 18%))
-    drop-shadow(-1px 1px 0 rgb(110 35 35 / 18%));
+.fearless-picker-svg-filters {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
 }
-.fearless-picker-cell.is-banned:hover .fearless-picker-portrait-face,
-.fearless-picker-cell.is-banned:focus-visible .fearless-picker-portrait-face {
-  filter:
-    sepia(.5) saturate(2) hue-rotate(330deg) brightness(.32)
-    drop-shadow(1px 0 0 rgb(130 45 45 / 28%))
-    drop-shadow(-1px 0 0 rgb(130 45 45 / 28%))
-    drop-shadow(0 1px 0 rgb(130 45 45 / 28%))
-    drop-shadow(0 -1px 0 rgb(130 45 45 / 28%))
-    drop-shadow(1px 1px 0 rgb(130 45 45 / 28%))
-    drop-shadow(-1px -1px 0 rgb(130 45 45 / 28%))
-    drop-shadow(1px -1px 0 rgb(130 45 45 / 28%))
-    drop-shadow(-1px 1px 0 rgb(130 45 45 / 28%));
+.fearless-picker-cell.is-banned .fearless-picker-portrait-face {
+  filter: var(--fearless-banned-filter) contrast(0.88) brightness(0.74);
+}
+.fearless-picker-cell.is-banned:hover:not(.is-selected) .fearless-picker-portrait-face,
+.fearless-picker-cell.is-banned:focus-visible:not(.is-selected) .fearless-picker-portrait-face {
+  filter: var(--fearless-banned-filter) contrast(0.9) brightness(0.8);
 }
 .fearless-picker-cell.is-banned.is-selected .fearless-picker-portrait-face {
   filter:
-    sepia(.5) saturate(2) hue-rotate(330deg) brightness(.32)
+    var(--fearless-banned-filter) contrast(0.9) brightness(0.77)
     drop-shadow(1px 0 0 rgb(145 50 50 / 34%))
     drop-shadow(-1px 0 0 rgb(145 50 50 / 34%))
     drop-shadow(0 1px 0 rgb(145 50 50 / 34%))
@@ -1573,11 +1575,11 @@ input[type="number"] {
 .fearless-picker-cell-frame::after {
   content: "";
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  right: calc(-1 * var(--picker-overlay-bleed));
+  bottom: calc(-1 * var(--picker-overlay-bleed));
+  left: calc(-1 * var(--picker-overlay-bleed));
   z-index: 1;
-  height: 42%;
+  height: calc(42% + var(--picker-overlay-bleed));
   pointer-events: none;
   background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 82%) 78%);
 }
@@ -1588,33 +1590,15 @@ input[type="number"] {
   background: color-mix(in oklch, var(--fearless-team), transparent 48%);
 }
 .fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait-face {
-  filter:
-    grayscale(.55) sepia(.55) saturate(1.9) hue-rotate(330deg) brightness(.22)
-    drop-shadow(1px 0 0 rgb(100 32 32 / 16%))
-    drop-shadow(-1px 0 0 rgb(100 32 32 / 16%))
-    drop-shadow(0 1px 0 rgb(100 32 32 / 16%))
-    drop-shadow(0 -1px 0 rgb(100 32 32 / 16%))
-    drop-shadow(1px 1px 0 rgb(100 32 32 / 16%))
-    drop-shadow(-1px -1px 0 rgb(100 32 32 / 16%))
-    drop-shadow(1px -1px 0 rgb(100 32 32 / 16%))
-    drop-shadow(-1px 1px 0 rgb(100 32 32 / 16%));
+  filter: var(--fearless-banned-filter) contrast(0.86) brightness(0.58);
 }
-.fearless-picker-cell.is-banned.is-picked:hover .fearless-picker-portrait-face,
-.fearless-picker-cell.is-banned.is-picked:focus-visible .fearless-picker-portrait-face {
-  filter:
-    grayscale(.45) sepia(.6) saturate(2) hue-rotate(330deg) brightness(.28)
-    drop-shadow(1px 0 0 rgb(120 38 38 / 26%))
-    drop-shadow(-1px 0 0 rgb(120 38 38 / 26%))
-    drop-shadow(0 1px 0 rgb(120 38 38 / 26%))
-    drop-shadow(0 -1px 0 rgb(120 38 38 / 26%))
-    drop-shadow(1px 1px 0 rgb(120 38 38 / 26%))
-    drop-shadow(-1px -1px 0 rgb(120 38 38 / 26%))
-    drop-shadow(1px -1px 0 rgb(120 38 38 / 26%))
-    drop-shadow(-1px 1px 0 rgb(120 38 38 / 26%));
+.fearless-picker-cell.is-banned.is-picked:hover:not(.is-selected) .fearless-picker-portrait-face,
+.fearless-picker-cell.is-banned.is-picked:focus-visible:not(.is-selected) .fearless-picker-portrait-face {
+  filter: var(--fearless-banned-filter) contrast(0.88) brightness(0.64);
 }
 .fearless-picker-cell.is-banned.is-picked.is-selected .fearless-picker-portrait-face {
   filter:
-    grayscale(.45) sepia(.6) saturate(2) hue-rotate(330deg) brightness(.28)
+    var(--fearless-banned-filter) contrast(0.88) brightness(0.61)
     drop-shadow(1px 0 0 rgb(135 42 42 / 32%))
     drop-shadow(-1px 0 0 rgb(135 42 42 / 32%))
     drop-shadow(0 1px 0 rgb(135 42 42 / 32%))
@@ -1626,9 +1610,9 @@ input[type="number"] {
 }
 .fearless-picker-label-block {
   position: absolute;
-  right: calc(.35rem * var(--picker-ui-scale, 1));
-  bottom: calc(.28rem * var(--picker-ui-scale, 1));
-  left: calc(.35rem * var(--picker-ui-scale, 1));
+  right: calc(.35rem * var(--picker-ui-scale, 1) - var(--picker-overlay-bleed));
+  bottom: calc(.28rem * var(--picker-ui-scale, 1) - var(--picker-overlay-bleed));
+  left: calc(.35rem * var(--picker-ui-scale, 1) - var(--picker-overlay-bleed));
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -1665,16 +1649,16 @@ input[type="number"] {
   text-shadow: 0 1px 4px rgb(0 0 0 / 92%), 0 0 6px rgb(0 0 0 / 78%);
 }
 .fearless-picker-cell.is-banned .fearless-picker-killer-name {
-  color: rgb(190 68 68 / 98%);
-  text-shadow:
-    0 1px 4px rgb(18 0 0 / 96%),
-    0 0 7px rgb(48 0 0 / 62%);
-}
-.fearless-picker-cell.is-picked.is-banned .fearless-picker-killer-name {
-  color: rgb(142 48 48 / 98%);
+  color: rgb(118 36 36 / 96%);
   text-shadow:
     0 1px 4px rgb(12 0 0 / 98%),
-    0 0 6px rgb(36 0 0 / 72%);
+    0 0 7px rgb(32 0 0 / 72%);
+}
+.fearless-picker-cell.is-picked.is-banned .fearless-picker-killer-name {
+  color: rgb(92 28 28 / 96%);
+  text-shadow:
+    0 1px 4px rgb(8 0 0 / 98%),
+    0 0 6px rgb(24 0 0 / 78%);
 }
 .fearless-picker-status-marks {
   display: flex;
@@ -1707,15 +1691,13 @@ input[type="number"] {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  background: rgb(0 0 0 / 78%);
-  padding: calc(.2rem * var(--picker-ui-scale, 1)) calc(.42rem * var(--picker-ui-scale, 1));
   font-size: calc(clamp(.84rem, 1.65vw, 1.02rem) * var(--picker-ui-scale, 1));
   font-weight: 400;
   line-height: 1.2;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
-  box-shadow: 0 1px 5px rgb(0 0 0 / 48%);
+  text-shadow: 0 1px 4px rgb(0 0 0 / 92%), 0 0 6px rgb(0 0 0 / 65%);
 }
 .fearless-pick-name-thomas { color: color-mix(in oklch, var(--dbd-orange), white 20%); }
 .fearless-pick-name-ada { color: color-mix(in oklch, var(--dbd-blue), white 22%); }
@@ -1903,6 +1885,11 @@ input[type="number"] {
     clip-path: polygon(0 0, calc(100% - .65rem) 0, 100% .65rem, 100% 100%, 0 100%);
   }
   .fearless-picker-header { padding: .75rem .75rem .55rem; }
+  .fearless-picker-header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: min(100%, 18rem);
+  }
   .fearless-picker-toolbar {
     display: flex;
     flex-direction: column;

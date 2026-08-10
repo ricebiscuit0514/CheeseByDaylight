@@ -77,6 +77,19 @@ function safeName(value: string) {
   return value.trim() || "이름 미입력"
 }
 
+function decodePickerPortraits(container: HTMLElement | null) {
+  if (!container) return
+
+  const images = container.querySelectorAll<HTMLImageElement>(
+    ".fearless-picker-portrait-face, .fearless-picker-portrait-shadow, .fearless-picker-portrait-glow",
+  )
+
+  for (const image of images) {
+    if (!image.complete) continue
+    void image.decode().catch(() => {})
+  }
+}
+
 export function KillerPicker({
   open,
   context,
@@ -91,6 +104,8 @@ export function KillerPicker({
   monochrome = false,
 }: KillerPickerProps) {
   const titleId = useId()
+  const bannedColorizeFilterId = useId().replace(/:/g, "")
+  const pickedToneFilterId = useId().replace(/:/g, "")
   const panelRef = useRef<HTMLElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
@@ -109,8 +124,12 @@ export function KillerPicker({
   } | null>(null)
   const [viewportWidth, setViewportWidth] = useState(1024)
   const [zoomLevel, setZoomLevel] = useState(0)
+  const [hidePicked, setHidePicked] = useState(false)
+  const [hideBanned, setHideBanned] = useState(false)
   const zoomAudience = getPickerZoomAudience(readOnly)
   const filterOptions = monochrome ? SOLO_FILTER_OPTIONS : FILTER_OPTIONS
+  const isCatalog = context.mode === "catalog"
+  const effectiveFilterMode: FearlessFilterMode = isCatalog ? "hard" : filterMode
 
   useEffect(() => setMounted(true), [])
 
@@ -227,12 +246,12 @@ export function KillerPicker({
 
   const visiblePicks = useMemo(
     () =>
-      filterVisiblePicks(allPicks, filterMode, {
+      filterVisiblePicks(allPicks, effectiveFilterMode, {
         team: context.team,
         playerId: context.playerId,
         soloMode: monochrome,
       }),
-    [allPicks, filterMode, context.team, context.playerId, monochrome],
+    [allPicks, effectiveFilterMode, context.team, context.playerId, monochrome],
   )
   const filteredKillers = useMemo(() => searchKillers(query), [query])
   const pickerCellStates = useMemo(() => {
@@ -256,13 +275,38 @@ export function KillerPicker({
     }
     return states
   }, [filteredKillers, visiblePicks, killerBans])
+  const displayedKillers = useMemo(
+    () =>
+      filteredKillers.filter((killer) => {
+        const cellState = pickerCellStates.get(killer.id)
+        if (hidePicked && (cellState?.visiblePicks.length ?? 0) > 0) {
+          return false
+        }
+        if (hideBanned && (cellState?.isBanned ?? false)) {
+          return false
+        }
+        return true
+      }),
+    [filteredKillers, pickerCellStates, hidePicked, hideBanned],
+  )
+
+  useEffect(() => {
+    if (!selectedKillerId) return
+    const cellState = pickerCellStates.get(selectedKillerId)
+    if (!cellState) return
+    if (hidePicked && cellState.visiblePicks.length > 0) {
+      setSelectedKillerId(null)
+    } else if (hideBanned && cellState.isBanned) {
+      setSelectedKillerId(null)
+    }
+  }, [hideBanned, hidePicked, pickerCellStates, selectedKillerId])
+
   const handleSelectKiller = useCallback((killerId: string) => {
     setSelectedKillerId((current) =>
       current === killerId ? null : killerId,
     )
   }, [])
   const displayPlayerName = safeName(context.playerName)
-  const isCatalog = context.mode === "catalog"
   const isCurrentSelection =
     context.slotIndex !== null &&
     selectedKillerId === context.currentKillerId
@@ -348,6 +392,10 @@ export function KillerPicker({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        style={{
+          ["--fearless-banned-filter" as string]: `url(#${bannedColorizeFilterId})`,
+          ["--fearless-picked-filter" as string]: `url(#${pickedToneFilterId})`,
+        }}
         onMouseDown={(event) => {
           if (!selectedKillerId) return
           const target = event.target
@@ -357,6 +405,70 @@ export function KillerPicker({
           setSelectedKillerId(null)
         }}
       >
+        <svg className="fearless-picker-svg-filters" aria-hidden="true">
+          <defs>
+            <filter
+              id={bannedColorizeFilterId}
+              colorInterpolationFilters="sRGB"
+            >
+              <feColorMatrix
+                in="SourceGraphic"
+                type="matrix"
+                result="colorized"
+                values="
+                  0.190 0.638 0.064 0 0.022
+                  0.069 0.231 0.023 0 0
+                  0.069 0.231 0.023 0 0
+                  0     0     0     1 0
+                "
+              />
+              <feComponentTransfer in="colorized" colorInterpolationFilters="sRGB">
+                <feFuncR
+                  type="table"
+                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.6 0.65 0.69 0.72"
+                />
+                <feFuncG
+                  type="table"
+                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.6 0.65 0.69 0.72"
+                />
+                <feFuncB
+                  type="table"
+                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.6 0.65 0.69 0.72"
+                />
+              </feComponentTransfer>
+            </filter>
+            <filter
+              id={pickedToneFilterId}
+              colorInterpolationFilters="sRGB"
+            >
+              <feColorMatrix
+                in="SourceGraphic"
+                type="matrix"
+                result="grayscale"
+                values="
+                  0.2126 0.7152 0.0722 0 0
+                  0.2126 0.7152 0.0722 0 0
+                  0.2126 0.7152 0.0722 0 0
+                  0      0      0      1 0
+                "
+              />
+              <feComponentTransfer in="grayscale" colorInterpolationFilters="sRGB">
+                <feFuncR
+                  type="table"
+                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.6 0.65 0.69 0.72"
+                />
+                <feFuncG
+                  type="table"
+                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.6 0.65 0.69 0.72"
+                />
+                <feFuncB
+                  type="table"
+                  tableValues="0 0.1 0.2 0.3 0.39 0.47 0.54 0.6 0.65 0.69 0.72"
+                />
+              </feComponentTransfer>
+            </filter>
+          </defs>
+        </svg>
         <header className="fearless-picker-header">
           <div className="fearless-picker-heading">
             <h2 id={titleId} className="fearless-picker-title">
@@ -374,42 +486,73 @@ export function KillerPicker({
               )}
             </h2>
           </div>
-          <button
-            type="button"
-            className="fearless-picker-close"
-            onClick={onClose}
-            aria-label="살인마 선택 창 닫기"
-            title="닫기"
-          >
-            <X aria-hidden="true" />
-          </button>
+          <div className="fearless-picker-header-actions">
+            <div
+              className="fearless-picker-hide-filters"
+              role="group"
+              aria-label="목록 숨김"
+            >
+              <label className="fearless-picker-hide-filter">
+                <input
+                  type="checkbox"
+                  checked={hidePicked}
+                  onChange={(event) => setHidePicked(event.target.checked)}
+                />
+                <span>픽 숨기기</span>
+              </label>
+              <label className="fearless-picker-hide-filter">
+                <input
+                  type="checkbox"
+                  checked={hideBanned}
+                  onChange={(event) => setHideBanned(event.target.checked)}
+                />
+                <span>밴 숨기기</span>
+              </label>
+            </div>
+            <button
+              type="button"
+              className="fearless-picker-close"
+              onClick={onClose}
+              aria-label="살인마 선택 창 닫기"
+              title="닫기"
+            >
+              <X aria-hidden="true" />
+            </button>
+          </div>
         </header>
 
-        <div className="fearless-picker-toolbar">
-          <div
-            className={cn(
-              "fearless-filter-tabs",
-              monochrome && "fearless-filter-tabs-solo",
-            )}
-            role="group"
-            aria-label="피어리스 필터"
-          >
-            {filterOptions.map((option) => (
-              <button
-                key={option.mode}
-                type="button"
-                className={cn(
-                  "fearless-filter-tab",
-                  filterMode === option.mode && "is-active",
-                )}
-                aria-pressed={filterMode === option.mode}
-                title={option.title}
-                onClick={() => setFilterMode(option.mode)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        <div
+          className={cn(
+            "fearless-picker-toolbar",
+            isCatalog && "fearless-picker-toolbar-catalog",
+          )}
+        >
+          {!isCatalog && (
+            <div
+              className={cn(
+                "fearless-filter-tabs",
+                monochrome && "fearless-filter-tabs-solo",
+              )}
+              role="group"
+              aria-label="피어리스 필터"
+            >
+              {filterOptions.map((option) => (
+                <button
+                  key={option.mode}
+                  type="button"
+                  className={cn(
+                    "fearless-filter-tab",
+                    filterMode === option.mode && "is-active",
+                  )}
+                  aria-pressed={filterMode === option.mode}
+                  title={option.title}
+                  onClick={() => setFilterMode(option.mode)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {!readOnly && (
             <div
@@ -527,7 +670,7 @@ export function KillerPicker({
               ["--picker-ui-scale" as string]: pickerUiScale,
             }}
           >
-            {filteredKillers.map((killer) => {
+            {displayedKillers.map((killer) => {
               const cellState = pickerCellStates.get(killer.id)
               return (
                 <KillerPickerCell
@@ -550,9 +693,11 @@ export function KillerPicker({
                 />
               )
             })}
-            {filteredKillers.length === 0 && (
+            {displayedKillers.length === 0 && (
               <p className="fearless-picker-empty">
-                검색 결과가 없습니다.
+                {filteredKillers.length === 0
+                  ? "검색 결과가 없습니다."
+                  : "표시할 살인마가 없습니다."}
               </p>
             )}
           </div>
