@@ -6,6 +6,9 @@ import { cn } from "@/lib/utils"
 
 type Side = "left" | "right"
 
+const PARTICLE_TRAVEL_SCALE = 1.45
+const PARTICLE_SPAWN_CENTER_OFFSET = "2.25rem"
+
 // wave: y keyframe 배열 — 날아가면서 불씨처럼 위아래 일렁임
 // 각 파티클마다 다른 웨이브 패턴으로 랜덤한 느낌 부여
 const PARTICLES: { startY: number; travelX: number; wave: number[]; w: number; h: number; delay: number; dur: number }[] = [
@@ -184,18 +187,19 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
                   width: particle.w,
                   height: particle.h,
                   top: `${particle.startY}%`,
-                  // 왼팀: 오른쪽 끝에서 출발 → 왼쪽으로, 오른팀: 왼쪽 끝에서 출발 → 오른쪽으로
-                  [direction === -1 ? "right" : "left"]: 0,
+                  // 왼팀: 중앙 쪽에서 출발 → 왼쪽으로, 오른팀: 중앙 쪽에서 출발 → 오른쪽으로
+                  [direction === -1 ? "right" : "left"]:
+                    `calc(0px - ${PARTICLE_SPAWN_CENTER_OFFSET})`,
                 }}
                 initial={{ x: 0, y: 0, opacity: 0, scaleX: 0 }}
                 animate={{
-                  x: [0, direction * particle.travelX],
+                  x: [0, direction * Math.round(particle.travelX * PARTICLE_TRAVEL_SCALE)],
                   y: particle.wave,
-                  opacity: [0, 1, 0.6, 0.15, 0, 0],
-                  scaleX: [0, 1.2, 0.8, 0.2, 0, 0],
+                  opacity: [0, 1, 0.75, 0.45, 0.18, 0, 0],
+                  scaleX: [0, 1.2, 0.9, 0.45, 0.12, 0, 0],
                 }}
                 transition={{
-                  duration: particle.dur * 0.7,
+                  duration: particle.dur * 0.82,
                   delay: particle.delay * 0.4,
                   repeat: Infinity,
                   repeatDelay: particle.delay * 0.25 + 0.1,

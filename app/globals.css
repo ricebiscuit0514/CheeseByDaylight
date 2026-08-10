@@ -246,7 +246,7 @@
 
 .score-sanctum {
   --team: var(--dbd-orange);
-  --score-flare-vertical-bleed: 10%;
+  --score-flare-vertical-bleed: 30%;
   --score-center-clip: 0;
   isolation: isolate;
   position: relative;
@@ -260,10 +260,9 @@
 .score-sanctum-inner {
   position: relative;
   min-height: 13rem;
-  overflow: hidden;
+  overflow: visible;
   isolation: isolate;
 }
-.score-sanctum-left .score-sanctum-inner,
 .score-sanctum-left .score-flare-mount {
   clip-path: inset(
     calc(-1 * var(--score-flare-vertical-bleed))
@@ -272,7 +271,6 @@
     0
   );
 }
-.score-sanctum-right .score-sanctum-inner,
 .score-sanctum-right .score-flare-mount {
   clip-path: inset(
     calc(-1 * var(--score-flare-vertical-bleed))
@@ -292,19 +290,17 @@
   position: relative;
   z-index: 2;
 }
-.score-sanctum-left .score-energy {
+.score-energy {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  opacity: .72;
   background: radial-gradient(ellipse at 72% 50%, color-mix(in oklch, var(--team), transparent 64%), transparent 66%);
   mask-image: linear-gradient(to left, black 22%, transparent 100%);
 }
 .score-sanctum-right .score-energy {
   background: radial-gradient(ellipse at 28% 50%, color-mix(in oklch, var(--team), transparent 64%), transparent 66%);
   mask-image: linear-gradient(to right, black 22%, transparent 100%);
-}
-.score-energy {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  opacity: .72;
 }
 .score-sanctum-left:not(.is-lit) .score-energy {
   mask-image: linear-gradient(to left, black 10%, transparent 50%);
@@ -370,8 +366,8 @@
 .score-particle-field { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
 /* streak: 팀 방향 모서리 기준, top%로 수직 분산 */
 .score-streak { position: absolute; border-radius: 2px; background: var(--team); transform-origin: left center; }
-.score-color-wake { position: absolute; top: 15%; right: 3%; bottom: 12%; width: 70%; z-index: -1; transform-origin: right center; background: radial-gradient(ellipse at right, color-mix(in oklch, var(--team), transparent 40%), color-mix(in oklch, var(--team), transparent 70%) 42%, transparent 72%); filter: blur(18px); pointer-events: none; }
-.score-sanctum-right .score-color-wake { right: auto; left: 3%; transform-origin: left center; }
+.score-color-wake { position: absolute; top: 15%; right: 2%; bottom: 12%; width: 70%; z-index: -1; transform-origin: right center; background: radial-gradient(ellipse at right, color-mix(in oklch, var(--team), transparent 40%), color-mix(in oklch, var(--team), transparent 70%) 42%, transparent 72%); filter: blur(18px); pointer-events: none; }
+.score-sanctum-right .score-color-wake { right: auto; left: 4%; transform-origin: left center; }
 .score-sanctum.is-lit .score-streak { filter: saturate(1.25); }
 
 /* 로스터가 점수 이펙트 위에 그려지도록 — 이름표 가장자리 아티팩트 방지 */
