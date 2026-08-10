@@ -1455,6 +1455,7 @@ input[type="number"] {
 .fearless-picker-portrait-face {
   position: relative;
   z-index: 1;
+  filter: brightness(1.08);
   transition: filter .16s ease;
 }
 .fearless-picker-portrait-glow {
@@ -1465,6 +1466,7 @@ input[type="number"] {
   pointer-events: none;
   mix-blend-mode: screen;
   will-change: opacity, filter;
+  transition: opacity .2s ease, filter .2s ease;
 }
 .fearless-picker-portrait-glow.is-pick {
   animation: fearless-glow-pick 1.05s cubic-bezier(.08, 0, .2, 1);
@@ -1477,6 +1479,25 @@ input[type="number"] {
 .fearless-picker-portrait-glow.is-unban {
   mix-blend-mode: screen;
   animation: fearless-glow-unban .82s cubic-bezier(.08, 0, .2, 1);
+}
+.fearless-picker-cell:hover:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait-glow:not(.is-pick):not(.is-ban):not(.is-unban),
+.fearless-picker-cell:focus-visible:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait-glow:not(.is-pick):not(.is-ban):not(.is-unban) {
+  opacity: .22;
+  filter: blur(5px) brightness(1.19) saturate(1.04);
+}
+.fearless-picker-cell:active:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait-glow:not(.is-pick):not(.is-ban):not(.is-unban) {
+  opacity: .26;
+  filter: blur(5px) brightness(1.24) saturate(1.05);
+}
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned) .fearless-picker-portrait-glow:not(.is-pick):not(.is-ban):not(.is-unban) {
+  opacity: .28;
+  filter: blur(6px) brightness(1.26) saturate(1.06);
+}
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):hover .fearless-picker-portrait-glow:not(.is-pick):not(.is-ban):not(.is-unban),
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):focus-visible .fearless-picker-portrait-glow:not(.is-pick):not(.is-ban):not(.is-unban),
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):active .fearless-picker-portrait-glow:not(.is-pick):not(.is-ban):not(.is-unban) {
+  opacity: .32;
+  filter: blur(6px) brightness(1.31) saturate(1.07);
 }
 .fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned) .fearless-picker-portrait-face {
   filter:
