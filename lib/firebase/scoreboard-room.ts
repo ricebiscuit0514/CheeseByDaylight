@@ -409,9 +409,17 @@ function killerBansToWire(killerBans: string[]) {
 
 const VALID_INTEGER_KILLS = new Set([0, 1, 2, 3, 4])
 
-function isIntegerPlayer(value: unknown): value is Player {
+function isFivePlayerPlayer(value: unknown): value is Player {
   if (!isPlayer(value)) return false
-  return VALID_INTEGER_KILLS.has(value.kills)
+  if (!VALID_INTEGER_KILLS.has(value.kills)) return false
+  return (
+    value.killerPicks === undefined ||
+    (Array.isArray(value.killerPicks) &&
+      value.killerPicks.length <= 4 &&
+      value.killerPicks.every(
+        (killerId) => typeof killerId === "string" && isKillerId(killerId),
+      ))
+  )
 }
 
 function isPinballConfig(value: unknown): value is number[] {
@@ -465,7 +473,7 @@ function isFivePlayerSyncState(
     state.mode === "5p" &&
     Array.isArray(state.players) &&
     state.players.length <= 5 &&
-    state.players.every(isIntegerPlayer) &&
+    state.players.every(isFivePlayerPlayer) &&
     isPinballConfig(state.receivingConfig) &&
     isPinballConfig(state.givingConfig)
   )
@@ -560,20 +568,16 @@ export function normalizeFourVFourState(
   }
 }
 
+export function normalizeFivePlayerPlayer(player: Player): Player {
+  return normalizeFourVFourPlayer({
+    ...player,
+    kills: VALID_INTEGER_KILLS.has(player.kills) ? player.kills : 0,
+  })
+}
+
 export function normalizeFivePlayerState(
   state: FivePlayerSyncState,
 ): FivePlayerSyncState {
-  const normalizeIntegerPlayer = (player: Player): Player => {
-    const normalized = normalizeBasePlayer(player)
-    return {
-      ...normalized,
-      kills: VALID_INTEGER_KILLS.has(normalized.kills)
-        ? normalized.kills
-        : 0,
-      killer: (player.killer ?? "").slice(0, 30),
-    }
-  }
-
   const clampConfig = (config: number[]) =>
     [0, 1, 2, 3, 4].map((index) => {
       const value = config[index]
@@ -583,7 +587,7 @@ export function normalizeFivePlayerState(
 
   return {
     mode: "5p",
-    players: state.players.slice(0, 5).map(normalizeIntegerPlayer),
+    players: state.players.slice(0, 5).map(normalizeFivePlayerPlayer),
     receivingConfig: clampConfig(state.receivingConfig),
     givingConfig: clampConfig(state.givingConfig),
   }

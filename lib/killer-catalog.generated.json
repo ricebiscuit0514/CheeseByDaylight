@@ -102,15 +102,15 @@
     "smallPortrait": "/portraits/small/twins_s.webp"
   },
   {
-    "id": "dredge",
-    "englishName": "Dredge",
-    "koreanName": "드레지",
+    "id": "shape",
+    "englishName": "Shape",
+    "koreanName": "쉐이프",
     "aliases": [
-      "캐비닛"
+      "식구"
     ],
     "sortOrder": 10,
-    "bigPortrait": "/portraits/big/dredge.webp",
-    "smallPortrait": "/portraits/small/dredge_s.webp"
+    "bigPortrait": "/portraits/big/shape.webp",
+    "smallPortrait": "/portraits/small/shape_s.webp"
   },
   {
     "id": "dark-lord",
@@ -198,15 +198,15 @@
     "smallPortrait": "/portraits/small/singularity_s.webp"
   },
   {
-    "id": "shape",
-    "englishName": "Shape",
-    "koreanName": "쉐이프",
+    "id": "dredge",
+    "englishName": "Dredge",
+    "koreanName": "드레지",
     "aliases": [
-      "식구"
+      "캐비닛"
     ],
     "sortOrder": 19,
-    "bigPortrait": "/portraits/big/shape.webp",
-    "smallPortrait": "/portraits/small/shape_s.webp"
+    "bigPortrait": "/portraits/big/dredge.webp",
+    "smallPortrait": "/portraits/small/dredge_s.webp"
   },
   {
     "id": "doctor",

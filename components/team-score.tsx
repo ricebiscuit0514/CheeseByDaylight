@@ -67,105 +67,103 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
       aria-label={`${side === "left" ? "왼쪽" : "오른쪽"} 팀 ${value}점`}
       className={cn("score-sanctum", `score-sanctum-${side}`, lit && "is-lit", close && "is-clutch")}
     >
-      {!hideFlare && <span className="score-energy" aria-hidden="true" />}
-      {/* 1. Base Idle Flare: 박빙/유리 시 전기 발광/플리커, 게임종료 시 진 팀은 배경 그라데이션 및 플레어 완전히 꺼짐 */}
       {!hideFlare && (
-        <motion.img
-          src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
-          alt=""
-          draggable={false}
-          className="score-flare"
-          aria-hidden="true"
-          style={{
-            y: "-50%",
-            scale: 1.15,
-          }}
-          animate={
-            lit
-              ? side === "left"
-                ? {
-                    opacity: [0.78, 0.90, 0.70, 0.95, 0.75, 0.88, 0.78],
-                    filter: [
-                      "brightness(0.85) drop-shadow(0 0 8px var(--team))",
-                      "brightness(1.20) drop-shadow(0 0 16px var(--team))",
-                      "brightness(0.78) drop-shadow(0 0 6px var(--team))",
-                      "brightness(1.30) drop-shadow(0 0 18px var(--team))",
-                      "brightness(0.82) drop-shadow(0 0 7px var(--team))",
-                      "brightness(1.18) drop-shadow(0 0 14px var(--team))",
-                      "brightness(0.85) drop-shadow(0 0 8px var(--team))",
-                    ],
-                  }
-                : {
-                    opacity: [0.85, 0.70, 0.92, 0.76, 0.88, 0.68, 0.85],
-                    filter: [
-                      "brightness(0.95) drop-shadow(0 0 10px var(--team))",
-                      "brightness(0.75) drop-shadow(0 0 5px var(--team))",
-                      "brightness(1.25) drop-shadow(0 0 16px var(--team))",
-                      "brightness(0.82) drop-shadow(0 0 7px var(--team))",
-                      "brightness(1.15) drop-shadow(0 0 13px var(--team))",
-                      "brightness(0.78) drop-shadow(0 0 6px var(--team))",
-                      "brightness(0.95) drop-shadow(0 0 10px var(--team))",
-                    ],
-                  }
-              : {
-                  // 불리한 팀: 선명함을 유지하되, 약간 감소된 은은한 발광과 정적인 분위기
-                  opacity: [0.75, 0.78, 0.75],
-                  filter: [
-                    "brightness(0.85) drop-shadow(0 0 6px var(--team))",
-                    "brightness(0.90) drop-shadow(0 0 8px var(--team))",
-                    "brightness(0.85) drop-shadow(0 0 6px var(--team))",
-                  ],
-                }
-          }
-          transition={
-            lit
-              ? {
-                  duration: side === "left" ? 0.38 : 0.44,
-                  delay: side === "left" ? 0 : 0.17,
-                  repeat: Infinity,
-                  ease: "linear",
-                }
-              : {
-                  duration: 3.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }
-          }
-        />
-      )}
-      {/* 2. Score Increase Burst: 점수 상승 시 터지는 원래 0.75s 부드러운 폭발 애니메이션 */}
-      <AnimatePresence>
-        {!reducedMotion && (value > 0 || bump > 0) && (
+        <div className="score-flare-mount" aria-hidden="true">
           <motion.img
-            key={`flare-burst-${value}-${bump}`}
             src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
             alt=""
             draggable={false}
             className="score-flare"
-            aria-hidden="true"
             style={{
               y: "-50%",
+              scale: 1.17,
             }}
-            initial={{
-              scaleY: 1.85,
-              scaleX: 1.45,
-              opacity: 1,
-              filter: "brightness(2.6) drop-shadow(0 0 45px var(--team))",
-            }}
-            animate={{
-              scaleY: 1.15,
-              scaleX: 1.15,
-              opacity: 0,
-              filter: "brightness(1) drop-shadow(0 0 10px var(--team))",
-            }}
-            exit={{ opacity: 0 }}
-            transition={{
-              duration: 0.75,
-              ease: [0.16, 1, 0.3, 1],
-            }}
+            animate={
+              lit
+                ? side === "left"
+                  ? {
+                      opacity: [0.88, 0.96, 0.82, 1, 0.84, 0.94, 0.88],
+                      filter: [
+                        "brightness(0.95) drop-shadow(0 0 10px var(--team))",
+                        "brightness(1.35) drop-shadow(0 0 18px var(--team))",
+                        "brightness(0.88) drop-shadow(0 0 8px var(--team))",
+                        "brightness(1.45) drop-shadow(0 0 20px var(--team))",
+                        "brightness(0.92) drop-shadow(0 0 9px var(--team))",
+                        "brightness(1.32) drop-shadow(0 0 16px var(--team))",
+                        "brightness(0.95) drop-shadow(0 0 10px var(--team))",
+                      ],
+                    }
+                  : {
+                      opacity: [0.92, 0.78, 0.98, 0.84, 0.96, 0.76, 0.92],
+                      filter: [
+                        "brightness(1.05) drop-shadow(0 0 12px var(--team))",
+                        "brightness(0.85) drop-shadow(0 0 6px var(--team))",
+                        "brightness(1.38) drop-shadow(0 0 18px var(--team))",
+                        "brightness(0.92) drop-shadow(0 0 8px var(--team))",
+                        "brightness(1.28) drop-shadow(0 0 15px var(--team))",
+                        "brightness(0.88) drop-shadow(0 0 7px var(--team))",
+                        "brightness(1.05) drop-shadow(0 0 12px var(--team))",
+                      ],
+                    }
+                : {
+                    opacity: [0.75, 0.78, 0.75],
+                    filter: [
+                      "brightness(0.85) drop-shadow(0 0 6px var(--team))",
+                      "brightness(0.90) drop-shadow(0 0 8px var(--team))",
+                      "brightness(0.85) drop-shadow(0 0 6px var(--team))",
+                    ],
+                  }
+            }
+            transition={
+              lit
+                ? {
+                    duration: side === "left" ? 0.38 : 0.44,
+                    delay: side === "left" ? 0 : 0.17,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }
+                : {
+                    duration: 3.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }
+            }
           />
-        )}
-      </AnimatePresence>
+          <AnimatePresence>
+            {!reducedMotion && (value > 0 || bump > 0) && (
+              <motion.img
+                key={`flare-burst-${value}-${bump}`}
+                src={side === "left" ? "/images/flare_orange.png" : "/images/flare_blue.png"}
+                alt=""
+                draggable={false}
+                className="score-flare"
+                style={{
+                  y: "-50%",
+                }}
+                initial={{
+                  scaleY: 1.85,
+                  scaleX: 1.45,
+                  opacity: 1,
+                  filter: "brightness(2.6) drop-shadow(0 0 45px var(--team))",
+                }}
+                animate={{
+                  scaleY: 1.17,
+                  scaleX: 1.17,
+                  opacity: 0,
+                  filter: "brightness(1) drop-shadow(0 0 10px var(--team))",
+                }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: 0.75,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+              />
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+      <div className="score-sanctum-inner">
+      {!hideFlare && <span className="score-energy" aria-hidden="true" />}
       <span className="score-scratch" aria-hidden="true" />
       {/* 3. Continuous Ember Particles Stream: 박빙/유리 시 파티클 지속 분사, 불리한 팀은 소멸 */}
       <AnimatePresence>
@@ -252,6 +250,7 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
         animate={{ x: direction * 80, scaleX: [0.15, 1.2, 2.0], opacity: [0, 0.75, 0] }}
         transition={{ duration: 0.85, ease: [0.2, 0.75, 0.25, 1] }}
       />
+      </div>
     </section>
   )
 }

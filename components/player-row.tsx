@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { motion, useReducedMotion } from "motion/react"
 import { cn } from "@/lib/utils"
 
@@ -24,12 +25,20 @@ const SKULL_DURATION = 0.68
 const SKULL_IMPACT_AT = 0.32
 const CHARGE_DURATION = 0.55
 
-function Skull({ fill, previewFill, team, animId, animOrder, animate, disabled, onPick, onHover }: {
+function formatKillPreview(kills: number) {
+  return `${kills}킬`
+}
+
+function Skull({ fill, previewFill, team, animId, animOrder, animate, disabled, hoverPreview, onPick, onHover }: {
   fill: 0 | 0.5 | 1; previewFill: 0 | 0.5 | 1; team: Team; animId: number; animOrder: number; animate: boolean; disabled: boolean
+  hoverPreview?: string | null
   onPick: (half: boolean) => void; onHover: (half: boolean) => void
 }) {
   const reducedMotionRaw = useReducedMotion()
   const [mounted, setMounted] = useState(false)
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(
+    null,
+  )
   useEffect(() => { setMounted(true) }, [])
   const reducedMotion = mounted ? reducedMotionRaw : false
   const full = fill > 0
@@ -38,9 +47,30 @@ function Skull({ fill, previewFill, team, animId, animOrder, animate, disabled, 
     const ratio = (clientX - element.getBoundingClientRect().left) / element.offsetWidth
     return team === "thomas" ? ratio < 0.5 : ratio > 0.5
   }
+  const syncTooltipPos = (element: HTMLButtonElement) => {
+    const rect = element.getBoundingClientRect()
+    setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top })
+  }
+  const clearTooltip = () => setTooltipPos(null)
 
   return (
-    <button type="button" disabled={disabled} aria-label={`${animOrder + 1}번째 킬 스코어`} onPointerMove={(event) => onHover(getHalf(event.currentTarget, event.clientX))} onClick={(event) => onPick(getHalf(event.currentTarget, event.clientX))} className="skull-slot">
+    <>
+    <button
+      type="button"
+      disabled={disabled}
+      aria-label={`${animOrder + 1}번째 킬 스코어`}
+      onPointerEnter={(event) => {
+        onHover(getHalf(event.currentTarget, event.clientX))
+        syncTooltipPos(event.currentTarget)
+      }}
+      onPointerMove={(event) => {
+        onHover(getHalf(event.currentTarget, event.clientX))
+      }}
+      onPointerLeave={clearTooltip}
+      onClick={(event) => onPick(getHalf(event.currentTarget, event.clientX))}
+      className="skull-slot"
+    >
+      <span className="skull-slot-visual">
       <span className="skull-ghost"><img src={SKULL_URL} alt="" draggable={false} className="size-full object-contain" /></span>
       {previewFill > 0 && <span className={cn("skull-preview", previewFill === 0.5 && (team === "thomas" ? "half-left" : "half-right"))}>{image}</span>}
       {full && (
@@ -85,24 +115,83 @@ function Skull({ fill, previewFill, team, animId, animOrder, animate, disabled, 
           )}
         </motion.span>
       )}
+      </span>
     </button>
+    {mounted &&
+      hoverPreview &&
+      tooltipPos &&
+      createPortal(
+        <span
+          className={cn("score-hover-tooltip", `score-hover-tooltip-${team}`)}
+          style={{ left: tooltipPos.x, top: tooltipPos.y }}
+          role="tooltip"
+        >
+          {hoverPreview}
+        </span>,
+        document.body,
+      )}
+    </>
   )
 }
 
 const ZERO_KILL_URL = "/images/0kill.webp"
 
-function NoKillButton({ played, kills, disabled, onZero, onCancel }: { played: boolean; kills: number; disabled: boolean; onZero: () => void; onCancel: () => void }) {
+function NoKillButton({
+  team,
+  played,
+  kills,
+  disabled,
+  onZero,
+  onCancel,
+}: {
+  team: Team
+  played: boolean
+  kills: number
+  disabled: boolean
+  onZero: () => void
+  onCancel: () => void
+}) {
+  const [mounted, setMounted] = useState(false)
+  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(
+    null,
+  )
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   const selected = played && kills === 0
+  const showTooltip = !disabled && tooltipPos !== null
+
   return (
-    <button
-      type="button"
-      onClick={() => selected ? onCancel() : onZero()}
-      disabled={disabled}
-      aria-label={selected ? "0킬 입력 취소" : "0킬 처리"}
-      className={cn("no-kill-button", selected && "is-selected")}
-    >
-      <img src={ZERO_KILL_URL} alt="" draggable={false} className="size-full object-contain" />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => (selected ? onCancel() : onZero())}
+        disabled={disabled}
+        aria-label={selected ? "0킬 입력 취소" : "0킬 처리"}
+        className={cn("no-kill-button", selected && "is-selected")}
+        onPointerEnter={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          setTooltipPos({ x: rect.left + rect.width / 2, y: rect.top })
+        }}
+        onPointerLeave={() => setTooltipPos(null)}
+      >
+        <span className="no-kill-button-visual">
+          <img src={ZERO_KILL_URL} alt="" draggable={false} className="size-full object-contain" />
+        </span>
+      </button>
+      {mounted &&
+        showTooltip &&
+        createPortal(
+          <span
+            className={cn("score-hover-tooltip", `score-hover-tooltip-${team}`)}
+            style={{ left: tooltipPos.x, top: tooltipPos.y }}
+            role="tooltip"
+          >
+            0킬
+          </span>,
+          document.body,
+        )}
+    </>
   )
 }
 
@@ -268,7 +357,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
     const fill = fillFor(pos, player.kills)
     const preview = previewKills === null ? 0 : fillFor(pos, previewKills)
     const isNew = animId > 0 && fill > 0 && (pos + (fill === 0.5 ? 0.5 : 1)) > prevKills
-    return <Skull key={i} team={team} fill={fill} previewFill={preview === fill ? 0 : preview} animId={animId} animOrder={pos} animate={isNew} disabled={interactionsDisabled} onHover={(half) => setHover({ index: i, half: allowHalf && pos === 3 && half })} onPick={(half) => {
+    return <Skull key={i} team={team} fill={fill} previewFill={preview === fill ? 0 : preview} animId={animId} animOrder={pos} animate={isNew} disabled={interactionsDisabled} hoverPreview={hover?.index === i && previewKills !== null ? formatKillPreview(previewKills) : null} onHover={(half) => setHover({ index: i, half: allowHalf && pos === 3 && half })} onPick={(half) => {
       const selected = calcScore(pos, half)
       if (player.kills === selected && player.played) {
         onCancel()
@@ -281,7 +370,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
   const nameInput = (
     <input
       value={player.name}
-      placeholder="이름을 입력해주세요"
+      placeholder="이름 입력"
       readOnly={interactionsDisabled}
       tabIndex={tabIndex}
       onChange={(event) => onNameChange(event.target.value)}
@@ -365,18 +454,20 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
           {isFlashReady && <span className="exalted-flash" aria-hidden="true" />}
           {isThomas ? (
             <>
-              <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
-              <div className={cn(
-                "player-name-cell flex-none flex items-center w-32 sm:w-36",
-              )}>{nameInput}</div>
-              <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
-              <NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
+              <div className="player-plate-leading flex min-w-0 flex-1 items-center overflow-hidden gap-[inherit]">
+                <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+                <div className={cn(
+                  "player-name-cell flex-none flex items-center w-32 sm:w-36",
+                )}>{nameInput}</div>
+                <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
+              </div>
+              <NoKillButton team={team} played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
               {skullGroup}
             </>
           ) : (
             <>
               {skullGroup}
-              <NoKillButton played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
+              <NoKillButton team={team} played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
               <div className="flex-1 min-w-0 pointer-events-none" aria-hidden="true" />
               <div className={cn(
                 "player-name-cell flex-none flex items-center justify-end w-32 sm:w-36",

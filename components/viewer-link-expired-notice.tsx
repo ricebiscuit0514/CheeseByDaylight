@@ -23,9 +23,15 @@ export function ViewerLinkExpiredNotice({
           {isHostDisconnected ? "방장 연결이 끊겼습니다" : "연동에 실패했습니다"}
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-neutral-300">
-          {isHostDisconnected
-            ? "방장이 다시 연결되면 같은 초대 주소로 다시 접속해 주세요."
-            : "만료되었거나 종료된 주소로 접속해 점수판에 연결할 수 없습니다. 진행자에게 새 연동 주소를 요청해 주세요."}
+          {isHostDisconnected ? (
+            "방장이 다시 연결되면 같은 초대 주소로 다시 접속해 주세요."
+          ) : (
+            <>
+              만료되었거나 종료된 주소로 접속해 점수판에 연결할 수 없습니다.
+              <br />
+              진행자에게 새 연동 주소를 요청해 주세요.
+            </>
+          )}
         </p>
         <button
           type="button"

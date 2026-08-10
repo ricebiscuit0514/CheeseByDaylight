@@ -5,6 +5,9 @@ import { useCallback, useEffect, useMemo, useRef } from "react"
 /** Idle time before utility popovers auto-close when not interacted with. */
 export const UTILITY_POPOVER_IDLE_MS = 45_000
 
+/** Idle time before reset menu / confirm stack auto-closes. */
+export const RESET_MENU_IDLE_MS = 10_000
+
 type AutoDismissBindings = {
   onPointerDown: () => void
   onKeyDown: () => void

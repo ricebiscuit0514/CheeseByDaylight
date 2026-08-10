@@ -25,7 +25,8 @@ import { TeamScore } from "@/components/team-score"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { WinnerOverlay } from "@/components/winner-overlay"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
-import { useAutoDismiss } from "@/hooks/use-auto-dismiss"
+import { useAutoDismiss, RESET_MENU_IDLE_MS } from "@/hooks/use-auto-dismiss"
+import { useDismissOnOutsideInteraction } from "@/hooks/use-dismiss-on-outside-interaction"
 import { useUtilityUiHidden } from "@/hooks/use-utility-ui-hidden"
 import type { FourVFourSyncState, ScoreboardSyncState } from "@/lib/firebase/scoreboard-room"
 import {
@@ -56,6 +57,13 @@ import {
   toggleKillerBan,
 } from "@/lib/fearless"
 import { cn } from "@/lib/utils"
+import {
+  RESET_CONFIRM_NO,
+  RESET_CONFIRM_PANEL,
+  RESET_CONFIRM_TEXT,
+  RESET_CONFIRM_YES,
+  RESET_ROSTER_KILLER_BTN,
+} from "@/lib/scoreboard-reset-ui"
 import { motion } from "motion/react"
 import { useRouter } from "next/navigation"
 
@@ -497,9 +505,6 @@ function resolveFirstAttackerId(
   return rosterIds.has(firstAttackerId) ? firstAttackerId : null
 }
 
-const RESET_ROSTER_KILLER_BTN =
-  "h-8 rounded border border-dbd-yellow/70 bg-black/80 px-3 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/10 hover:text-dbd-yellow"
-
 export function Scoreboard() {
   const router = useRouter()
   // SSR/CSR hydration mismatch 방지: 초기값은 항상 서버와 동일한 기본값으로 시작하고,
@@ -814,6 +819,7 @@ export function Scoreboard() {
 
   const handleOpenGuide = () => {
     closeAllResetUI()
+    setShowModeSwitchConfirm(false)
     setShowGuideMenu((wasOpen) => {
       if (!wasOpen && !hasSeenGuide) {
         setHasSeenGuide(true)
@@ -1478,6 +1484,9 @@ export function Scoreboard() {
   }
 
   function openKillerCatalog() {
+    closeAllResetUI()
+    closeAllGuideUI()
+    setShowModeSwitchConfirm(false)
     setPickerContext({
       mode: "catalog",
       team: "thomas",
@@ -1793,19 +1802,46 @@ export function Scoreboard() {
     setShowFullResetConfirm(false)
   }
 
+  const resetMenuRef = useRef<HTMLDivElement>(null)
+  const resetTriggerRef = useRef<HTMLButtonElement>(null)
+  const guideMenuRef = useRef<HTMLDivElement>(null)
+  const guideTriggerRef = useRef<HTMLButtonElement>(null)
+  const modeSwitchMenuRef = useRef<HTMLDivElement>(null)
+  const modeSwitchTriggerRef = useRef<HTMLButtonElement>(null)
+
   const resetUiOpen =
     showResetMenu ||
     showResetConfirm ||
     showKillerResetConfirm ||
     showRosterResetConfirm ||
     showFullResetConfirm
-  const resetUiDismissBind = useAutoDismiss(resetUiOpen, closeAllResetUI)
-  const guideMenuDismissBind = useAutoDismiss(showGuideMenu, () => {
-    setShowGuideMenu(false)
-  })
+  const resetUiDismissBind = useAutoDismiss(
+    resetUiOpen,
+    closeAllResetUI,
+    RESET_MENU_IDLE_MS,
+  )
+  useDismissOnOutsideInteraction(
+    resetUiOpen,
+    closeAllResetUI,
+    resetMenuRef,
+    [resetTriggerRef],
+  )
+  const guideUiOpen = showGuideMenu || activeGuide !== null
+  useDismissOnOutsideInteraction(
+    guideUiOpen,
+    closeAllGuideUI,
+    guideMenuRef,
+    [guideTriggerRef],
+  )
   const modeSwitchDismissBind = useAutoDismiss(showModeSwitchConfirm, () => {
     setShowModeSwitchConfirm(false)
   })
+  useDismissOnOutsideInteraction(
+    showModeSwitchConfirm,
+    () => setShowModeSwitchConfirm(false),
+    modeSwitchMenuRef,
+    [modeSwitchTriggerRef],
+  )
 
   function openResetConfirm(type: "score" | "killer" | "roster" | "full") {
     setShowResetConfirm(type === "score")
@@ -1878,6 +1914,7 @@ export function Scoreboard() {
 
   function handleResetClick() {
     closeAllGuideUI()
+    setShowModeSwitchConfirm(false)
     setShowResetConfirm(false)
     setShowKillerResetConfirm(false)
     setShowRosterResetConfirm(false)
@@ -2084,7 +2121,7 @@ export function Scoreboard() {
             </div>
           </motion.div>
         ) : (
-          <div className="mt-1 grid grid-cols-1 gap-[2.8125rem] md:h-96 md:grid-cols-2 md:gap-[4.5rem] lg:gap-[6.75rem]">
+          <div className="roster-stage mt-1 grid grid-cols-1 gap-[2.8125rem] md:h-96 md:grid-cols-2 md:gap-[4.5rem] lg:gap-[6.75rem]">
             <div className="flex w-full max-w-[42rem] flex-col justify-self-end gap-2">
               <div
                 className={cn(
@@ -2182,7 +2219,7 @@ export function Scoreboard() {
         )}
 
         {/* center score */}
-        <div className="relative flex h-48 md:h-52 shrink-0 translate-y-3 items-center justify-center pt-4 pb-2">
+        <div className="score-stage relative flex min-h-48 md:min-h-52 shrink-0 translate-y-3 items-center justify-center overflow-visible pt-4 pb-2">
           <TeamScore
             left={leftScore}
             right={rightScore}
@@ -2381,21 +2418,7 @@ export function Scoreboard() {
           )}
         </div>
 
-        {/* 설명서 메뉴 / 뷰어 */}
-        {(showGuideMenu || activeGuide) && (
-          <div
-            className="fixed inset-0 z-40 cursor-default bg-transparent"
-            onClick={closeAllGuideUI}
-          />
-        )}
-
-        {/* backdrop for closing prompts on background click */}
-        {(showResetMenu || showResetConfirm || showKillerResetConfirm || showRosterResetConfirm || showFullResetConfirm) && (
-          <div
-            className="fixed inset-0 z-40 cursor-default bg-transparent"
-            onClick={closeAllResetUI}
-          />
-        )}
+        {/* 설명서 메뉴 / 뷰어 — outside dismiss via pointer capture; no blocking backdrop */}
 
         {/* fixed utility controls */}
         <ZoomCompensated
@@ -2428,6 +2451,7 @@ export function Scoreboard() {
               )}
               <button
                 type="button"
+                ref={resetTriggerRef}
                 onClick={handleResetClick}
                 className="scoreboard-utility-btn scoreboard-utility-btn-neutral"
                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
@@ -2437,7 +2461,8 @@ export function Scoreboard() {
 
               {showResetMenu && (
                 <div
-                  className="absolute left-full top-0 z-50 ml-2 flex items-start gap-2"
+                  ref={resetMenuRef}
+                  className="scoreboard-reset-menu"
                   {...resetUiDismissBind}
                 >
                   <div className="flex flex-col gap-1.5 rounded border border-neutral-600/70 bg-black/95 p-2 backdrop-blur-sm whitespace-nowrap">
@@ -2505,15 +2530,15 @@ export function Scoreboard() {
 
                       <div className="flex h-8 items-center">
                         {showRosterResetConfirm && (
-                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
-                            <p className="text-xs text-neutral-200">
+                          <div className={RESET_CONFIRM_PANEL}>
+                            <p className={RESET_CONFIRM_TEXT}>
                               팀원 목록과 점수를 초기화하시겠습니까?
                             </p>
                             <div className="flex gap-2">
                               <button
                                 type="button"
                                 onClick={resetRoster}
-                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
+                                className={RESET_CONFIRM_YES}
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 예
@@ -2521,7 +2546,7 @@ export function Scoreboard() {
                               <button
                                 type="button"
                                 onClick={closeAllResetUI}
-                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                className={RESET_CONFIRM_NO}
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 아니오
@@ -2533,13 +2558,15 @@ export function Scoreboard() {
 
                       <div className="flex h-8 items-center">
                         {showKillerResetConfirm && (
-                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
-                            <p className="text-xs text-neutral-200">살인마 플레이 기록을 초기화하시겠습니까?</p>
+                          <div className={RESET_CONFIRM_PANEL}>
+                            <p className={RESET_CONFIRM_TEXT}>
+                              살인마 픽/밴 기록을 초기화 하시겠습니까?
+                            </p>
                             <div className="flex gap-2">
                               <button
                                 type="button"
                                 onClick={resetKillers}
-                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
+                                className={RESET_CONFIRM_YES}
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 예
@@ -2547,7 +2574,7 @@ export function Scoreboard() {
                               <button
                                 type="button"
                                 onClick={handleKillerResetCancel}
-                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                className={RESET_CONFIRM_NO}
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 아니오
@@ -2594,6 +2621,7 @@ export function Scoreboard() {
           {!utilityUiHidden && (
           <div className="relative flex w-full items-center">
             <FooterBtn
+              buttonRef={guideTriggerRef}
               onClick={handleOpenGuide}
               className={cn(
                 "scoreboard-utility-btn scoreboard-utility-btn-neutral border-neutral-600 bg-black/50",
@@ -2605,8 +2633,8 @@ export function Scoreboard() {
 
             {showGuideMenu && (
               <div
+                ref={guideMenuRef}
                 className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2"
-                {...guideMenuDismissBind}
               >
                 <div className="flex flex-col gap-1.5 rounded border border-neutral-600/70 bg-black/95 p-2 backdrop-blur-sm whitespace-nowrap">
                   <button
@@ -2930,7 +2958,12 @@ export function Scoreboard() {
           <div className="relative w-full">
             <button
               type="button"
-              onClick={() => setShowModeSwitchConfirm((prev) => !prev)}
+              ref={modeSwitchTriggerRef}
+              onClick={() => {
+                closeAllResetUI()
+                closeAllGuideUI()
+                setShowModeSwitchConfirm((prev) => !prev)
+              }}
               className="scoreboard-utility-btn border border-dbd-yellow/70 bg-black/80 text-dbd-yellow shadow-lg hover:bg-dbd-yellow/10 hover:text-dbd-yellow"
               style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
             >
@@ -2938,6 +2971,7 @@ export function Scoreboard() {
             </button>
             {showModeSwitchConfirm && (
               <div
+                ref={modeSwitchMenuRef}
                 className="absolute right-full bottom-0 z-50 mr-2 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 whitespace-nowrap shadow-2xl backdrop-blur-sm"
                 {...modeSwitchDismissBind}
               >
@@ -3034,9 +3068,20 @@ function ShuffleButton({ teamName, onClick, disabled }: { teamName: string; onCl
 
 
 
-function FooterBtn({ children, onClick, className }: { children: React.ReactNode; onClick?: () => void; className?: string }) {
+function FooterBtn({
+  children,
+  onClick,
+  className,
+  buttonRef,
+}: {
+  children: React.ReactNode
+  onClick?: () => void
+  className?: string
+  buttonRef?: React.RefObject<HTMLButtonElement | null>
+}) {
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={onClick}
       className={cn("scoreboard-utility-btn", className)}

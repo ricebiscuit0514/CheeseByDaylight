@@ -50,6 +50,8 @@ export type KillerPickerProps = {
   onCancelPick: () => void
   onToggleBan: (killerId: string) => void
   onClose: () => void
+  /** Team-neutral styling for modes without team colors (e.g. 1v4). */
+  monochrome?: boolean
 }
 
 const FILTER_OPTIONS: ReadonlyArray<{
@@ -60,6 +62,15 @@ const FILTER_OPTIONS: ReadonlyArray<{
   { mode: "hard", label: "하드", title: "양 팀의 모든 픽 표시" },
   { mode: "soft", label: "소프트", title: "현재 팀의 픽만 표시" },
   { mode: "personal", label: "개인", title: "현재 플레이어의 픽만 표시" },
+]
+
+const SOLO_FILTER_OPTIONS: ReadonlyArray<{
+  mode: FearlessFilterMode
+  label: string
+  title: string
+}> = [
+  { mode: "hard", label: "하드", title: "모든 플레이어가 픽한 살인마" },
+  { mode: "soft", label: "소프트", title: "해당 플레이어가 픽한 살인마" },
 ]
 
 function safeName(value: string) {
@@ -77,6 +88,7 @@ export function KillerPicker({
   onCancelPick,
   onToggleBan,
   onClose,
+  monochrome = false,
 }: KillerPickerProps) {
   const titleId = useId()
   const panelRef = useRef<HTMLElement>(null)
@@ -98,8 +110,15 @@ export function KillerPicker({
   const [viewportWidth, setViewportWidth] = useState(1024)
   const [zoomLevel, setZoomLevel] = useState(0)
   const zoomAudience = getPickerZoomAudience(readOnly)
+  const filterOptions = monochrome ? SOLO_FILTER_OPTIONS : FILTER_OPTIONS
 
   useEffect(() => setMounted(true), [])
+
+  useEffect(() => {
+    if (monochrome && filterMode === "personal") {
+      setFilterMode("hard")
+    }
+  }, [monochrome, filterMode])
 
   useEffect(() => {
     setViewportWidth(window.innerWidth)
@@ -211,8 +230,9 @@ export function KillerPicker({
       filterVisiblePicks(allPicks, filterMode, {
         team: context.team,
         playerId: context.playerId,
+        soloMode: monochrome,
       }),
-    [allPicks, filterMode, context.team, context.playerId],
+    [allPicks, filterMode, context.team, context.playerId, monochrome],
   )
   const filteredKillers = useMemo(() => searchKillers(query), [query])
   const pickerCellStates = useMemo(() => {
@@ -321,7 +341,7 @@ export function KillerPicker({
         ref={panelRef}
         className={cn(
           "fearless-picker-panel",
-          isCatalog
+          isCatalog || monochrome
             ? "fearless-picker-panel-catalog"
             : `fearless-picker-panel-${context.team}`,
         )}
@@ -367,11 +387,14 @@ export function KillerPicker({
 
         <div className="fearless-picker-toolbar">
           <div
-            className="fearless-filter-tabs"
+            className={cn(
+              "fearless-filter-tabs",
+              monochrome && "fearless-filter-tabs-solo",
+            )}
             role="group"
             aria-label="피어리스 필터"
           >
-            {FILTER_OPTIONS.map((option) => (
+            {filterOptions.map((option) => (
               <button
                 key={option.mode}
                 type="button"
@@ -514,6 +537,7 @@ export function KillerPicker({
                   pickKey={cellState?.pickKey ?? ""}
                   isBanned={cellState?.isBanned ?? false}
                   isSelected={selectedKillerId === killer.id}
+                  monochrome={monochrome}
                   feedback={
                     cellFeedback?.killerId === killer.id
                       ? {

@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Copy, Link2, Unplug, Wifi } from "lucide-react"
 import { motion } from "motion/react"
 import { useAutoDismiss } from "@/hooks/use-auto-dismiss"
+import { useDismissOnOutsideInteraction } from "@/hooks/use-dismiss-on-outside-interaction"
 import { cn } from "@/lib/utils"
 import { buildDiscordInviteMessage } from "@/lib/firebase/scoreboard-room"
 import type {
@@ -101,6 +102,9 @@ export function ScoreboardSyncPanel({
   >(null)
   const [confirmStop, setConfirmStop] = useState(false)
   const [hasSeenGuide, setHasSeenGuide] = useState(true)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const guideTriggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     try {
@@ -120,6 +124,10 @@ export function ScoreboardSyncPanel({
   }
 
   const syncPanelDismissBind = useAutoDismiss(open || confirmStop, closePanel)
+  useDismissOnOutsideInteraction(open || confirmStop, closePanel, panelRef, [
+    triggerRef,
+    guideTriggerRef,
+  ])
 
   const openPanel = () => {
     setOpen((current) => !current)
@@ -211,6 +219,7 @@ export function ScoreboardSyncPanel({
       {!hasSeenGuide && (
         <motion.button
           type="button"
+          ref={guideTriggerRef}
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: [0, -6, 0] }}
           transition={{
@@ -230,6 +239,7 @@ export function ScoreboardSyncPanel({
 
       <button
         type="button"
+        ref={triggerRef}
         onClick={openPanel}
         aria-expanded={open}
         className={cn(
@@ -251,13 +261,8 @@ export function ScoreboardSyncPanel({
       </button>
 
       {open && (
-        <>
           <div
-            className="fixed inset-0 z-40 cursor-default bg-transparent"
-            onClick={closePanel}
-            aria-hidden
-          />
-          <div
+            ref={panelRef}
             className={cn(
               "fixed bottom-20 left-4 right-4 z-50 flex max-h-[calc(100dvh-6rem)] flex-col gap-3 overflow-y-auto rounded-md border p-4 text-left shadow-2xl backdrop-blur-md sm:absolute sm:bottom-0 sm:right-full sm:top-auto sm:left-auto sm:mr-2 sm:w-80 sm:max-h-[min(32rem,calc(100dvh-4rem))]",
               CHZZK_GREEN_PANEL,
@@ -381,7 +386,6 @@ export function ScoreboardSyncPanel({
             </>
           )}
           </div>
-        </>
       )}
     </div>
   )

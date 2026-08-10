@@ -84,6 +84,26 @@ describe("fearless pick entries and visibility", () => {
     expect(filterVisiblePicks(entries, "personal")).toEqual([])
   })
 
+  it("uses player-scoped soft filter in 1v4 solo mode", () => {
+    const entries = flattenFearlessPicks(thomas, ada)
+
+    expect(filterVisiblePicks(entries, "hard", { soloMode: true })).toHaveLength(
+      4,
+    )
+    expect(
+      filterVisiblePicks(entries, "soft", {
+        soloMode: true,
+        playerId: "t1",
+      }).map((entry) => entry.slotIndex),
+    ).toEqual([0, 1])
+    expect(
+      filterVisiblePicks(entries, "soft", {
+        soloMode: true,
+        playerId: "a1",
+      }).map((entry) => entry.playerId),
+    ).toEqual(["a1"])
+  })
+
   it("shows bans independently and allows banned plus picked state", () => {
     const entries = flattenFearlessPicks(thomas, ada)
     const personalEntries = filterVisiblePicks(entries, "personal", {

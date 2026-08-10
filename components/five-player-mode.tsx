@@ -5,11 +5,19 @@ import { Copy } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { useRouter } from "next/navigation"
 import { PlayerRow, type Player } from "@/components/player-row"
+import { KillerPickSlots } from "@/components/killer-pick-slots"
+import { KillerPicker, type KillerPickerContext } from "@/components/killer-picker"
 import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
 import { AppVersionCorner } from "@/components/app-version"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
 import type { FivePlayerSyncState } from "@/lib/firebase/scoreboard-room"
-import { MODE_SWITCH_SESSION_KEY, VIEWER_SESSION_KEY, loadRoomSession } from "@/lib/firebase/scoreboard-room"
+import { MODE_SWITCH_SESSION_KEY, VIEWER_SESSION_KEY, loadRoomSession, normalizeFivePlayerState } from "@/lib/firebase/scoreboard-room"
+import {
+  cancelPlayerKillerPick,
+  setPlayerKillerPick,
+  toggleKillerBan,
+  type PickEntry,
+} from "@/lib/fearless"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { ZoomCompensated } from "@/components/zoom-compensated"
@@ -20,21 +28,27 @@ import {
   type ViewerSessionEndReason,
 } from "@/lib/viewer-session-notice"
 import { useUtilityUiHidden } from "@/hooks/use-utility-ui-hidden"
-import { useAutoDismiss } from "@/hooks/use-auto-dismiss"
+import { useAutoDismiss, RESET_MENU_IDLE_MS } from "@/hooks/use-auto-dismiss"
+import { useDismissOnOutsideInteraction } from "@/hooks/use-dismiss-on-outside-interaction"
 import { cn } from "@/lib/utils"
 
-const RESET_ROSTER_KILLER_BTN =
-  "h-8 rounded border border-dbd-yellow/70 bg-black/80 px-3 text-sm text-dbd-yellow transition-colors hover:bg-dbd-yellow/10 hover:text-dbd-yellow"
+import {
+  RESET_CONFIRM_NO,
+  RESET_CONFIRM_PANEL,
+  RESET_CONFIRM_TEXT,
+  RESET_CONFIRM_YES,
+  RESET_ROSTER_KILLER_BTN,
+} from "@/lib/scoreboard-reset-ui"
 
 const DEFAULT_RECEIVING = [5, 8, 10, 12, 15]
 const DEFAULT_GIVING = [15, 12, 10, 8, 5]
 
 const createInitialPlayers = (): Player[] => [
-  { id: "1", name: "", kills: 0, played: false, killer: "" },
-  { id: "2", name: "", kills: 0, played: false, killer: "" },
-  { id: "3", name: "", kills: 0, played: false, killer: "" },
-  { id: "4", name: "", kills: 0, played: false, killer: "" },
-  { id: "5", name: "", kills: 0, played: false, killer: "" },
+  { id: "1", name: "", kills: 0, played: false },
+  { id: "2", name: "", kills: 0, played: false },
+  { id: "3", name: "", kills: 0, played: false },
+  { id: "4", name: "", kills: 0, played: false },
+  { id: "5", name: "", kills: 0, played: false },
 ]
 
 export function FivePlayerMode() {
@@ -55,6 +69,10 @@ export function FivePlayerMode() {
   const [showModeSwitchConfirm, setShowModeSwitchConfirm] = useState(false)
   
   const [removeMode, setRemoveMode] = useState<boolean>(false)
+  const [killerBans, setKillerBans] = useState<string[]>([])
+  const [pickerContext, setPickerContext] = useState<KillerPickerContext | null>(
+    null,
+  )
   const [anim, setAnim] = useState<Record<string, number>>({})
   const [prevKillsMap, setPrevKillsMap] = useState<Record<string, number>>({})
   const animRef = useRef(anim)
@@ -147,9 +165,22 @@ export function FivePlayerMode() {
         if (parsed.updatedAt && Date.now() - parsed.updatedAt > EXPIRATION_TIME_MS) {
           localStorage.removeItem("dbd-5p-state-v2")
         } else {
-          if (parsed.players && Array.isArray(parsed.players)) setPlayers(parsed.players)
-          if (parsed.receivingConfig) setReceivingConfig(parsed.receivingConfig)
-          if (parsed.givingConfig) setGivingConfig(parsed.givingConfig)
+          const normalized = normalizeFivePlayerState({
+            mode: "5p",
+            players: Array.isArray(parsed.players) ? parsed.players : [],
+            receivingConfig: Array.isArray(parsed.receivingConfig)
+              ? parsed.receivingConfig
+              : DEFAULT_RECEIVING,
+            givingConfig: Array.isArray(parsed.givingConfig)
+              ? parsed.givingConfig
+              : DEFAULT_GIVING,
+          })
+          setPlayers(normalized.players)
+          setReceivingConfig(normalized.receivingConfig)
+          setGivingConfig(normalized.givingConfig)
+          if (Array.isArray(parsed.killerBans)) {
+            setKillerBans(parsed.killerBans)
+          }
         }
       } catch (e) {
         console.error("Failed to parse saved state", e)
@@ -230,14 +261,20 @@ export function FivePlayerMode() {
       const now = Date.now()
       localStorage.setItem(
         "dbd-5p-state-v2",
-        JSON.stringify({ players, receivingConfig, givingConfig, updatedAt: now })
+        JSON.stringify({
+          players,
+          receivingConfig,
+          givingConfig,
+          killerBans,
+          updatedAt: now,
+        }),
       )
       localStorage.setItem("dbd-last-mode", "1v4")
       localStorage.setItem("dbd-last-mode-time", now.toString())
     } catch {
       // ignore
     }
-  }, [players, receivingConfig, givingConfig, isLoaded, isViewer])
+  }, [players, receivingConfig, givingConfig, killerBans, isLoaded, isViewer])
 
   // Player handlers
   const handleScore = (id: string, newKills: number) => {
@@ -278,14 +315,10 @@ export function FivePlayerMode() {
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)))
   }
 
-  const updateKiller = (id: string, killer: string) => {
-    setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, killer } : p)))
-  }
-
   const addPlayer = () => {
     if (players.length >= 5) return
     const newId = String(playerIdCounter.current++)
-    setPlayers((prev) => [...prev, { id: newId, name: "", kills: 0, played: false, killer: "" }])
+    setPlayers((prev) => [...prev, { id: newId, name: "", kills: 0, played: false }])
   }
 
   const removePlayer = (id: string) => {
@@ -317,7 +350,12 @@ export function FivePlayerMode() {
 
   const resetRoster = () => {
     setPlayers((prev) =>
-      prev.map((p) => ({ ...p, name: "", kills: 0, played: false })),
+      prev.map((p) => ({
+        ...p,
+        name: "",
+        kills: 0,
+        played: false,
+      })),
     )
     setAnim({})
     setPrevKillsMap({})
@@ -326,7 +364,8 @@ export function FivePlayerMode() {
   }
 
   const resetKillers = () => {
-    setPlayers((prev) => prev.map((p) => ({ ...p, killer: "" })))
+    setPlayers((prev) => prev.map((p) => ({ ...p, killerPicks: [] })))
+    setKillerBans([])
     closeAllResetUI()
   }
 
@@ -334,6 +373,8 @@ export function FivePlayerMode() {
     setPlayers(createInitialPlayers())
     setReceivingConfig([...DEFAULT_RECEIVING])
     setGivingConfig([...DEFAULT_GIVING])
+    setKillerBans([])
+    setPickerContext(null)
     setAnim({})
     setPrevKillsMap({})
     setRemoveMode(false)
@@ -353,16 +394,37 @@ export function FivePlayerMode() {
     setShowFullResetConfirm(false)
   }
 
+  const resetMenuRef = useRef<HTMLDivElement>(null)
+  const resetTriggerRef = useRef<HTMLButtonElement>(null)
+  const modeSwitchMenuRef = useRef<HTMLDivElement>(null)
+  const modeSwitchTriggerRef = useRef<HTMLButtonElement>(null)
+
   const resetUiOpen =
     showResetMenu ||
     showResetConfirm ||
     showKillerResetConfirm ||
     showRosterResetConfirm ||
     showFullResetConfirm
-  const resetUiDismissBind = useAutoDismiss(resetUiOpen, closeAllResetUI)
+  const resetUiDismissBind = useAutoDismiss(
+    resetUiOpen,
+    closeAllResetUI,
+    RESET_MENU_IDLE_MS,
+  )
+  useDismissOnOutsideInteraction(
+    resetUiOpen,
+    closeAllResetUI,
+    resetMenuRef,
+    [resetTriggerRef],
+  )
   const modeSwitchDismissBind = useAutoDismiss(showModeSwitchConfirm, () => {
     setShowModeSwitchConfirm(false)
   })
+  useDismissOnOutsideInteraction(
+    showModeSwitchConfirm,
+    () => setShowModeSwitchConfirm(false),
+    modeSwitchMenuRef,
+    [modeSwitchTriggerRef],
+  )
 
   function openResetConfirm(type: "score" | "killer" | "roster" | "full") {
     setShowResetConfirm(type === "score")
@@ -372,12 +434,128 @@ export function FivePlayerMode() {
   }
 
   function handleResetClick() {
+    setShowModeSwitchConfirm(false)
     setShowResetConfirm(false)
     setShowKillerResetConfirm(false)
     setShowRosterResetConfirm(false)
     setShowFullResetConfirm(false)
     setShowResetMenu((open) => !open)
   }
+
+  function openKillerCatalog() {
+    closeAllResetUI()
+    setShowModeSwitchConfirm(false)
+    setPickerContext({
+      mode: "catalog",
+      team: "thomas",
+      playerId: "__catalog__",
+      playerName: "",
+      slotIndex: null,
+    })
+  }
+
+  function openKillerPicker(player: Player, slotIndex: number | null) {
+    closeAllResetUI()
+    setShowModeSwitchConfirm(false)
+    setPickerContext({
+      team: "thomas",
+      playerId: player.id,
+      playerName: player.name,
+      slotIndex,
+      currentKillerId:
+        slotIndex === null ? undefined : player.killerPicks?.[slotIndex],
+    })
+  }
+
+  function handleKillerPick(killerId: string) {
+    if (isViewer || !pickerContext) return
+    setPlayers((current) =>
+      current.map((player) =>
+        player.id === pickerContext.playerId
+          ? setPlayerKillerPick(player, killerId, pickerContext.slotIndex)
+          : player,
+      ),
+    )
+    setPickerContext((current) =>
+      current
+        ? {
+            ...current,
+            slotIndex: current.slotIndex ?? 0,
+            currentKillerId: killerId,
+          }
+        : current,
+    )
+  }
+
+  function handleKillerPickCancel() {
+    if (
+      isViewer ||
+      !pickerContext ||
+      pickerContext.slotIndex === null
+    ) {
+      return
+    }
+
+    setPlayers((current) =>
+      current.map((player) =>
+        player.id === pickerContext.playerId
+          ? cancelPlayerKillerPick(player, pickerContext.slotIndex!)
+          : player,
+      ),
+    )
+    setPickerContext({
+      ...pickerContext,
+      slotIndex: null,
+      currentKillerId: undefined,
+    })
+  }
+
+  function handleKillerBanToggle(killerId: string) {
+    if (isViewer) return
+    setKillerBans((current) => toggleKillerBan(current, killerId))
+  }
+
+  const allPicks = useMemo<PickEntry[]>(
+    () =>
+      players.flatMap((player) =>
+        (player.killerPicks ?? []).map((killerId, slotIndex) => ({
+          killerId,
+          playerId: player.id,
+          playerName: player.name,
+          team: "thomas" as const,
+          slotIndex,
+        })),
+      ),
+    [players],
+  )
+
+  const activePickerContext = useMemo<KillerPickerContext | null>(() => {
+    if (!pickerContext) return null
+    if (pickerContext.mode === "catalog") return pickerContext
+
+    const player = players.find(
+      (candidate) => candidate.id === pickerContext.playerId,
+    )
+    if (!player) return null
+
+    const picks = player.killerPicks ?? []
+    if (
+      pickerContext.slotIndex !== null &&
+      pickerContext.slotIndex > picks.length
+    ) {
+      return null
+    }
+
+    return {
+      ...pickerContext,
+      playerName: player.name,
+      currentKillerId:
+        pickerContext.slotIndex !== null &&
+        pickerContext.slotIndex < picks.length
+          ? picks[pickerContext.slotIndex]
+          : undefined,
+    }
+  }, [pickerContext, players])
 
   const updateConfig = (isReceiving: boolean, killCount: number, numValue: number) => {
     if (isReceiving) {
@@ -462,8 +640,8 @@ export function FivePlayerMode() {
         <div className="mt-3 grid grid-cols-1 gap-5 lg:grid-cols-12">
           
           {/* Left Column: Player Roster (7 cols) */}
-          <div className="lg:col-span-7 flex flex-col gap-3">
-            <div className="flex items-center justify-between pb-1">
+          <div className="lg:col-span-7 flex flex-col gap-3 five-player-roster">
+            <div className="flex items-center justify-between pb-1 five-player-roster-header">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-lg text-neutral-200" style={{ fontFamily: "var(--font-godo)" }}>
                   팀원 명단
@@ -558,13 +736,23 @@ export function FivePlayerMode() {
                       allowHalf={false}
                       readOnly={isViewer}
                       removeMode={removeMode}
+                      killerControl={
+                        <KillerPickSlots
+                          playerName={p.name}
+                          team="thomas"
+                          monochrome
+                          killerPicks={p.killerPicks ?? []}
+                          disabled={removeMode || isViewer}
+                          onOpen={(slotIndex) => openKillerPicker(p, slotIndex)}
+                        />
+                      }
                       onRemove={() => removePlayer(p.id)}
                       onScore={(nk) => handleScore(p.id, nk)}
                       onZeroKill={() => handleZeroKill(p.id)}
                       onCancel={() => handleCancel(p.id)}
                       onNameChange={(name) => updatePlayerName(p.id, name)}
                       onNameCommit={(name) => updatePlayerName(p.id, name)}
-                      onKillerChange={(killer) => updateKiller(p.id, killer)}
+                      onKillerChange={() => {}}
                       onDragStart={() => {
                         dragItem.current = p.id
                         setDraggingId(p.id)
@@ -711,7 +899,7 @@ export function FivePlayerMode() {
               type="text"
               readOnly
               value={receivingCommand}
-              className="player-name-input text-left text-neutral-100 font-mono text-sm border-none bg-transparent focus:outline-none w-full z-10"
+              className="player-name-input pinball-command-input text-left text-neutral-100 border-none bg-transparent focus:outline-none w-full z-10"
               placeholder="플레이어 이름과 킬수가 선택되면 자동 작성됩니다."
             />
             <button
@@ -742,7 +930,7 @@ export function FivePlayerMode() {
               type="text"
               readOnly
               value={givingCommand}
-              className="player-name-input text-left text-neutral-100 font-mono text-sm border-none bg-transparent focus:outline-none w-full z-10"
+              className="player-name-input pinball-command-input text-left text-neutral-100 border-none bg-transparent focus:outline-none w-full z-10"
               placeholder="플레이어 이름과 킬수가 선택되면 자동 작성됩니다."
             />
             <button
@@ -801,27 +989,38 @@ export function FivePlayerMode() {
           </>
         )}
 
-        {/* backdrop for closing prompts on background click */}
-        {(showResetMenu || showResetConfirm || showKillerResetConfirm || showRosterResetConfirm || showFullResetConfirm) && (
-          <div
-            className="fixed inset-0 z-40 cursor-default bg-transparent"
-            onClick={closeAllResetUI}
-          />
-        )}
-
-        {/* Fixed Utility Controls (Bottom-Left) matching 4v4 mode */}
+        {/* fixed utility controls — layout matches 4v4 */}
         <ZoomCompensated
           origin="bottom left"
-          className="fixed bottom-5 left-4 z-50 flex flex-col gap-2 text-neutral-300 md:bottom-6 md:left-8"
+          className="scoreboard-utility-stack fixed bottom-5 left-4 z-50 text-neutral-300 md:bottom-6 md:left-8"
         >
           {!utilityUiHidden && (
-            <>
+          <div className="scoreboard-utility-stack-top">
+          {isViewer && (
+            <button
+              type="button"
+              onClick={openKillerCatalog}
+              className="scoreboard-utility-btn scoreboard-utility-btn-neutral"
+              style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+            >
+              살인마 목록 열기
+            </button>
+          )}
           {!isViewer && (
-            <div className="relative mb-2">
+            <div className="relative flex w-full flex-col gap-2">
               <button
                 type="button"
+                onClick={openKillerCatalog}
+                className="scoreboard-utility-btn scoreboard-utility-btn-neutral"
+                style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+              >
+                살인마 목록 열기
+              </button>
+              <button
+                type="button"
+                ref={resetTriggerRef}
                 onClick={handleResetClick}
-                className="rounded border border-neutral-500/70 bg-black/80 px-3 py-1 text-sm text-neutral-200 backdrop-blur-sm transition-colors hover:border-neutral-300 hover:text-white"
+                className="scoreboard-utility-btn scoreboard-utility-btn-neutral"
                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
               >
                 초기화
@@ -829,7 +1028,8 @@ export function FivePlayerMode() {
 
               {showResetMenu && (
                 <div
-                  className="absolute left-full bottom-0 z-50 ml-2 flex items-end gap-2"
+                  ref={resetMenuRef}
+                  className="scoreboard-reset-menu"
                   {...resetUiDismissBind}
                 >
                   <div className="flex flex-col gap-1.5 rounded border border-neutral-600/70 bg-black/95 p-2 backdrop-blur-sm whitespace-nowrap">
@@ -897,15 +1097,15 @@ export function FivePlayerMode() {
 
                       <div className="flex h-8 items-center">
                         {showRosterResetConfirm && (
-                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
-                            <p className="text-xs text-neutral-200">
+                          <div className={RESET_CONFIRM_PANEL}>
+                            <p className={RESET_CONFIRM_TEXT}>
                               팀원 목록과 점수를 초기화하시겠습니까?
                             </p>
                             <div className="flex gap-2">
                               <button
                                 type="button"
                                 onClick={resetRoster}
-                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
+                                className={RESET_CONFIRM_YES}
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 예
@@ -913,7 +1113,7 @@ export function FivePlayerMode() {
                               <button
                                 type="button"
                                 onClick={closeAllResetUI}
-                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                className={RESET_CONFIRM_NO}
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 아니오
@@ -925,13 +1125,15 @@ export function FivePlayerMode() {
 
                       <div className="flex h-8 items-center">
                         {showKillerResetConfirm && (
-                          <div className="flex flex-col gap-2 rounded border border-neutral-400/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap">
-                            <p className="text-xs text-neutral-200">살인마 플레이 기록을 초기화하시겠습니까?</p>
+                          <div className={RESET_CONFIRM_PANEL}>
+                            <p className={RESET_CONFIRM_TEXT}>
+                              살인마 픽/밴 기록을 초기화 하시겠습니까?
+                            </p>
                             <div className="flex gap-2">
                               <button
                                 type="button"
                                 onClick={resetKillers}
-                                className="rounded border border-neutral-400/70 bg-white/10 px-2 py-1 text-xs text-white transition-colors hover:bg-white/20"
+                                className={RESET_CONFIRM_YES}
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 예
@@ -939,7 +1141,7 @@ export function FivePlayerMode() {
                               <button
                                 type="button"
                                 onClick={closeAllResetUI}
-                                className="rounded border border-neutral-600 bg-black/50 px-2 py-1 text-xs text-neutral-300 transition-colors hover:border-neutral-400 hover:text-white"
+                                className={RESET_CONFIRM_NO}
                                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
                               >
                                 아니오
@@ -980,13 +1182,17 @@ export function FivePlayerMode() {
               )}
             </div>
           )}
-          <div className="relative flex items-center">
+          </div>
+          )}
+          <div className="scoreboard-utility-stack-bottom">
+          {!utilityUiHidden && (
+          <div className="relative flex w-full items-center">
             <button
               type="button"
               onClick={handleOpenGuide}
               className={cn(
-                "rounded border border-neutral-600 bg-black/50 px-3 py-1 text-sm transition-colors hover:border-neutral-400 hover:text-white text-center",
-                !hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold"
+                "scoreboard-utility-btn scoreboard-utility-btn-neutral border-neutral-600 bg-black/50",
+                !hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold",
               )}
               style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
             >
@@ -1007,16 +1213,16 @@ export function FivePlayerMode() {
               </motion.div>
             )}
           </div>
-            </>
           )}
           <UtilityUiToggle hidden={utilityUiHidden} onToggle={toggleUtilityUi} />
+          </div>
         </ZoomCompensated>
 
-        {/* Mode Switcher Floating Button & Popover (Bottom-Right) */}
+        {/* Mode Switcher — layout matches 4v4 (no capture button) */}
         {!utilityUiHidden && (
         <ZoomCompensated
           origin="bottom right"
-          className="fixed bottom-5 right-4 z-50 flex flex-col items-end gap-2 md:bottom-6 md:right-8"
+          className="scoreboard-utility-stack fixed bottom-5 right-4 z-50 md:bottom-6 md:right-8"
         >
           <ScoreboardSyncPanel
             role={sync.role}
@@ -1030,18 +1236,23 @@ export function FivePlayerMode() {
             onStopViewing={sync.stopViewing}
           />
           {!isViewer && (
-            <>
+            <div className="relative w-full">
           <button
             type="button"
-            onClick={() => setShowModeSwitchConfirm((prev) => !prev)}
-            className="rounded border border-dbd-yellow/70 bg-black/80 px-4 py-2 text-sm text-dbd-yellow backdrop-blur-sm transition-colors hover:bg-dbd-yellow/10 shadow-lg cursor-pointer flex items-center space-x-2"
+            ref={modeSwitchTriggerRef}
+            onClick={() => {
+              closeAllResetUI()
+              setShowModeSwitchConfirm((prev) => !prev)
+            }}
+            className="scoreboard-utility-btn border border-dbd-yellow/70 bg-black/80 text-dbd-yellow shadow-lg hover:bg-dbd-yellow/10 hover:text-dbd-yellow"
             style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
           >
-            <span>4vs4 모드로 전환</span>
+            4vs4 모드로 전환
           </button>
           {showModeSwitchConfirm && (
             <div
-              className="absolute right-0 bottom-full mb-2 z-50 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 backdrop-blur-sm whitespace-nowrap shadow-2xl"
+              ref={modeSwitchMenuRef}
+              className="absolute right-full bottom-0 z-50 mr-2 flex flex-col gap-2 rounded border border-dbd-yellow/50 bg-black/95 p-3 whitespace-nowrap shadow-2xl backdrop-blur-sm"
               {...modeSwitchDismissBind}
             >
               <p className="text-xs text-neutral-200">4vs4 모드로 넘어가시겠습니까?</p>
@@ -1072,7 +1283,7 @@ export function FivePlayerMode() {
               </div>
             </div>
           )}
-            </>
+            </div>
           )}
         </ZoomCompensated>
         )}
@@ -1110,6 +1321,28 @@ export function FivePlayerMode() {
             </button>
           </div>
         </div>
+      )}
+
+      {activePickerContext && (
+        <KillerPicker
+          open
+          monochrome
+          context={activePickerContext}
+          allPicks={allPicks}
+          killerBans={killerBans}
+          playerKillerPicks={
+            activePickerContext.mode === "catalog"
+              ? []
+              : (players.find(
+                  (player) => player.id === activePickerContext.playerId,
+                )?.killerPicks ?? [])
+          }
+          readOnly={isViewer}
+          onPick={handleKillerPick}
+          onCancelPick={handleKillerPickCancel}
+          onToggleBan={handleKillerBanToggle}
+          onClose={() => setPickerContext(null)}
+        />
       )}
     </main>
   )

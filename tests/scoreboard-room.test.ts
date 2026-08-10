@@ -106,7 +106,7 @@ describe("scoreboard room fearless normalization", () => {
     ])
   })
 
-  it("keeps 5p free-text killer behavior unchanged", () => {
+  it("normalizes 5p killer picks and migrates legacy free-text killer ids", () => {
     const state: FivePlayerSyncState = {
       mode: "5p",
       players: [
@@ -124,12 +124,12 @@ describe("scoreboard room fearless normalization", () => {
     }
 
     const normalized = normalizeFivePlayerState(state)
-    expect(normalized.players[0].killer).toBe("free text killer")
-    expect(normalized.players[0]).not.toHaveProperty("killerPicks")
+    expect(normalized.players[0].killerPicks).toEqual(["nurse"])
+    expect(normalized.players[0]).not.toHaveProperty("killer")
 
     const restored = fromWireState(toWireState(state))
-    expect(restored?.mode === "5p" ? restored.players[0].killer : null).toBe(
-      "free text killer",
-    )
+    expect(
+      restored?.mode === "5p" ? restored.players[0].killerPicks : null,
+    ).toEqual(["nurse"])
   })
 })

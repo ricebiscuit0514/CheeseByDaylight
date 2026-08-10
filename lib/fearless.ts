@@ -45,6 +45,8 @@ export type PickEntry = {
 export type FearlessFilterContext = {
   team?: Team
   playerId?: string
+  /** 1v4: soft filters by player instead of team. */
+  soloMode?: boolean
 }
 
 export type PickerCellState = {
@@ -108,6 +110,11 @@ export function filterVisiblePicks(
 ): PickEntry[] {
   if (mode === "hard") return [...entries]
   if (mode === "soft") {
+    if (context.soloMode) {
+      return context.playerId
+        ? entries.filter((entry) => entry.playerId === context.playerId)
+        : []
+    }
     return context.team
       ? entries.filter((entry) => entry.team === context.team)
       : []
@@ -419,12 +426,17 @@ function isPickArray(
  */
 export function getFearlessRowSlots(
   playerOrPicks: FearlessPlayer | readonly string[],
+  maxSlots: number = MAX_FEARLESS_PICKS,
 ): FearlessRowSlot[] {
   const picks: readonly string[] = isPickArray(playerOrPicks)
     ? playerOrPicks
     : (playerOrPicks.killerPicks ?? [])
+  const slotCount = Math.min(
+    Math.max(1, maxSlots),
+    MAX_FEARLESS_PICKS,
+  )
 
-  return Array.from({ length: MAX_FEARLESS_PICKS }, (_, slotIndex) => {
+  return Array.from({ length: slotCount }, (_, slotIndex) => {
     const killerId = picks[slotIndex]
     if (killerId) {
       return {

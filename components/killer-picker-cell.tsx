@@ -18,6 +18,7 @@ export type KillerPickerCellProps = {
   isBanned: boolean
   isSelected: boolean
   feedback?: KillerPickerCellFeedback | null
+  monochrome?: boolean
   onSelect: (killerId: string) => void
 }
 
@@ -31,6 +32,7 @@ function KillerPickerCellComponent({
   isBanned,
   isSelected,
   feedback,
+  monochrome = false,
   onSelect,
 }: KillerPickerCellProps) {
   const isPicked = visiblePicks.length > 0
@@ -38,7 +40,6 @@ function KillerPickerCellComponent({
   const [activeFlash, setActiveFlash] = useState<
     KillerPickerCellFeedback["kind"] | null
   >(null)
-  const [banStamp, setBanStamp] = useState(false)
   const { burst: burstCheese, layer: cheeseBurstLayer } = useCheeseBurst()
   const killerName =
     killer.koreanName || killer.englishName || killer.id
@@ -76,23 +77,12 @@ function KillerPickerCellComponent({
     if (!feedback) return
 
     setActiveFlash(feedback.kind)
-    if (feedback.kind === "ban") {
-      setBanStamp(true)
-    }
   }, [feedback?.kind, feedback?.token])
 
   const handleFeedbackFlashEnd = useCallback(
     (event: React.AnimationEvent<HTMLSpanElement>) => {
       if (!event.animationName.startsWith("fearless-glow-")) return
       setActiveFlash(null)
-    },
-    [],
-  )
-
-  const handleBanStampEnd = useCallback(
-    (event: React.AnimationEvent<HTMLSpanElement>) => {
-      if (event.animationName !== "fearless-ban-stamp") return
-      setBanStamp(false)
     },
     [],
   )
@@ -107,7 +97,7 @@ function KillerPickerCellComponent({
         isSelected && "is-selected",
       )}
       aria-pressed={isSelected}
-      aria-label={killerName}
+      aria-label={isBanned ? `${killerName}, 밴` : killerName}
       onClick={handleClick}
     >
       {cheeseBurstLayer}
@@ -154,7 +144,12 @@ function KillerPickerCellComponent({
                 {visiblePicks.map((pick, index) => (
                   <span
                     key={`${pick.playerId}-${pick.slotIndex}-${index}`}
-                    className={`fearless-pick-name fearless-pick-name-${pick.team}`}
+                    className={cn(
+                      "fearless-pick-name",
+                      monochrome
+                        ? "fearless-pick-name-neutral"
+                        : `fearless-pick-name-${pick.team}`,
+                    )}
                   >
                     {safeName(pick.playerName)}
                   </span>
@@ -163,15 +158,6 @@ function KillerPickerCellComponent({
             )}
             <span className="fearless-picker-label-row">
               <span className="fearless-picker-killer-name">{killerName}</span>
-              {isBanned && (
-                <span
-                  className={cn("fearless-ban-mark", banStamp && "is-stamping")}
-                  aria-hidden="true"
-                  onAnimationEnd={handleBanStampEnd}
-                >
-                  BAN
-                </span>
-              )}
             </span>
           </span>
         </span>
