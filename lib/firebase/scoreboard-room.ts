@@ -959,6 +959,43 @@ export async function deleteScoreboardRoom(
   await remove(ref(database, roomPath(token)))
 }
 
+export async function tryDeleteScoreboardRoom(
+  database: Database,
+  token: string,
+) {
+  try {
+    await deleteScoreboardRoom(database, token)
+  } catch {
+    // 이미 삭제됐거나 익명 UID가 달라 소유권이 없을 수 있다.
+  }
+}
+
+/** localStorage에 남은 만료 방장 세션의 RTDB 방 노드를 best-effort 삭제한다. */
+export async function purgeExpiredHostRoomFromStorage() {
+  try {
+    const raw = localStorage.getItem(HOST_SESSION_KEY)
+    if (!raw) return
+
+    const parsed = JSON.parse(raw) as Partial<StoredRoomSession>
+    if (
+      typeof parsed.token !== "string" ||
+      !/^[a-f0-9]{48,128}$/i.test(parsed.token) ||
+      typeof parsed.expiresAt !== "number" ||
+      parsed.expiresAt > Date.now()
+    ) {
+      return
+    }
+
+    localStorage.removeItem(HOST_SESSION_KEY)
+    const { database } = await getAnonymousUser()
+    goOnline(database)
+    await tryDeleteScoreboardRoom(database, parsed.token.toLowerCase())
+    goOffline(database)
+  } catch {
+    localStorage.removeItem(HOST_SESSION_KEY)
+  }
+}
+
 /** 다른 사람 방에 들어갈 때 남아 있는 본인 방장 세션·공유방을 정리한다. */
 export async function abandonHostRoomIfNeeded(viewerToken: string) {
   const hostSession = loadRoomSession(localStorage, HOST_SESSION_KEY)
@@ -974,7 +1011,7 @@ export async function abandonHostRoomIfNeeded(viewerToken: string) {
     await deleteScoreboardRoom(database, hostSession.token)
     goOffline(database)
   } catch {
-    // 로컬 방장 세션은 이미 제거됨. 서버 방은 TTL로 만료된다.
+    // 로컬 방장 세션은 이미 제거됨. 서버 방은 TTL·정리 로직으로 만료된다.
   }
 }
 

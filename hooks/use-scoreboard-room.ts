@@ -19,10 +19,12 @@ import {
   generateRoomToken,
   loadRoomSession,
   prepareFirebaseSession,
+  purgeExpiredHostRoomFromStorage,
   registerHostPresence,
   resumeScoreboardRoom,
   ROOM_TTL_MS,
   saveRoomSession,
+  tryDeleteScoreboardRoom,
   subscribeToFirebaseConnection,
   subscribeToScoreboardRoom,
   writeScoreboardState,
@@ -84,6 +86,22 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     undefined,
   )
   const databaseRef = useRef<Database | null>(null)
+  const tokenRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    tokenRef.current = token
+  }, [token])
+
+  const deleteHostRoom = useCallback(async (roomToken: string) => {
+    try {
+      const { database } = await getAnonymousUser()
+      goOnline(database)
+      await tryDeleteScoreboardRoom(database, roomToken)
+      goOffline(database)
+    } catch {
+      // ignore
+    }
+  }, [])
 
   const returnViewerToLocal = useCallback((options?: { expired?: boolean; hostDisconnected?: boolean }) => {
     sessionStorage.removeItem(VIEWER_SESSION_KEY)
@@ -107,17 +125,24 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
   )
 
   const expireHostSession = useCallback(() => {
-    localStorage.removeItem(HOST_SESSION_KEY)
-    if (databaseRef.current) goOffline(databaseRef.current)
-    setRole("local")
-    setToken(null)
-    setRoomReady(false)
-    setHostOnline(false)
-    setTerminalStatus("expired")
-    setErrorMessage(
-      "방장 연결이 끊긴 뒤 40분이 지나 공유방이 종료되었습니다. 다시 연동을 시작해 주세요.",
-    )
-  }, [])
+    const roomToken = tokenRef.current
+    void (async () => {
+      if (roomToken) {
+        await deleteHostRoom(roomToken)
+      }
+      localStorage.removeItem(HOST_SESSION_KEY)
+      if (databaseRef.current) goOffline(databaseRef.current)
+      setRole("local")
+      setToken(null)
+      setRoomReady(false)
+      setHostOnline(false)
+      setRoomExpiresAt(null)
+      setTerminalStatus("expired")
+      setErrorMessage(
+        "방장 연결이 끊긴 뒤 40분이 지나 공유방이 종료되었습니다. 다시 연동을 시작해 주세요.",
+      )
+    })()
+  }, [deleteHostRoom])
 
   useEffect(() => {
     stateRef.current = state
@@ -133,6 +158,8 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     let cancelled = false
 
     const bootstrap = async () => {
+      await purgeExpiredHostRoomFromStorage()
+
       const inviteToken = parseInviteTokenFromHash()
       if (inviteToken) {
         saveRoomSession(sessionStorage, VIEWER_SESSION_KEY, {
@@ -495,6 +522,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
         shouldCreateRef.current = false
 
         if (!expiresAt) {
+          await deleteHostRoom(token)
           localStorage.removeItem(HOST_SESSION_KEY)
           setRole("local")
           setToken(null)
@@ -520,6 +548,9 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
           role === "host" &&
           (creating || isPermissionDenied(error))
         if (roomUnavailable) {
+          if (token) {
+            await deleteHostRoom(token)
+          }
           localStorage.removeItem(HOST_SESSION_KEY)
           if (databaseRef.current) goOffline(databaseRef.current)
           shouldCreateRef.current = false
@@ -561,10 +592,57 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     gameMode,
     enabled,
     initialized,
+    deleteHostRoom,
     redirectViewerToGameMode,
     returnViewerToLocal,
     role,
     tabSuperseded,
+    token,
+  ])
+
+  useEffect(() => {
+    if (
+      role !== "host" ||
+      !token ||
+      !roomExpiresAt ||
+      !roomReady ||
+      terminalStatus
+    ) {
+      return
+    }
+
+    const finalizeExpiredHostRoom = () => {
+      if (tokenRef.current !== token) return
+      void (async () => {
+        await deleteHostRoom(token)
+        localStorage.removeItem(HOST_SESSION_KEY)
+        if (databaseRef.current) goOffline(databaseRef.current)
+        setRole("local")
+        setToken(null)
+        setRoomReady(false)
+        setHostOnline(false)
+        setRoomExpiresAt(null)
+        setTerminalStatus("expired")
+        setErrorMessage(
+          "공유방이 만료되어 종료되었습니다. 다시 연동을 시작해 주세요.",
+        )
+      })()
+    }
+
+    const delayMs = roomExpiresAt - Date.now()
+    if (delayMs <= 0) {
+      finalizeExpiredHostRoom()
+      return
+    }
+
+    const timeout = window.setTimeout(finalizeExpiredHostRoom, delayMs)
+    return () => window.clearTimeout(timeout)
+  }, [
+    deleteHostRoom,
+    role,
+    roomExpiresAt,
+    roomReady,
+    terminalStatus,
     token,
   ])
 
