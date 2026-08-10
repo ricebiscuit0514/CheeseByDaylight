@@ -228,10 +228,10 @@ export function ScoreboardSyncPanel({
           }}
           onClick={openPanel}
           className={cn(
-            "fixed bottom-36 left-4 right-4 z-50 rounded-md border bg-black/95 px-3 py-2 text-center text-xs font-bold backdrop-blur-md hover:brightness-125 sm:absolute sm:bottom-auto sm:left-auto sm:right-full sm:top-1/2 sm:mr-3 sm:w-max sm:-translate-y-1/2 sm:whitespace-nowrap sm:py-1.5",
+            "fixed bottom-36 left-4 right-4 z-50 rounded-md border bg-black/95 px-3.5 py-2.5 text-center text-sm backdrop-blur-md hover:brightness-125 sm:absolute sm:bottom-auto sm:left-auto sm:right-full sm:top-1/2 sm:mr-3 sm:w-max sm:-translate-y-1/2 sm:whitespace-nowrap sm:px-3.5 sm:py-2",
             CHZZK_GREEN_GUIDE,
           )}
-          style={{ fontFamily: "var(--font-godo)" }}
+          style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
         >
           진행자의 점수판과 연동하여 같은 화면을 보며 플레이하세요!
         </motion.button>

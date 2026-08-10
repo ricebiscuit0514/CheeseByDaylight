@@ -116,14 +116,20 @@ export default function LandingPage() {
         className="pointer-events-none absolute inset-y-0 right-0 z-[5] flex items-center justify-end pe-16 sm:pe-24 md:pe-32 -translate-y-6 sm:-translate-y-8 md:-translate-y-10"
         aria-hidden="true"
       >
-        <Image
-          src="/images/Fearlesslandingart.webp"
-          alt=""
-          width={720}
-          height={900}
-          className="pointer-events-auto h-[min(66vh,615px)] w-auto max-w-[min(43.5vw,570px)] object-contain object-right transition-transform duration-300 hover:scale-105"
-          priority
-        />
+        <div className="pointer-events-auto relative transition-transform duration-300 hover:scale-105">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-[58%] -z-10 h-[min(40vh,360px)] w-[min(26vw,340px)] -translate-x-[40%] -translate-y-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.92)_0%,rgba(0,0,0,0.78)_45%,transparent_68%)] blur-[18px]"
+          />
+          <Image
+            src="/images/Fearlesslandingart.webp"
+            alt=""
+            width={720}
+            height={900}
+            className="relative h-[min(66vh,615px)] w-auto max-w-[min(43.5vw,570px)] object-contain object-right [filter:drop-shadow(0_18px_36px_rgba(0,0,0,0.92))_drop-shadow(0_0_24px_rgba(0,0,0,0.75))]"
+            priority
+          />
+        </div>
       </div>
 
       {/* Main Center Content Box */}
@@ -177,7 +183,7 @@ export default function LandingPage() {
       </div>
 
       {/* Bottom Right Footer Info Section */}
-      <footer className="absolute bottom-5 right-6 md:bottom-7 md:right-8 z-20 flex flex-col items-end text-right space-y-2 pointer-events-auto select-none">
+      <footer className="absolute bottom-5 right-6 md:bottom-7 md:right-8 z-20 flex flex-col items-end text-right space-y-2 pointer-events-auto select-none brightness-[0.7]">
         {/* Program Description */}
         <p
           className="text-[11px] sm:text-[12px] text-neutral-300/90 leading-tight max-w-xs sm:max-w-none"
@@ -204,7 +210,7 @@ export default function LandingPage() {
           />
         </a>
 
-        <AppVersion className="pt-0.5" />
+        <AppVersion className="pt-0.5 text-[12px] sm:text-[14px]" />
       </footer>
     </main>
   )

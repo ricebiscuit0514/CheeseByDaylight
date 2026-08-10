@@ -16,7 +16,6 @@ import { KillerPicker, type KillerPickerContext } from "@/components/killer-pick
 import { KillerPickSlots } from "@/components/killer-pick-slots"
 import { MAX_KILLS, PlayerRow, type Player } from "@/components/player-row"
 import { AppVersionCorner } from "@/components/app-version"
-import { CopyScoreboardImageButton } from "@/components/copy-scoreboard-image-button"
 import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
 import { ZoomCompensated } from "@/components/zoom-compensated"
 import { UtilityUiToggle } from "@/components/utility-ui-toggle"
@@ -42,7 +41,6 @@ import {
   type ViewerSessionEndReason,
 } from "@/lib/viewer-session-notice"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
-import { buildCaptureMatchResult } from "@/lib/capture-match-result"
 import {
   appendAceRoundLogEntry,
   buildAceRoundLogKey,
@@ -96,18 +94,6 @@ function clearPlayerKillers(player: Player): Player {
   return next
 }
 
-function computePreAceTeamScore(
-  roster: Player[],
-  acePlayerId: string | null,
-  aceBackup: Player | null,
-) {
-  return roster.reduce((sum, player) => {
-    if (acePlayerId && aceBackup && player.id === acePlayerId) {
-      return sum + aceBackup.kills
-    }
-    return sum + player.kills
-  }, 0)
-}
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 
 type ColdState =
@@ -1004,65 +990,6 @@ export function Scoreboard() {
     if (cold.status !== "gameover" || cold.isCold || cold.winnerName === "tie") return false
     return detectComebackWin(thomas, ada, lastScoredPlayerId)
   }, [cold, thomas, ada, lastScoredPlayerId, isAceMatchMode])
-
-  const captureMatchResult = useMemo(
-    () =>
-      buildCaptureMatchResult({
-        cold,
-        thomasName,
-        adaName,
-        isComebackWin,
-        isAceMatchMode,
-        bothAcePlayed,
-        aceWinnerTeam,
-        aceThomasId,
-        aceAdaId,
-        thomas,
-        ada,
-      }),
-    [
-      aceAdaId,
-      aceThomasId,
-      aceWinnerTeam,
-      ada,
-      adaName,
-      bothAcePlayed,
-      cold,
-      isAceMatchMode,
-      isComebackWin,
-      thomas,
-      thomasName,
-    ],
-  )
-
-  const captureUsesPreAceScores =
-    aceRoundLog.length > 0 ||
-    isAceMatchMode ||
-    aceWinnerTeam !== null ||
-    aceThomasBackup !== null ||
-    aceAdaBackup !== null
-
-  const captureLeftScore = useMemo(() => {
-    if (!captureUsesPreAceScores) return teamScore(thomas)
-    return computePreAceTeamScore(thomas, aceThomasId, aceThomasBackup)
-  }, [
-    aceThomasBackup,
-    aceThomasId,
-    captureUsesPreAceScores,
-    thomas,
-  ])
-
-  const captureRightScore = useMemo(() => {
-    if (!captureUsesPreAceScores) return teamScore(ada)
-    return computePreAceTeamScore(ada, aceAdaId, aceAdaBackup)
-  }, [aceAdaBackup, aceAdaId, captureUsesPreAceScores, ada])
-
-  const captureMainFirstAttackerId = useMemo(() => {
-    if (captureUsesPreAceScores && aceFirstAttackerBackup) {
-      return aceFirstAttackerBackup
-    }
-    return firstAttackerId
-  }, [aceFirstAttackerBackup, captureUsesPreAceScores, firstAttackerId])
 
   // 1:1 Ace Match Notification Warning Logic
   const aceMatchWarning = useMemo(() => {
@@ -2432,7 +2359,11 @@ export function Scoreboard() {
                   ✕
                 </button>
                 <img
-                  src="/images/guide_4v4.webp"
+                  src={
+                    showGuide === "basic"
+                      ? "/images/guide_4v4.webp"
+                      : "/images/guide_fearless.webp"
+                  }
                   alt={
                     showGuide === "basic"
                       ? "4v4 기본 설명서"
@@ -2481,7 +2412,7 @@ export function Scoreboard() {
                 className="scoreboard-utility-btn scoreboard-utility-btn-neutral"
                 style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
               >
-                초기화
+                초기화 메뉴
               </button>
 
               {showResetMenu && (
@@ -2689,13 +2620,12 @@ export function Scoreboard() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: [0, 6, 0] }}
                 transition={{ x: { repeat: Infinity, duration: 1.4 }, opacity: { duration: 0.3 } }}
-                className="absolute left-full ml-3 z-50 flex cursor-pointer items-center gap-1.5 rounded-md border border-red-700/85 bg-black/95 px-3 py-1.5 text-xs shadow-[0_0_20px_rgba(185,28,28,0.55)] backdrop-blur-md whitespace-nowrap hover:brightness-125"
+                className="absolute left-full ml-3 z-50 flex cursor-pointer items-center gap-1.5 rounded-md border border-red-700/85 bg-black/95 px-3.5 py-2 text-sm shadow-[0_0_20px_rgba(185,28,28,0.55)] backdrop-blur-md whitespace-nowrap hover:brightness-125"
                 onClick={handleOpenGuide}
-                style={{ fontFamily: "var(--font-godo)" }}
+                style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
               >
-                <span className="text-sm">👈</span>
-                <span className="font-bold text-red-400">피어리스 모드 </span>
-                <span className="font-bold text-white">설명서를 확인해 보세요!</span>
+                <span className="text-red-400">피어리스 모드 </span>
+                <span className="text-white">설명서를 확인해 보세요!</span>
               </motion.div>
             )}
           </div>
@@ -2924,17 +2854,6 @@ export function Scoreboard() {
         origin="bottom right"
         className="scoreboard-utility-stack fixed bottom-5 right-4 z-50 md:bottom-6 md:right-8"
       >
-        <CopyScoreboardImageButton
-          thomas={thomas}
-          ada={ada}
-          thomasName={thomasName}
-          adaName={adaName}
-          leftScore={captureLeftScore}
-          rightScore={captureRightScore}
-          matchResult={captureMatchResult}
-          aceRoundLog={aceRoundLog}
-          mainFirstAttackerId={captureMainFirstAttackerId}
-        />
         <ScoreboardSyncPanel
           role={sync.role}
           status={sync.status}
