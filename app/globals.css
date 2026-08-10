@@ -785,17 +785,16 @@ input[type="number"] {
 .fearless-killer-slot {
   position: relative;
   display: grid;
+  box-sizing: border-box;
   width: var(--fearless-slot-size);
   height: var(--fearless-slot-size);
   min-width: var(--fearless-slot-size);
   flex: 0 0 var(--fearless-slot-size);
   place-items: center;
   overflow: hidden;
-  border: 1px solid color-mix(in oklch, var(--fearless-team), transparent 47%);
-  background: color-mix(in oklch, #050505, var(--fearless-team) 5%);
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 4%),
-    0 2px 8px rgb(0 0 0 / 38%);
+  border: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
   cursor: pointer;
   transition:
     border-color .16s ease,
@@ -823,10 +822,9 @@ input[type="number"] {
 }
 .fearless-killer-slot.is-empty:hover:not(:disabled),
 .fearless-killer-slot.is-empty:focus-visible {
-  border-color: rgb(210 210 210 / 72%);
   background: rgb(0 0 0 / 58%);
   filter: brightness(1.28);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%);
+  box-shadow: inset 0 0 0 1px rgb(210 210 210 / 72%);
 }
 .fearless-killer-slot.is-empty:hover:not(:disabled) img,
 .fearless-killer-slot.is-empty:focus-visible img {
@@ -845,8 +843,8 @@ input[type="number"] {
   opacity: .38;
 }
 .fearless-killer-slot.is-empty {
-  border-color: rgb(148 148 148 / 35%);
   background: rgb(0 0 0 / 48%);
+  box-shadow: inset 0 0 0 1px rgb(148 148 148 / 35%);
 }
 .fearless-killer-slot.is-empty.fearless-slot-tooltip-wrap {
   overflow: visible;
@@ -858,9 +856,6 @@ input[type="number"] {
 .fearless-killer-slot.is-filled {
   overflow: visible;
   clip-path: none;
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
 }
 .fearless-killer-slot-face {
   position: absolute;
@@ -879,9 +874,6 @@ input[type="number"] {
 .fearless-killer-slot.is-filled:focus-visible {
   z-index: 2;
   filter: none;
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
 }
 .fearless-killer-slot.is-filled:hover:not(:disabled) .fearless-killer-slot-face img,
 .fearless-killer-slot.is-filled:focus-visible .fearless-killer-slot-face img {
