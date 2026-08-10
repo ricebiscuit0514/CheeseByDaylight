@@ -505,6 +505,7 @@ export function Scoreboard() {
   const [thomasName, setThomasName] = useState("A")
   const [adaName, setAdaName] = useState("B")
   const [killerBans, setKillerBans] = useState<string[]>([])
+  const [fearlessEnabled, setFearlessEnabled] = useState(true)
   const [pickerContext, setPickerContext] =
     useState<KillerPickerContext | null>(null)
   const teamNameLinked = useRef<Record<Team, boolean>>({ thomas: false, ada: false })
@@ -608,6 +609,7 @@ export function Scoreboard() {
       thomas,
       ada,
       killerBans,
+      fearlessEnabled,
       thomasName,
       adaName,
       firstAttackerId,
@@ -645,6 +647,7 @@ export function Scoreboard() {
       hasCompletedAceMatch,
       isAceMatchMode,
       killerBans,
+      fearlessEnabled,
       showAceProceedButton,
       showAceRematchPrompt,
       showAcePromptModal,
@@ -694,6 +697,7 @@ export function Scoreboard() {
     setThomas(remote.thomas)
     setAda(remote.ada)
     setKillerBans(remote.killerBans)
+    setFearlessEnabled(remote.fearlessEnabled)
     setThomasName(remote.thomasName)
     setAdaName(remote.adaName)
     setFirstAttackerId(
@@ -853,6 +857,9 @@ export function Scoreboard() {
       if (Array.isArray(saved.thomas)) setThomas(saved.thomas)
       if (Array.isArray(saved.ada)) setAda(saved.ada)
       setKillerBans(saved.killerBans)
+      if (typeof saved.fearlessEnabled === "boolean") {
+        setFearlessEnabled(saved.fearlessEnabled)
+      }
       if (saved.thomasName) setThomasName(saved.thomasName)
       if (saved.adaName) setAdaName(saved.adaName)
       if (saved.firstAttackerId !== undefined) setFirstAttackerId(saved.firstAttackerId)
@@ -1549,7 +1556,7 @@ export function Scoreboard() {
     const selgong = firstAttackerId != null && p.id === firstAttackerId
     const tabIdx = isThomas ? index + 1 : 5 + index
     const isLastPlayerOverall = team === "ada" && index === ada.length - 1
-    const killerControl = (
+    const killerControl = fearlessEnabled ? (
       <KillerPickSlots
         playerName={p.name}
         team={team}
@@ -1557,7 +1564,10 @@ export function Scoreboard() {
         disabled={removeMode === team}
         onOpen={(slotIndex) => openKillerPicker(team, p, slotIndex)}
       />
-    )
+    ) : undefined
+    const killerChangeHandler = fearlessEnabled
+      ? () => {}
+      : (killer: string) => updatePlayerKiller(team, p.id, killer)
 
     if (isNonAcePlayer) {
       return (
@@ -1580,7 +1590,7 @@ export function Scoreboard() {
             onCancel={() => {}}
             onNameChange={() => {}}
             onNameCommit={() => {}}
-            onKillerChange={() => {}}
+            onKillerChange={killerChangeHandler}
             onDragStart={() => {}}
             onDragEnter={() => {}}
             onDragEnd={() => {}}
@@ -1617,7 +1627,7 @@ export function Scoreboard() {
           onCancel={() => handleCancel(team, p.id)}
           onNameChange={(name) => updatePlayerName(team, p.id, name)}
           onNameCommit={(name) => updatePlayerName(team, p.id, name)}
-          onKillerChange={() => {}}
+          onKillerChange={killerChangeHandler}
           onDragStart={() => {
             dragItem.current = { team, id: p.id }
             setDraggingId(p.id)
@@ -1686,6 +1696,16 @@ export function Scoreboard() {
       delete next[playerId]
       return next
     })
+  }
+
+  function updatePlayerKiller(team: Team, playerId: string, killer: string) {
+    if (isViewer) return
+    const setTeam = team === "thomas" ? setThomas : setAda
+    setTeam((current) =>
+      current.map((player) =>
+        player.id === playerId ? { ...player, killer } : player,
+      ),
+    )
   }
 
   function updatePlayerName(team: Team, playerId: string, name: string) {
@@ -2025,9 +2045,14 @@ export function Scoreboard() {
             </div>
           </motion.div>
         ) : (
-          <div className="mt-1 grid grid-cols-1 gap-5 md:h-96 md:grid-cols-2 md:gap-8 lg:gap-12">
+          <div className="mt-1 grid grid-cols-1 gap-[2.8125rem] md:h-96 md:grid-cols-2 md:gap-[4.5rem] lg:gap-[6.75rem]">
             <div className="flex w-full max-w-[42rem] flex-col justify-self-end gap-2">
-              <div className="fearless-roster-controls fearless-roster-controls-thomas flex items-center gap-1 text-neutral-400">
+              <div
+                className={cn(
+                  "fearless-roster-controls fearless-roster-controls-thomas flex items-center gap-1 text-neutral-400",
+                  fearlessEnabled && "has-killer-slots",
+                )}
+              >
                 <ShuffleButton teamName={thomasName} onClick={() => shuffleTeam("thomas")} disabled={hasAnyScore || isViewer} />
                 <button
                   type="button"
@@ -2069,7 +2094,12 @@ export function Scoreboard() {
             </div>
 
             <div className="flex w-full max-w-[42rem] flex-col gap-2">
-              <div className="fearless-roster-controls fearless-roster-controls-ada flex items-center justify-end gap-1 text-neutral-400">
+              <div
+                className={cn(
+                  "fearless-roster-controls fearless-roster-controls-ada flex items-center justify-end gap-1 text-neutral-400",
+                  fearlessEnabled && "has-killer-slots",
+                )}
+              >
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setRemoveMode((current) => current === "ada" ? null : "ada") }}
@@ -2871,7 +2901,7 @@ export function Scoreboard() {
 
       {utilityUiHidden && <SyncStatusCompactLabel role={sync.role} />}
 
-      {activePickerContext && (
+      {activePickerContext && fearlessEnabled && (
         <KillerPicker
           open
           context={activePickerContext}

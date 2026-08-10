@@ -126,6 +126,7 @@ export function createDefaultScoreboardState(
     thomas: DEFAULT_FOUR_V_FOUR_PLAYERS("thomas"),
     ada: DEFAULT_FOUR_V_FOUR_PLAYERS("ada"),
     killerBans: [],
+    fearlessEnabled: false,
     thomasName: "",
     adaName: "",
     firstAttackerId: null,
@@ -152,6 +153,7 @@ export type FourVFourSyncState = {
   thomas: Player[]
   ada: Player[]
   killerBans: string[]
+  fearlessEnabled: boolean
   thomasName: string
   adaName: string
   firstAttackerId: string | null
@@ -443,6 +445,8 @@ function isFourVFourSyncState(
     state.killerBans.length <= KILLERS.length &&
     new Set(state.killerBans).size === state.killerBans.length &&
     state.killerBans.every(isKillerId) &&
+    (state.fearlessEnabled === undefined ||
+      typeof state.fearlessEnabled === "boolean") &&
     typeof state.thomasName === "string" &&
     state.thomasName.length <= 24 &&
     typeof state.adaName === "string" &&
@@ -539,6 +543,7 @@ export function normalizeFourVFourState(
     thomas: state.thomas.slice(0, 4).map(normalizeFourVFourPlayer),
     ada: state.ada.slice(0, 4).map(normalizeFourVFourPlayer),
     killerBans: normalizeKillerBans(state.killerBans),
+    fearlessEnabled: state.fearlessEnabled === true,
     thomasName: state.thomasName.slice(0, 24),
     adaName: state.adaName.slice(0, 24),
     firstAttackerId: state.firstAttackerId,
@@ -652,6 +657,7 @@ function toWireFourVFourState(state: FourVFourSyncState): FourVFourWireState {
 
   const killerBansWire = killerBansToWire(normalized.killerBans)
   if (killerBansWire) wire.killerBans = killerBansWire
+  if (normalized.fearlessEnabled) wire.fearlessEnabled = true
   if (normalized.firstAttackerId) {
     wire.firstAttackerId = normalized.firstAttackerId
   }
@@ -683,6 +689,7 @@ function fromWireFourVFourState(
     thomas: Array.isArray(wire.thomas) ? wire.thomas : [],
     ada: Array.isArray(wire.ada) ? wire.ada : [],
     killerBans: killerBansFromWire(wire.killerBans),
+    fearlessEnabled: wire.fearlessEnabled === true,
     thomasName: wire.thomasName ?? "",
     adaName: wire.adaName ?? "",
     firstAttackerId: wire.firstAttackerId ?? null,

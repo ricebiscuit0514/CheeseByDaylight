@@ -488,20 +488,6 @@ input[type="number"] {
   min-width: 0;
   flex: 1 1 auto;
 }
-.fearless-player-row .player-plate {
-  min-width: 0;
-  gap: clamp(.2rem, .55vw, .5rem);
-  padding-inline: clamp(.35rem, .8vw, .7rem);
-}
-.fearless-player-row .player-name-cell {
-  width: 5rem !important;
-  min-width: 5rem !important;
-  max-width: 5rem !important;
-  flex: 0 0 5rem !important;
-}
-.fearless-player-row .player-name-input {
-  font-size: .92rem;
-}
 .fearless-player-row-control {
   position: relative;
   z-index: 10;
@@ -510,20 +496,32 @@ input[type="number"] {
   flex: 0 0 auto;
   align-items: center;
 }
+.fearless-roster-controls {
+  --fearless-slot-size: clamp(2.33rem, 10.8vw, 3rem);
+  --fearless-slot-gap: 10px;
+  --fearless-slot-track: calc(var(--fearless-slot-size) * 4 + var(--fearless-slot-gap) * 3);
+  --fearless-roster-inset: calc(var(--fearless-slot-track) + clamp(.2rem, .7vw, .45rem));
+}
 .fearless-roster-controls-thomas {
-  padding-left: min(24vw, 9.75rem);
+  padding-left: 0;
 }
 .fearless-roster-controls-ada {
-  padding-right: min(24vw, 9.75rem);
+  padding-right: 0;
+}
+.fearless-roster-controls.has-killer-slots.fearless-roster-controls-thomas {
+  padding-left: var(--fearless-roster-inset);
+}
+.fearless-roster-controls.has-killer-slots.fearless-roster-controls-ada {
+  padding-right: var(--fearless-roster-inset);
 }
 
 .fearless-killer-slots {
   --fearless-team: var(--dbd-orange);
   --fearless-slot-size: clamp(2.33rem, 10.8vw, 3rem);
-  --fearless-slot-gap: clamp(.12rem, .55vw, .28rem);
+  --fearless-slot-gap: 10px;
   display: flex;
-  width: auto;
-  min-width: 0;
+  width: calc(var(--fearless-slot-size) * 4 + var(--fearless-slot-gap) * 3);
+  min-width: calc(var(--fearless-slot-size) * 4 + var(--fearless-slot-gap) * 3);
   flex: 0 0 auto;
   align-items: center;
   gap: var(--fearless-slot-gap);
@@ -551,17 +549,17 @@ input[type="number"] {
     0 2px 8px rgb(0 0 0 / 38%);
   cursor: pointer;
   transition:
-    transform .16s ease,
     border-color .16s ease,
     filter .16s ease,
+    background .16s ease,
     box-shadow .16s ease;
   -webkit-tap-highlight-color: transparent;
 }
 .fearless-killer-slot.is-empty {
-  clip-path: polygon(0 0, calc(100% - .32rem) 0, 100% .32rem, 100% 100%, .32rem 100%, 0 calc(100% - .32rem));
+  clip-path: none;
 }
 .fearless-killer-slots-ada .fearless-killer-slot.is-empty {
-  clip-path: polygon(.32rem 0, 100% 0, 100% calc(100% - .32rem), calc(100% - .32rem) 100%, 0 100%, 0 .32rem);
+  clip-path: none;
 }
 .fearless-killer-slot img {
   width: 100%;
@@ -573,23 +571,24 @@ input[type="number"] {
 .fearless-killer-slot:hover:not(:disabled),
 .fearless-killer-slot:focus-visible {
   z-index: 2;
-  border-color: var(--fearless-team);
-  filter: brightness(1.15);
-  transform: translateY(-2px) scale(1.055);
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 10%),
-    0 0 12px color-mix(in oklch, var(--fearless-team), transparent 53%);
 }
-.fearless-killer-slot:hover:not(:disabled) img,
-.fearless-killer-slot:focus-visible img {
-  filter: saturate(1) brightness(.92) contrast(1.05);
-  transform: scale(1.04);
+.fearless-killer-slot.is-empty:hover:not(:disabled),
+.fearless-killer-slot.is-empty:focus-visible {
+  border-color: rgb(210 210 210 / 72%);
+  background: rgb(0 0 0 / 58%);
+  filter: brightness(1.28);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%);
+}
+.fearless-killer-slot.is-empty:hover:not(:disabled) img,
+.fearless-killer-slot.is-empty:focus-visible img {
+  filter: saturate(.8) brightness(.72) contrast(1.1);
+  transform: none;
 }
 .fearless-killer-slot:active:not(:disabled) {
-  transform: translateY(0) scale(.96);
+  filter: brightness(.96);
 }
 .fearless-killer-slot:focus-visible {
-  outline: 2px solid color-mix(in oklch, var(--fearless-team), white 20%);
+  outline: 2px solid rgb(255 255 255 / 28%);
   outline-offset: 2px;
 }
 .fearless-killer-slot:disabled {
@@ -599,6 +598,10 @@ input[type="number"] {
 .fearless-killer-slot.is-empty {
   border-color: rgb(148 148 148 / 35%);
   background: rgb(0 0 0 / 48%);
+}
+.fearless-killer-slot.is-slot-hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 .fearless-killer-slot.is-filled {
   overflow: visible;
@@ -626,44 +629,37 @@ input[type="number"] {
 .fearless-killer-slot.is-filled:hover:not(:disabled),
 .fearless-killer-slot.is-filled:focus-visible {
   z-index: 2;
-  filter: none;
-  transform: translateY(-2px) scale(1.055);
+  filter: brightness(1.22);
+  background: color-mix(in oklch, #050505, var(--fearless-team) 10%);
 }
 .fearless-killer-slot.is-filled:hover:not(:disabled) .fearless-killer-slot-face img,
 .fearless-killer-slot.is-filled:focus-visible .fearless-killer-slot-face img {
   filter:
-    saturate(1) brightness(.92) contrast(1.05)
-    drop-shadow(0 0 0.65px color-mix(in oklch, var(--fearless-team), white 35%))
-    drop-shadow(0 0 0.65px color-mix(in oklch, var(--fearless-team), white 35%));
-  transform: scale(1.04);
+    saturate(.88) brightness(.82) contrast(1.08)
+    drop-shadow(0 0 0.65px rgb(255 255 255 / 72%))
+    drop-shadow(0 0 0.65px rgb(255 255 255 / 72%));
+  transform: none;
 }
 .fearless-empty-frame {
   position: absolute;
   inset: 18%;
-  border-block: 1px solid rgb(186 186 186 / 38%);
-}
-.fearless-empty-frame::before,
-.fearless-empty-frame::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
 }
 .fearless-empty-frame::before {
+  content: "";
+  position: absolute;
   inset: -.2rem;
+  pointer-events: none;
   background:
     linear-gradient(#929292, #929292) left top / 35% 1px no-repeat,
     linear-gradient(#929292, #929292) left top / 1px 35% no-repeat,
     linear-gradient(#929292, #929292) right bottom / 35% 1px no-repeat,
     linear-gradient(#929292, #929292) right bottom / 1px 35% no-repeat;
   opacity: .55;
+  transition: opacity .16s ease;
 }
-.fearless-empty-frame::after {
-  top: 50%;
-  left: 50%;
-  width: 130%;
-  height: 1px;
-  background: rgb(182 182 182 / 48%);
-  transform: translate(-50%, -50%) rotate(-45deg);
+.fearless-killer-slot.is-empty:hover:not(:disabled) .fearless-empty-frame::before,
+.fearless-killer-slot.is-empty:focus-visible .fearless-empty-frame::before {
+  opacity: .92;
 }
 .fearless-slot-index {
   position: absolute;
@@ -714,9 +710,7 @@ input[type="number"] {
     opacity .14s ease,
     transform .14s ease,
     visibility .14s ease;
-  box-shadow:
-    0 10px 28px rgb(0 0 0 / 58%),
-    0 0 18px color-mix(in oklch, var(--fearless-team), transparent 72%);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 58%);
 }
 .fearless-slot-tooltip::after {
   content: "";
@@ -798,6 +792,8 @@ input[type="number"] {
   font-weight: 400;
   letter-spacing: -.025em;
   line-height: 1.25;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .fearless-picker-title-name {
   color: var(--fearless-team);
@@ -828,6 +824,7 @@ input[type="number"] {
 .fearless-filter-tab:focus-visible,
 .fearless-picker-cell:focus-visible,
 .fearless-picker-action:focus-visible,
+.fearless-picker-zoom-btn:focus-visible,
 .fearless-picker-search:focus-within {
   outline: 2px solid color-mix(in oklch, var(--fearless-team), white 18%);
   outline-offset: 2px;
@@ -853,8 +850,8 @@ input[type="number"] {
   padding: .45rem .7rem;
   border-right: 1px solid rgb(255 255 255 / 9%);
   color: rgb(255 255 255 / 48%);
-  font-size: .76rem;
-  font-weight: 400;
+  font-size: .88rem;
+  font-weight: 700;
   transition: color .15s ease, background .15s ease;
 }
 .fearless-filter-tab:last-child { border-right: 0; }
@@ -871,8 +868,46 @@ input[type="number"] {
   justify-content: center;
   min-height: 2.75rem;
 }
-.fearless-picker-search {
+.fearless-picker-toolbar-end {
   justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+}
+.fearless-picker-zoom {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 13%);
+  background: rgb(0 0 0 / 52%);
+}
+.fearless-picker-zoom-btn {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 0;
+  border-right: 1px solid rgb(255 255 255 / 9%);
+  background: transparent;
+  color: rgb(255 255 255 / 62%);
+  transition: color .15s ease, background .15s ease;
+}
+.fearless-picker-zoom-btn:last-child {
+  border-right: 0;
+}
+.fearless-picker-zoom-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+.fearless-picker-zoom-btn:hover:not(:disabled),
+.fearless-picker-zoom-btn:focus-visible {
+  background: rgb(255 255 255 / 10%);
+  color: white;
+}
+.fearless-picker-zoom-btn:disabled {
+  cursor: not-allowed;
+  opacity: .35;
+}
+.fearless-picker-search {
   display: flex;
   width: min(18rem, 42vw);
   min-height: 2.75rem;
@@ -940,10 +975,10 @@ input[type="number"] {
   display: grid;
   flex: 1 1 auto;
   min-height: 0;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-rows: max-content;
   align-content: start;
-  gap: 1.1rem .65rem;
+  --picker-ui-scale: 1;
+  gap: .8rem .65rem;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -976,10 +1011,25 @@ input[type="number"] {
   position: absolute;
   inset: 0;
   overflow: visible;
-  transform: translateZ(0);
+  transform: translate3d(0, 0, 0);
+  transform-origin: center center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition:
+    transform .24s cubic-bezier(.25, .1, .25, 1),
+    filter .16s ease;
+}
+.fearless-picker-cell:hover .fearless-picker-cell-frame,
+.fearless-picker-cell:focus-visible .fearless-picker-cell-frame {
+  transform: translate3d(0, 0, 0) scale(1.04);
 }
 .fearless-picker-cell-frame-pop {
   animation: fearless-cell-pop .28s cubic-bezier(.34, 1.45, .64, 1);
+  transition: filter .16s ease;
+}
+.fearless-picker-cell:hover .fearless-picker-cell-frame-pop,
+.fearless-picker-cell:focus-visible .fearless-picker-cell-frame-pop {
+  animation: fearless-cell-pop-hover .28s cubic-bezier(.34, 1.45, .64, 1);
 }
 .fearless-picker-portrait {
   position: absolute;
@@ -988,6 +1038,12 @@ input[type="number"] {
   overflow: visible;
   background: transparent;
   pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  filter:
+    drop-shadow(0 0 0.85px rgb(255 255 255 / 56%))
+    drop-shadow(0 0 0.85px rgb(255 255 255 / 56%));
+  transition: filter .16s ease;
 }
 .fearless-picker-portrait::before {
   display: none;
@@ -1006,42 +1062,113 @@ input[type="number"] {
   height: 100%;
   object-fit: contain;
   object-position: center center;
-  filter:
-    saturate(.76) brightness(.72) contrast(1.08)
-    drop-shadow(0 0 0.55px rgb(255 255 255 / 78%))
-    drop-shadow(0 0 0.55px rgb(255 255 255 / 78%));
-  transform: translateZ(0);
+  filter: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  image-rendering: auto;
   transition: filter .16s ease;
 }
-.fearless-picker-cell:hover .fearless-picker-portrait img,
-.fearless-picker-cell:focus-visible .fearless-picker-portrait img {
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned) .fearless-picker-portrait {
   filter:
-    saturate(.95) brightness(.88) contrast(1.04)
-    drop-shadow(0 0 0.65px color-mix(in oklch, var(--fearless-team), white 35%))
-    drop-shadow(0 0 0.65px color-mix(in oklch, var(--fearless-team), white 35%));
+    drop-shadow(0 0 0.85px rgb(255 214 88 / 100%))
+    drop-shadow(0 0 0.85px rgb(255 214 88 / 100%));
 }
-.fearless-picker-cell.is-selected .fearless-picker-portrait img {
-  filter:
-    saturate(.98) brightness(.94) contrast(1.04)
-    drop-shadow(0 0 0.75px color-mix(in oklch, var(--fearless-team), white 42%))
-    drop-shadow(0 0 0.75px color-mix(in oklch, var(--fearless-team), white 42%));
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned) .fearless-picker-portrait img {
+  filter: saturate(.96) brightness(.9);
 }
-.fearless-picker-cell.is-picked .fearless-picker-portrait img {
+.fearless-picker-cell.is-selected.is-picked:not(.is-banned) .fearless-picker-portrait {
   filter:
-    grayscale(1) brightness(.39) contrast(1.18)
-    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%))
-    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%));
+    drop-shadow(0 0 0.7px rgb(178 178 178 / 52%))
+    drop-shadow(0 0 0.7px rgb(178 178 178 / 52%));
+}
+.fearless-picker-cell.is-selected.is-picked:not(.is-banned) .fearless-picker-portrait img {
+  filter: grayscale(1) brightness(.46);
+}
+.fearless-picker-cell.is-selected.is-picked:not(.is-banned):hover .fearless-picker-portrait,
+.fearless-picker-cell.is-selected.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait {
+  filter:
+    drop-shadow(0 0 0.75px rgb(192 192 192 / 62%))
+    drop-shadow(0 0 0.75px rgb(192 192 192 / 62%));
+}
+.fearless-picker-cell.is-selected.is-picked:not(.is-banned):hover .fearless-picker-portrait img,
+.fearless-picker-cell.is-selected.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait img {
+  filter: grayscale(1) brightness(.54);
+}
+.fearless-picker-cell.is-picked:not(.is-selected):not(.is-banned) .fearless-picker-portrait {
+  filter:
+    drop-shadow(0 0 0.65px rgb(150 150 150 / 30%))
+    drop-shadow(0 0 0.65px rgb(150 150 150 / 30%));
+}
+.fearless-picker-cell.is-picked:not(.is-selected):not(.is-banned) .fearless-picker-portrait img {
+  filter: grayscale(1) brightness(.42);
+}
+.fearless-picker-cell.is-picked:not(.is-banned):hover .fearless-picker-portrait,
+.fearless-picker-cell.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait {
+  filter:
+    drop-shadow(0 0 0.7px rgb(182 182 182 / 56%))
+    drop-shadow(0 0 0.7px rgb(182 182 182 / 56%));
+}
+.fearless-picker-cell.is-picked:not(.is-banned):hover .fearless-picker-portrait img,
+.fearless-picker-cell.is-picked:not(.is-banned):focus-visible .fearless-picker-portrait img {
+  filter: grayscale(1) brightness(.5);
+}
+.fearless-picker-cell:hover:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait,
+.fearless-picker-cell:focus-visible:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait {
+  filter:
+    drop-shadow(0 0 1px rgb(255 255 255 / 92%))
+    drop-shadow(0 0 1px rgb(255 255 255 / 92%));
+}
+.fearless-picker-cell:hover:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait img,
+.fearless-picker-cell:focus-visible:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait img {
+  filter: brightness(1.16) saturate(1.04);
+}
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):hover .fearless-picker-portrait,
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):focus-visible .fearless-picker-portrait {
+  filter:
+    drop-shadow(0 0 0.9px rgb(255 224 96 / 100%))
+    drop-shadow(0 0 0.9px rgb(255 224 96 / 100%));
+}
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):hover .fearless-picker-portrait img,
+.fearless-picker-cell.is-selected:not(.is-picked):not(.is-banned):focus-visible .fearless-picker-portrait img {
+  filter: saturate(.98) brightness(1.02);
+}
+.fearless-picker-cell.is-selected .fearless-picker-cell-frame {
+  filter: none;
+}
+.fearless-picker-cell.is-banned.is-selected .fearless-picker-cell-frame {
+  filter: none;
+}
+.fearless-picker-cell.is-selected.is-picked .fearless-picker-cell-frame {
+  filter: none;
+}
+.fearless-picker-cell.is-banned .fearless-picker-portrait {
+  filter:
+    drop-shadow(0 0 0.75px rgb(200 70 70 / 56%))
+    drop-shadow(0 0 0.75px rgb(200 70 70 / 56%));
 }
 .fearless-picker-cell.is-banned .fearless-picker-portrait img {
+  filter: sepia(.45) saturate(1.85) hue-rotate(330deg) brightness(.26);
+}
+.fearless-picker-cell.is-banned:hover .fearless-picker-portrait,
+.fearless-picker-cell.is-banned:focus-visible .fearless-picker-portrait {
   filter:
-    grayscale(.35) sepia(.45) saturate(2.1) hue-rotate(315deg) brightness(.58) contrast(1.22)
-    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%))
-    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%));
+    drop-shadow(0 0 0.85px rgb(220 85 85 / 64%))
+    drop-shadow(0 0 0.85px rgb(220 85 85 / 64%));
+}
+.fearless-picker-cell.is-banned:hover .fearless-picker-portrait img,
+.fearless-picker-cell.is-banned:focus-visible .fearless-picker-portrait img {
+  filter: sepia(.5) saturate(2) hue-rotate(330deg) brightness(.32);
+}
+.fearless-picker-cell.is-banned.is-selected .fearless-picker-portrait {
+  filter:
+    drop-shadow(0 0 0.9px rgb(255 120 120 / 96%))
+    drop-shadow(0 0 0.9px rgb(255 120 120 / 96%));
+}
+.fearless-picker-cell.is-banned.is-selected .fearless-picker-portrait img {
+  filter: sepia(.55) saturate(2.1) hue-rotate(330deg) brightness(.24);
 }
 .fearless-picker-cell.is-banned .fearless-picker-portrait::after {
-  opacity: .42;
-  background: linear-gradient(145deg, rgb(110 0 0 / 58%), rgb(20 0 0 / 24%));
-  mix-blend-mode: color;
+  opacity: 0;
 }
 .fearless-picker-cell-frame::after {
   content: "";
@@ -1060,23 +1187,51 @@ input[type="number"] {
   border-radius: 99px;
   background: color-mix(in oklch, var(--fearless-team), transparent 48%);
 }
-.fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait img {
+.fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait {
   filter:
-    grayscale(.62) sepia(.55) saturate(1.8) hue-rotate(315deg) brightness(.48) contrast(1.28)
-    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%))
-    drop-shadow(0 0 0.5px rgb(255 255 255 / 52%));
+    drop-shadow(0 0 0.75px rgb(185 70 70 / 52%))
+    drop-shadow(0 0 0.75px rgb(185 70 70 / 52%));
+}
+.fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait img {
+  filter: grayscale(.55) sepia(.55) saturate(1.9) hue-rotate(330deg) brightness(.22);
+}
+.fearless-picker-cell.is-banned.is-picked:hover .fearless-picker-portrait,
+.fearless-picker-cell.is-banned.is-picked:focus-visible .fearless-picker-portrait {
+  filter:
+    drop-shadow(0 0 0.85px rgb(205 80 80 / 62%))
+    drop-shadow(0 0 0.85px rgb(205 80 80 / 62%));
+}
+.fearless-picker-cell.is-banned.is-picked:hover .fearless-picker-portrait img,
+.fearless-picker-cell.is-banned.is-picked:focus-visible .fearless-picker-portrait img {
+  filter: grayscale(.45) sepia(.6) saturate(2) hue-rotate(330deg) brightness(.28);
+}
+.fearless-picker-cell.is-banned.is-picked.is-selected .fearless-picker-portrait {
+  filter:
+    drop-shadow(0 0 0.9px rgb(255 120 120 / 96%))
+    drop-shadow(0 0 0.9px rgb(255 120 120 / 96%));
+}
+.fearless-picker-cell.is-banned.is-picked.is-selected .fearless-picker-portrait img {
+  filter: grayscale(.45) sepia(.65) saturate(2.05) hue-rotate(330deg) brightness(.24);
+}
+.fearless-picker-label-block {
+  position: absolute;
+  right: calc(.35rem * var(--picker-ui-scale, 1));
+  bottom: calc(.3rem * var(--picker-ui-scale, 1));
+  left: calc(.35rem * var(--picker-ui-scale, 1));
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
+  gap: calc(.18rem * var(--picker-ui-scale, 1));
+  pointer-events: none;
 }
 .fearless-picker-label-row {
-  position: absolute;
-  right: .35rem;
-  bottom: .3rem;
-  left: .35rem;
-  z-index: 3;
+  position: static;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: .4rem;
-  pointer-events: none;
+  gap: calc(.4rem * var(--picker-ui-scale, 1));
 }
 .fearless-picker-killer-name {
   position: static;
@@ -1084,7 +1239,7 @@ input[type="number"] {
   flex: 1 1 auto;
   overflow: hidden;
   color: rgb(255 255 255 / 92%);
-  font-size: clamp(.74rem, 1.55vw, .96rem);
+  font-size: calc(clamp(.82rem, 1.7vw, 1.06rem) * var(--picker-ui-scale, 1));
   font-weight: 400;
   line-height: 1.2;
   text-align: left;
@@ -1115,9 +1270,9 @@ input[type="number"] {
   flex: 0 0 auto;
   border: 1px solid rgb(255 110 110 / 42%);
   background: rgb(65 0 0 / 52%);
-  padding: .14rem .48rem;
+  padding: calc(.14rem * var(--picker-ui-scale, 1)) calc(.48rem * var(--picker-ui-scale, 1));
   color: rgb(255 178 178 / 88%);
-  font-size: clamp(.58rem, 1.2vw, .72rem);
+  font-size: calc(clamp(.58rem, 1.2vw, .72rem) * var(--picker-ui-scale, 1));
   font-weight: 400;
   letter-spacing: .08em;
   line-height: 1;
@@ -1125,26 +1280,21 @@ input[type="number"] {
   box-shadow: 0 2px 10px rgb(0 0 0 / 34%);
 }
 .fearless-pick-stack {
-  position: absolute;
-  top: .28rem;
-  left: .28rem;
-  z-index: 3;
+  position: static;
   display: flex;
-  max-width: calc(100% - .56rem);
-  max-height: calc(100% - 2.2rem);
+  width: 100%;
   flex-direction: column;
   align-items: flex-start;
-  gap: .14rem;
+  gap: calc(.12rem * var(--picker-ui-scale, 1));
   overflow: hidden;
 }
 .fearless-pick-name {
   display: block;
   max-width: 100%;
   overflow: hidden;
-  border-left: 2px solid currentColor;
   background: rgb(0 0 0 / 78%);
-  padding: .16rem .36rem;
-  font-size: clamp(.62rem, 1.25vw, .78rem);
+  padding: calc(.16rem * var(--picker-ui-scale, 1)) calc(.36rem * var(--picker-ui-scale, 1));
+  font-size: calc(clamp(.7rem, 1.4vw, .86rem) * var(--picker-ui-scale, 1));
   font-weight: 400;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -1177,8 +1327,8 @@ input[type="number"] {
   background: rgb(255 255 255 / 5%);
   padding: .5rem .55rem;
   color: rgb(255 255 255 / 74%);
-  font-size: .72rem;
-  font-weight: 400;
+  font-size: .86rem;
+  font-weight: 700;
   line-height: 1.15;
   text-align: center;
   white-space: nowrap;
@@ -1205,9 +1355,14 @@ input[type="number"] {
 }
 
 @keyframes fearless-cell-pop {
-  0% { transform: scale(1); }
-  45% { transform: scale(1.07); }
-  100% { transform: scale(1); }
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  45% { transform: translate3d(0, 0, 0) scale(1.07); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes fearless-cell-pop-hover {
+  0% { transform: translate3d(0, 0, 0) scale(1.04); }
+  45% { transform: translate3d(0, 0, 0) scale(1.07); }
+  100% { transform: translate3d(0, 0, 0) scale(1.04); }
 }
 @keyframes fearless-backdrop-in {
   from { opacity: 0; }
@@ -1216,34 +1371,19 @@ input[type="number"] {
   from { opacity: 0; transform: translateY(.7rem) scale(.985); }
 }
 
-@media (min-width: 480px) {
-  .fearless-picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (min-width: 640px) {
-  .fearless-picker-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
 @media (min-width: 768px) {
-  .fearless-roster-controls-thomas {
-    padding-left: clamp(7rem, 12vw, 9.75rem);
-  }
-  .fearless-roster-controls-ada {
-    padding-right: clamp(7rem, 12vw, 9.75rem);
+  .fearless-roster-controls {
+    --fearless-slot-size: clamp(2.625rem, 4.5vw, 3.375rem);
   }
   .fearless-killer-slots {
     --fearless-slot-size: clamp(2.625rem, 4.5vw, 3.375rem);
   }
-  .fearless-player-row .skull-slot { width: 2rem; height: 2.2rem; }
-  .fearless-player-row .no-kill-button { width: 1.75rem; height: 1.75rem; }
-}
-@media (min-width: 900px) {
-  .fearless-picker-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-}
-@media (min-width: 1024px) {
-  .fearless-picker-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 @media (min-width: 1200px) {
+  .fearless-roster-controls {
+    --fearless-slot-size: 3.375rem;
+  }
   .fearless-killer-slots { --fearless-slot-size: 3.375rem; }
-  .fearless-player-row .skull-slot { width: 2.2rem; height: 2.4rem; }
 }
 @media (max-width: 639px) {
   .fearless-player-row {
@@ -1270,10 +1410,12 @@ input[type="number"] {
   .fearless-killer-slots {
     --fearless-slot-size: 4.125rem;
   }
-  .fearless-roster-controls-thomas {
-    padding-left: 0;
+  .fearless-roster-controls {
+    --fearless-slot-size: 4.125rem;
   }
-  .fearless-roster-controls-ada {
+  .fearless-roster-controls.has-killer-slots.fearless-roster-controls-thomas,
+  .fearless-roster-controls.has-killer-slots.fearless-roster-controls-ada {
+    padding-left: 0;
     padding-right: 0;
   }
   .fearless-picker-backdrop { align-items: flex-end; padding: 0; }
@@ -1292,9 +1434,14 @@ input[type="number"] {
     padding: .55rem .75rem .7rem;
   }
   .fearless-filter-tabs,
-  .fearless-picker-search { width: 100%; }
+  .fearless-picker-toolbar-end { width: 100%; }
   .fearless-filter-tabs { justify-self: stretch; }
-  .fearless-picker-search { justify-self: stretch; }
+  .fearless-picker-toolbar-end {
+    justify-self: stretch;
+    flex-direction: row;
+    justify-content: stretch;
+  }
+  .fearless-picker-search { flex: 1 1 auto; width: auto; }
   .fearless-picker-toolbar-actions {
     width: 100%;
     min-height: 0;
@@ -1303,7 +1450,7 @@ input[type="number"] {
     min-height: 2.75rem;
   }
   .fearless-filter-tab { min-width: 0; }
-  .fearless-picker-grid { gap: 1.1rem .65rem; padding-inline: 1.1rem; }
+  .fearless-picker-grid { gap: .8rem .65rem; padding-inline: 1.1rem; }
   .fearless-picker-actions {
     display: inline-flex;
     justify-content: center;
@@ -1312,16 +1459,6 @@ input[type="number"] {
   }
 }
 @media (max-width: 420px) {
-  .fearless-player-row .player-plate { gap: .14rem; padding-inline: .22rem; }
-  .fearless-player-row .player-name-cell {
-    width: 5rem !important;
-    min-width: 5rem !important;
-    max-width: 5rem !important;
-    flex-basis: 5rem !important;
-  }
-  .fearless-player-row .skull-group { gap: .03rem; }
-  .fearless-player-row .skull-slot { width: 1.25rem; height: 1.48rem; }
-  .fearless-player-row .no-kill-button { width: 1.2rem; height: 1.2rem; }
   .fearless-picker-grid { gap: .35rem; }
 }
 

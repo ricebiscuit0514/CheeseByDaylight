@@ -5,17 +5,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { motion, AnimatePresence } from "motion/react"
 import { AppVersion } from "@/components/app-version"
-
-interface CheeseParticle {
-  id: number
-  x: number
-  y: number
-  targetX: number
-  targetY: number
-  rotation: number
-  size: number
-  duration: number
-}
+import { createCheeseBurst, type CheeseParticle } from "@/components/cheese-burst"
 
 export default function LandingPage() {
   const router = useRouter()
@@ -65,26 +55,10 @@ export default function LandingPage() {
 
   // 이스터에그: 로고 클릭 시 마우스 커서 위치에서 치즈 이모지 팝! 💥🧀
   const handleLogoClick = (e: React.MouseEvent<HTMLImageElement>) => {
-    const clickX = e.clientX
-    const clickY = e.clientY
-
-    const count = 14 + Math.floor(Math.random() * 6)
-    const newParticles: CheeseParticle[] = Array.from({ length: count }).map((_, i) => {
-      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6
-      const distance = 60 + Math.random() * 140
-      return {
-        id: Date.now() + i + Math.random(),
-        x: clickX,
-        y: clickY,
-        targetX: Math.cos(angle) * distance,
-        targetY: Math.sin(angle) * distance - (20 + Math.random() * 60), // 위쪽으로 톡 튀어오르는 부력
-        rotation: (Math.random() - 0.5) * 720,
-        size: 0.55 + Math.random() * 0.65, // 기존 대비 70% 축소된 아담한 크기
-        duration: 0.7 + Math.random() * 0.6, // seconds
-      }
-    })
-
-    setCheeses((prev) => [...prev.slice(-30), ...newParticles])
+    setCheeses((prev) => [
+      ...prev.slice(-30),
+      ...createCheeseBurst(e.clientX, e.clientY),
+    ])
   }
 
   // 리다이렉트 여부 검사 중 깜빡임 방지

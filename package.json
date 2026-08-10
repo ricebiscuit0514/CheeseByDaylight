@@ -11,7 +11,7 @@
     "generate:killers": "node scripts/generate-killer-catalog.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run tests/fearless.test.ts tests/scoreboard-room.test.ts",
+    "test": "vitest run tests/fearless.test.ts tests/picker-zoom.test.ts tests/scoreboard-room.test.ts",
     "test:rules": "firebase emulators:exec --only database \"vitest run tests/database.rules.test.ts\"",
     "firebase:deploy:rules": "firebase deploy --only database"
   },

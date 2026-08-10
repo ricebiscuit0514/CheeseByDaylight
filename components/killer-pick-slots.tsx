@@ -49,8 +49,13 @@ export function KillerPickSlots({
             <button
               key={`slot-empty-${slot.slotIndex}`}
               type="button"
-              className="fearless-killer-slot is-empty"
-              disabled={disabled}
+              className={cn(
+                "fearless-killer-slot is-empty",
+                !slot.visible && "is-slot-hidden",
+              )}
+              disabled={disabled || !slot.actionable}
+              aria-hidden={!slot.visible}
+              tabIndex={slot.visible ? 0 : -1}
               aria-label={label}
               onClick={() => onOpen(slot.slotIndex)}
             >

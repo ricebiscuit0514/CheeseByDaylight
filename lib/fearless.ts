@@ -64,6 +64,8 @@ export type FearlessEmptyRowSlot = {
   killerId: null
   /** True for the next open pick slot; false for reserved placeholders. */
   actionable: boolean
+  /** Shown once previous slots are filled. */
+  visible: boolean
 }
 
 export type FearlessRowSlot = FearlessFilledRowSlot | FearlessEmptyRowSlot
@@ -412,7 +414,8 @@ function isPickArray(
 }
 
 /**
- * Returns filled slots plus one trailing empty slot until the four-pick maximum.
+ * Returns four row slots. Filled slots are always visible; empty slots stay hidden
+ * until the previous slot is filled, then the next empty slot is revealed.
  */
 export function getFearlessRowSlots(
   playerOrPicks: FearlessPlayer | readonly string[],
@@ -421,23 +424,22 @@ export function getFearlessRowSlots(
     ? playerOrPicks
     : (playerOrPicks.killerPicks ?? [])
 
-  const filledSlots: FearlessFilledRowSlot[] = picks
-    .slice(0, MAX_FEARLESS_PICKS)
-    .map((killerId, slotIndex) => ({
-      kind: "filled",
+  return Array.from({ length: MAX_FEARLESS_PICKS }, (_, slotIndex) => {
+    const killerId = picks[slotIndex]
+    if (killerId) {
+      return {
+        kind: "filled" as const,
+        slotIndex,
+        killerId,
+      }
+    }
+
+    return {
+      kind: "empty" as const,
       slotIndex,
-      killerId,
-    }))
-
-  if (filledSlots.length >= MAX_FEARLESS_PICKS) return filledSlots
-
-  return [
-    ...filledSlots,
-    {
-      kind: "empty",
-      slotIndex: filledSlots.length,
       killerId: null,
-      actionable: true,
-    },
-  ]
+      actionable: slotIndex === picks.length,
+      visible: slotIndex <= picks.length,
+    }
+  })
 }

@@ -236,11 +236,26 @@ describe("fearless killer search", () => {
 })
 
 describe("fearless row slots and identity", () => {
-  it("adds one trailing empty slot below max and only four filled at max", () => {
+  it("reveals the next empty slot after each pick and keeps four slots total", () => {
+    expect(getFearlessRowSlots([])).toEqual([
+      { kind: "empty", slotIndex: 0, killerId: null, actionable: true, visible: true },
+      { kind: "empty", slotIndex: 1, killerId: null, actionable: false, visible: false },
+      { kind: "empty", slotIndex: 2, killerId: null, actionable: false, visible: false },
+      { kind: "empty", slotIndex: 3, killerId: null, actionable: false, visible: false },
+    ])
+
+    expect(getFearlessRowSlots(["nurse"])).toEqual([
+      { kind: "filled", slotIndex: 0, killerId: "nurse" },
+      { kind: "empty", slotIndex: 1, killerId: null, actionable: true, visible: true },
+      { kind: "empty", slotIndex: 2, killerId: null, actionable: false, visible: false },
+      { kind: "empty", slotIndex: 3, killerId: null, actionable: false, visible: false },
+    ])
+
     expect(getFearlessRowSlots(["nurse", "artist"])).toEqual([
       { kind: "filled", slotIndex: 0, killerId: "nurse" },
       { kind: "filled", slotIndex: 1, killerId: "artist" },
-      { kind: "empty", slotIndex: 2, killerId: null, actionable: true },
+      { kind: "empty", slotIndex: 2, killerId: null, actionable: true, visible: true },
+      { kind: "empty", slotIndex: 3, killerId: null, actionable: false, visible: false },
     ])
 
     const full = getFearlessRowSlots([

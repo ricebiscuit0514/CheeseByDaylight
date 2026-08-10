@@ -1,6 +1,7 @@
 "use client"
 
-import { memo, useCallback, useState } from "react"
+import { memo, useCallback, useRef } from "react"
+import { useCheeseBurst } from "@/components/cheese-burst"
 import type { PickEntry } from "@/lib/fearless"
 import type { KillerDefinition } from "@/lib/killer-catalog"
 import { cn } from "@/lib/utils"
@@ -26,14 +27,38 @@ function KillerPickerCellComponent({
   onSelect,
 }: KillerPickerCellProps) {
   const isPicked = visiblePicks.length > 0
-  const [popTick, setPopTick] = useState(0)
+  const frameRef = useRef<HTMLSpanElement>(null)
+  const { burst: burstCheese, layer: cheeseBurstLayer } = useCheeseBurst()
   const killerName =
     killer.koreanName || killer.englishName || killer.id
 
-  const handleClick = useCallback(() => {
-    onSelect(killer.id)
-    setPopTick((tick) => tick + 1)
-  }, [killer.id, onSelect])
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (killer.id === "skull-merchant") {
+        burstCheese(event.clientX, event.clientY)
+      }
+
+      const willDeselect = isSelected
+      onSelect(killer.id)
+      if (willDeselect) return
+
+      const frame = frameRef.current
+      if (!frame) return
+      frame.classList.remove("fearless-picker-cell-frame-pop")
+      void frame.offsetWidth
+      frame.classList.add("fearless-picker-cell-frame-pop")
+    },
+    [burstCheese, isSelected, killer.id, onSelect],
+  )
+
+  const handlePopEnd = useCallback((event: React.AnimationEvent<HTMLSpanElement>) => {
+    if (
+      event.animationName === "fearless-cell-pop" ||
+      event.animationName === "fearless-cell-pop-hover"
+    ) {
+      event.currentTarget.classList.remove("fearless-picker-cell-frame-pop")
+    }
+  }, [])
 
   return (
     <button
@@ -48,10 +73,12 @@ function KillerPickerCellComponent({
       aria-label={killerName}
       onClick={handleClick}
     >
+      {cheeseBurstLayer}
       <span className="fearless-picker-cell-sizer">
         <span
-          key={popTick}
-          className="fearless-picker-cell-frame fearless-picker-cell-frame-pop"
+          ref={frameRef}
+          className="fearless-picker-cell-frame"
+          onAnimationEnd={handlePopEnd}
         >
           <span className="fearless-picker-portrait">
             <img
@@ -62,35 +89,30 @@ function KillerPickerCellComponent({
               decoding="async"
             />
           </span>
-          <span className="fearless-picker-label-row">
-            <span className="fearless-picker-killer-name">{killerName}</span>
-            {(isPicked || isBanned) && (
-              <span className="fearless-picker-status-marks">
-                {isPicked && (
-                  <span className="fearless-pick-mark" aria-hidden="true">
-                    PICK
+          <span className="fearless-picker-label-block">
+            {isPicked && (
+              <span className="fearless-pick-stack" aria-hidden="true">
+                {visiblePicks.map((pick, index) => (
+                  <span
+                    key={`${pick.playerId}-${pick.slotIndex}-${index}`}
+                    className={`fearless-pick-name fearless-pick-name-${pick.team}`}
+                  >
+                    {safeName(pick.playerName)}
                   </span>
-                )}
-                {isBanned && (
+                ))}
+              </span>
+            )}
+            <span className="fearless-picker-label-row">
+              <span className="fearless-picker-killer-name">{killerName}</span>
+              {isBanned && (
+                <span className="fearless-picker-status-marks">
                   <span className="fearless-ban-mark" aria-hidden="true">
                     BAN
                   </span>
-                )}
-              </span>
-            )}
-          </span>
-          {isPicked && (
-            <span className="fearless-pick-stack" aria-hidden="true">
-              {visiblePicks.map((pick, index) => (
-                <span
-                  key={`${pick.playerId}-${pick.slotIndex}-${index}`}
-                  className={`fearless-pick-name fearless-pick-name-${pick.team}`}
-                >
-                  {safeName(pick.playerName)}
                 </span>
-              ))}
+              )}
             </span>
-          )}
+          </span>
         </span>
       </span>
     </button>

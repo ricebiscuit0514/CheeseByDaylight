@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
-import { Search, X } from "lucide-react"
+import { Search, Minus, Plus, X } from "lucide-react"
 import { KillerPickerCell } from "@/components/killer-picker-cell"
 import {
   filterVisiblePicks,
@@ -14,6 +14,18 @@ import {
   type PickEntry,
   type Team,
 } from "@/lib/fearless"
+import {
+  clampPickerZoomLevel,
+  getMaxPickerZoomLevel,
+  getPickerBaseColumns,
+  getPickerColumnCount,
+  getPickerGridGap,
+  getPickerMinColumns,
+  getPickerUiScale,
+  getPickerZoomAudience,
+  readStoredPickerZoomLevel,
+  writeStoredPickerZoomLevel,
+} from "@/lib/picker-zoom"
 import { cn } from "@/lib/utils"
 
 export type KillerPickerContext = {
@@ -75,8 +87,45 @@ export function KillerPicker({
   const [selectedKillerId, setSelectedKillerId] = useState<string | null>(
     context.currentKillerId ?? null,
   )
+  const [viewportWidth, setViewportWidth] = useState(1024)
+  const [zoomLevel, setZoomLevel] = useState(0)
+  const zoomAudience = getPickerZoomAudience(readOnly)
 
   useEffect(() => setMounted(true), [])
+
+  useEffect(() => {
+    setViewportWidth(window.innerWidth)
+    setZoomLevel(readStoredPickerZoomLevel(zoomAudience))
+    const handleResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [zoomAudience])
+
+  const baseColumns = getPickerBaseColumns(viewportWidth)
+  const minColumns = getPickerMinColumns(viewportWidth)
+  const maxZoomLevel = getMaxPickerZoomLevel(baseColumns, minColumns)
+  const clampedZoomLevel = clampPickerZoomLevel(zoomLevel, maxZoomLevel)
+  const columnCount = getPickerColumnCount(viewportWidth, clampedZoomLevel)
+  const gridGap = getPickerGridGap(clampedZoomLevel, maxZoomLevel)
+  const pickerUiScale = getPickerUiScale(clampedZoomLevel, maxZoomLevel)
+
+  useEffect(() => {
+    if (zoomLevel !== clampedZoomLevel) {
+      setZoomLevel(clampedZoomLevel)
+    }
+  }, [clampedZoomLevel, zoomLevel])
+
+  useEffect(() => {
+    writeStoredPickerZoomLevel(zoomAudience, clampedZoomLevel)
+  }, [clampedZoomLevel, zoomAudience])
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel((level) => Math.max(0, level - 1))
+  }, [])
+
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel((level) => Math.min(maxZoomLevel, level + 1))
+  }, [maxZoomLevel])
 
   useEffect(() => {
     if (!open) return
@@ -175,7 +224,9 @@ export function KillerPicker({
     return states
   }, [filteredKillers, visiblePicks, killerBans])
   const handleSelectKiller = useCallback((killerId: string) => {
-    setSelectedKillerId(killerId)
+    setSelectedKillerId((current) =>
+      current === killerId ? null : killerId,
+    )
   }, [])
   const displayPlayerName = safeName(context.playerName)
   const isCurrentSelection =
@@ -296,7 +347,37 @@ export function KillerPicker({
             </div>
           )}
 
-          <label className="fearless-picker-search">
+          <div className="fearless-picker-toolbar-end">
+            {maxZoomLevel > 0 && (
+              <div
+                className="fearless-picker-zoom"
+                role="group"
+                aria-label="목록 크기"
+              >
+                <button
+                  type="button"
+                  className="fearless-picker-zoom-btn"
+                  aria-label="목록 축소"
+                  title="목록 축소"
+                  disabled={clampedZoomLevel <= 0}
+                  onClick={handleZoomOut}
+                >
+                  <Minus aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="fearless-picker-zoom-btn"
+                  aria-label="목록 확대"
+                  title="목록 확대"
+                  disabled={clampedZoomLevel >= maxZoomLevel}
+                  onClick={handleZoomIn}
+                >
+                  <Plus aria-hidden="true" />
+                </button>
+              </div>
+            )}
+
+            <label className="fearless-picker-search">
             <Search aria-hidden="true" />
             <span className="sr-only">살인마 검색</span>
             <input
@@ -321,10 +402,18 @@ export function KillerPicker({
               </button>
             )}
           </label>
+          </div>
         </div>
 
         <div className="fearless-picker-grid-wrap">
-          <div className="fearless-picker-grid">
+          <div
+            className="fearless-picker-grid"
+            style={{
+              gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+              gap: `${gridGap.rowGap} ${gridGap.columnGap}`,
+              ["--picker-ui-scale" as string]: pickerUiScale,
+            }}
+          >
             {filteredKillers.map((killer) => {
               const cellState = pickerCellStates.get(killer.id)
               return (

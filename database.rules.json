@@ -50,6 +50,9 @@
               ".validate": "$killerId.matches(/^[a-z0-9]+(-[a-z0-9]+)*$/) && $killerId.matches(/^.{1,30}$/) && newData.val() === true"
             }
           },
+          "fearlessEnabled": {
+            ".validate": "newData.parent().child('mode').val() === '4v4' && newData.val() === true"
+          },
           "thomasName": {
             ".validate": "newData.isString() && newData.val().length <= 24"
           },
