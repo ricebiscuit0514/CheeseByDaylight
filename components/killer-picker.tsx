@@ -388,6 +388,7 @@ export function KillerPicker({
           isCatalog || monochrome
             ? "fearless-picker-panel-catalog"
             : `fearless-picker-panel-${context.team}`,
+          !isCatalog && "fearless-picker-panel-pick",
         )}
         role="dialog"
         aria-modal="true"
@@ -486,78 +487,11 @@ export function KillerPicker({
               )}
             </h2>
           </div>
-          <div className="fearless-picker-header-actions">
-            <div
-              className="fearless-picker-hide-filters"
-              role="group"
-              aria-label="목록 숨김"
-            >
-              <label className="fearless-picker-hide-filter">
-                <input
-                  type="checkbox"
-                  checked={hidePicked}
-                  onChange={(event) => setHidePicked(event.target.checked)}
-                />
-                <span>픽 숨기기</span>
-              </label>
-              <label className="fearless-picker-hide-filter">
-                <input
-                  type="checkbox"
-                  checked={hideBanned}
-                  onChange={(event) => setHideBanned(event.target.checked)}
-                />
-                <span>밴 숨기기</span>
-              </label>
-            </div>
-            <button
-              type="button"
-              className="fearless-picker-close"
-              onClick={onClose}
-              aria-label="살인마 선택 창 닫기"
-              title="닫기"
-            >
-              <X aria-hidden="true" />
-            </button>
-          </div>
-        </header>
-
-        <div
-          className={cn(
-            "fearless-picker-toolbar",
-            isCatalog && "fearless-picker-toolbar-catalog",
-          )}
-        >
-          {!isCatalog && (
-            <div
-              className={cn(
-                "fearless-filter-tabs",
-                monochrome && "fearless-filter-tabs-solo",
-              )}
-              role="group"
-              aria-label="피어리스 필터"
-            >
-              {filterOptions.map((option) => (
-                <button
-                  key={option.mode}
-                  type="button"
-                  className={cn(
-                    "fearless-filter-tab",
-                    filterMode === option.mode && "is-active",
-                  )}
-                  aria-pressed={filterMode === option.mode}
-                  title={option.title}
-                  onClick={() => setFilterMode(option.mode)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
 
           {!readOnly && (
             <div
               className={cn(
-                "fearless-picker-toolbar-actions",
+                "fearless-picker-header-pick-actions",
                 isCatalog && "is-ban-only",
               )}
             >
@@ -595,7 +529,30 @@ export function KillerPicker({
             </div>
           )}
 
-          <div className="fearless-picker-toolbar-end">
+          <div className="fearless-picker-header-end">
+            <div
+              className="fearless-picker-hide-filters"
+              role="group"
+              aria-label="목록 숨김"
+            >
+              <label className="fearless-picker-hide-filter">
+                <input
+                  type="checkbox"
+                  checked={hidePicked}
+                  onChange={(event) => setHidePicked(event.target.checked)}
+                />
+                <span>픽 숨기기</span>
+              </label>
+              <label className="fearless-picker-hide-filter">
+                <input
+                  type="checkbox"
+                  checked={hideBanned}
+                  onChange={(event) => setHideBanned(event.target.checked)}
+                />
+                <span>밴 숨기기</span>
+              </label>
+            </div>
+
             {maxZoomLevel > 0 && (
               <div
                 className="fearless-picker-zoom"
@@ -626,32 +583,61 @@ export function KillerPicker({
             )}
 
             <label className="fearless-picker-search">
-            <Search aria-hidden="true" />
-            <span className="sr-only">살인마 검색</span>
-            <input
-              ref={searchRef}
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="살인마 검색"
-              autoComplete="off"
-            />
-            {query.length > 0 && (
-              <button
-                type="button"
-                className="fearless-picker-search-clear"
-                aria-label="검색어 지우기"
-                onClick={() => {
-                  setQuery("")
-                  searchRef.current?.focus()
-                }}
-              >
-                <X aria-hidden="true" />
-              </button>
-            )}
-          </label>
+              <Search aria-hidden="true" />
+              <span className="sr-only">살인마 검색</span>
+              <input
+                ref={searchRef}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="살인마 검색"
+                autoComplete="off"
+              />
+              {query.length > 0 && (
+                <button
+                  type="button"
+                  className="fearless-picker-search-clear"
+                  aria-label="검색어 지우기"
+                  onClick={() => {
+                    setQuery("")
+                    searchRef.current?.focus()
+                  }}
+                >
+                  <X aria-hidden="true" />
+                </button>
+              )}
+            </label>
           </div>
-        </div>
+        </header>
+
+        {!isCatalog && (
+          <div className="fearless-picker-filter-row">
+            <div
+              className={cn(
+                "fearless-filter-tabs",
+                monochrome && "fearless-filter-tabs-solo",
+              )}
+              role="group"
+              aria-label="피어리스 필터"
+            >
+              {filterOptions.map((option) => (
+                <button
+                  key={option.mode}
+                  type="button"
+                  className={cn(
+                    "fearless-filter-tab",
+                    filterMode === option.mode && "is-active",
+                  )}
+                  aria-pressed={filterMode === option.mode}
+                  title={option.title}
+                  onClick={() => setFilterMode(option.mode)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div
           className="fearless-picker-grid-wrap"

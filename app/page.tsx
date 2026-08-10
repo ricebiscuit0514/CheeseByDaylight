@@ -111,6 +111,21 @@ export default function LandingPage() {
       <div className="arena-fog opacity-35 pointer-events-none" aria-hidden="true" />
       <div className="arena-scratches opacity-25 pointer-events-none" aria-hidden="true" />
 
+      {/* Landing feature art */}
+      <div
+        className="pointer-events-none absolute inset-y-0 right-0 z-[5] flex items-center justify-end pe-16 sm:pe-24 md:pe-32 -translate-y-6 sm:-translate-y-8 md:-translate-y-10"
+        aria-hidden="true"
+      >
+        <Image
+          src="/images/Fearlesslandingart.webp"
+          alt=""
+          width={720}
+          height={900}
+          className="pointer-events-auto h-[min(66vh,615px)] w-auto max-w-[min(43.5vw,570px)] object-contain object-right transition-transform duration-300 hover:scale-105"
+          priority
+        />
+      </div>
+
       {/* Main Center Content Box */}
       <div className="relative z-10 flex flex-col items-center justify-center space-y-6 md:space-y-8 max-w-2xl w-full">
         
@@ -129,33 +144,14 @@ export default function LandingPage() {
 
         {/* Mode Selection Buttons */}
         <div className="flex flex-col items-center space-y-4 w-full">
-          {/* 4 vs 4 Mode Button Row */}
-          <div className="relative flex flex-col sm:flex-row items-center justify-center w-full">
-            <button
-              type="button"
-              onClick={() => handleSelectMode("4v4")}
-              className="w-56 sm:w-64 md:w-72 py-3 px-6 bg-black/60 hover:bg-black/85 border border-white/40 hover:border-white text-white rounded-none font-bold text-base sm:text-lg tracking-wider shadow-2xl backdrop-blur-md transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center"
-              style={{ fontFamily: "var(--font-godo)" }}
-            >
-              4 vs 4 모드
-            </button>
-
-            {/* Update announcements beside 4v4 button */}
-            <div className="mt-2 sm:mt-0 sm:absolute sm:left-[calc(50%+156px)] md:left-[calc(50%+184px)] text-xs sm:text-sm drop-shadow-md">
-              <p className="whitespace-nowrap text-sm font-bold text-dbd-yellow sm:text-base md:text-lg" style={{ fontFamily: "var(--font-godo)" }}>
-                에이스 결정전 모드가 추가되었습니다
-              </p>
-              <p className="mt-0.5 whitespace-nowrap text-neutral-400" style={{ fontFamily: "var(--font-godo)" }}>
-                점수를 무승부로 입력하면 결정전 모드를 시작할 수 있습니다!
-              </p>
-              <p className="mt-4 whitespace-nowrap text-sm font-bold text-emerald-300 sm:text-base md:text-lg" style={{ fontFamily: "var(--font-godo)" }}>
-                점수판 연동 모드가 추가되었습니다
-              </p>
-              <p className="mt-0.5 whitespace-nowrap text-neutral-400" style={{ fontFamily: "var(--font-godo)" }}>
-                진행자의 점수판과 연동하여 같은 화면을 보며 플레이하세요!
-              </p>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => handleSelectMode("4v4")}
+            className="w-56 sm:w-64 md:w-72 py-3 px-6 bg-black/60 hover:bg-black/85 border border-white/40 hover:border-white text-white rounded-none font-bold text-base sm:text-lg tracking-wider shadow-2xl backdrop-blur-md transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center"
+            style={{ fontFamily: "var(--font-godo)" }}
+          >
+            4 vs 4 모드
+          </button>
 
           {/* 5-Player Mode Button */}
           <button
@@ -172,16 +168,23 @@ export default function LandingPage() {
 
       {/* Bottom Center Semi-Transparent Unofficial Disclaimer Notice */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 pointer-events-none text-center hidden sm:block">
-        <p className="text-[11px] sm:text-[12px] text-neutral-500/60 font-medium tracking-wide whitespace-nowrap" style={{ fontFamily: "var(--font-godo)" }}>
-          본 사이트는 치지직 및 데드 바이 데이라이트와 관련이 없는 비공식 프로그램입니다.
+        <p
+          className="text-[11px] sm:text-[12px] text-neutral-500/60 tracking-wide whitespace-nowrap"
+          style={{ fontFamily: "var(--font-s-core)", fontWeight: 300 }}
+        >
+          치지직 및 데드 바이 데이라이트와 관련이 없는 비공식 프로그램입니다
         </p>
       </div>
 
       {/* Bottom Right Footer Info Section */}
       <footer className="absolute bottom-5 right-6 md:bottom-7 md:right-8 z-20 flex flex-col items-end text-right space-y-2 pointer-events-auto select-none">
         {/* Program Description */}
-        <p className="text-[11px] sm:text-[12px] text-neutral-300/90 leading-tight font-normal max-w-xs sm:max-w-none" style={{ fontFamily: "var(--font-godo)" }}>
-          <span className="text-[#fcbf30] font-bold text-[13px] sm:text-[15px] inline-block mr-1">치즈 바이 데이라이트 | 치바데</span>는 데드 바이 데이라이트 커스텀 게임 진행 보조 프로그램입니다
+        <p
+          className="text-[11px] sm:text-[12px] text-neutral-300/90 leading-tight max-w-xs sm:max-w-none"
+          style={{ fontFamily: "var(--font-s-core)", fontWeight: 300 }}
+        >
+          <span className="text-[#fcbf30] text-[13px] sm:text-[15px] inline-block mr-1">치즈 바이 데이라이트 | 치바데</span>
+          는 데드 바이 데이라이트 커스텀 게임 진행 보조 프로그램입니다
         </p>
 
         {/* GitHub Logo & Link */}

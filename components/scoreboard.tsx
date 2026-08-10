@@ -85,6 +85,7 @@ const SCORE_BEAT_MS = 355
 const SCORE_BEAT_DOWN_MS = 40  // 점수 감소 시 빠르게 주르륵
 const MAX_PLAYERS_PER_TEAM = 4
 const LS_KEY = "dbd-scoreboard-v1"
+const GUIDE_SEEN_4V4_KEY = "dbd-fearless-guide-seen-4v4"
 const EXPIRATION_TIME_MS = 60 * 60 * 1000 // 마지막 조작 기준 1시간 만료
 
 const teamScore = (players: Player[]) => players.reduce((s, p) => s + p.kills, 0)
@@ -562,7 +563,7 @@ export function Scoreboard() {
   const [auctionWinnerTeam, setAuctionWinnerTeam] = useState<Team | null>(null)
   // 설명서 메뉴
   const [showGuideMenu, setShowGuideMenu] = useState(false)
-  const [activeGuide, setActiveGuide] = useState<"basic" | "fearless" | null>(
+  const [showGuide, setShowGuide] = useState<"basic" | "fearless" | null>(
     null,
   )
   // 우승 결과 오버레이 닫힘 여부
@@ -805,44 +806,45 @@ export function Scoreboard() {
 
   useEffect(() => {
     try {
-      const seen = localStorage.getItem("dbd-guide-seen-4v4")
+      const seen = localStorage.getItem(GUIDE_SEEN_4V4_KEY)
       if (!seen) setHasSeenGuide(false)
     } catch {
       // ignore
     }
   }, [])
 
+  function markGuideSeen() {
+    if (!hasSeenGuide) {
+      setHasSeenGuide(true)
+      try {
+        localStorage.setItem(GUIDE_SEEN_4V4_KEY, "true")
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   function closeAllGuideUI() {
     setShowGuideMenu(false)
-    setActiveGuide(null)
+    setShowGuide(null)
   }
 
   const handleOpenGuide = () => {
     closeAllResetUI()
     setShowModeSwitchConfirm(false)
-    setShowGuideMenu((wasOpen) => {
-      if (!wasOpen && !hasSeenGuide) {
-        setHasSeenGuide(true)
-        try {
-          localStorage.setItem("dbd-guide-seen-4v4", "true")
-        } catch {
-          // ignore
-        }
-      }
-      return !wasOpen
-    })
+    if (!hasSeenGuide) {
+      markGuideSeen()
+      setShowGuideMenu(false)
+      setShowGuide("fearless")
+      return
+    }
+    setShowGuideMenu((wasOpen) => !wasOpen)
   }
 
   const openGuideView = (type: "basic" | "fearless") => {
-    setActiveGuide(type)
-    if (!hasSeenGuide) {
-      setHasSeenGuide(true)
-      try {
-        localStorage.setItem("dbd-guide-seen-4v4", "true")
-      } catch {
-        // ignore
-      }
-    }
+    setShowGuideMenu(false)
+    setShowGuide(type)
+    markGuideSeen()
   }
 
   // 마운트 후 localStorage에서 저장된 점수 복원 (hydration 이후에만 실행)
@@ -1826,7 +1828,7 @@ export function Scoreboard() {
     resetMenuRef,
     [resetTriggerRef],
   )
-  const guideUiOpen = showGuideMenu || activeGuide !== null
+  const guideUiOpen = showGuideMenu || showGuide !== null
   useDismissOnOutsideInteraction(
     guideUiOpen,
     closeAllGuideUI,
@@ -2412,7 +2414,36 @@ export function Scoreboard() {
           )}
         </div>
 
-        {/* 설명서 메뉴 / 뷰어 — outside dismiss via pointer capture; no blocking backdrop */}
+        {/* 설명서 모달 — 1v4와 동일한 전체 화면 표시 */}
+        {showGuide && (
+          <>
+            <div
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm"
+              onClick={closeAllGuideUI}
+            />
+            <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-2 sm:p-4">
+              <div className="pointer-events-auto relative w-fit max-w-[94vw] overflow-hidden rounded-lg border border-neutral-800 bg-black/90 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={closeAllGuideUI}
+                  className="absolute top-4 right-4 z-10 flex size-9 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/80 text-lg text-white shadow-lg transition-all hover:bg-neutral-800"
+                  aria-label="설명서 닫기"
+                >
+                  ✕
+                </button>
+                <img
+                  src="/images/guide_4v4.webp"
+                  alt={
+                    showGuide === "basic"
+                      ? "4v4 기본 설명서"
+                      : "피어리스 모드 설명서"
+                  }
+                  className="block max-h-[94vh] max-w-[94vw] h-auto w-auto object-contain"
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* fixed utility controls */}
         <ZoomCompensated
@@ -2618,8 +2649,10 @@ export function Scoreboard() {
               buttonRef={guideTriggerRef}
               onClick={handleOpenGuide}
               className={cn(
-                "scoreboard-utility-btn scoreboard-utility-btn-neutral border-neutral-600 bg-black/50",
-                !hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold",
+                "scoreboard-utility-btn scoreboard-utility-btn-neutral",
+                !hasSeenGuide
+                  ? "border-red-700/90 bg-red-950/45 text-red-400 shadow-[0_0_18px_rgba(185,28,28,0.6)] animate-pulse font-bold"
+                  : "border-neutral-600 bg-black/50",
               )}
             >
               설명서
@@ -2648,43 +2681,6 @@ export function Scoreboard() {
                     피어리스 설명서
                   </button>
                 </div>
-
-                {activeGuide && (
-                  <div className="relative max-h-[min(90vh,42rem)] w-[min(92vw,36rem)] overflow-hidden rounded border border-neutral-500/70 bg-black/95 shadow-[0_18px_60px_rgba(0,0,0,0.65)]">
-                    <button
-                      type="button"
-                      onClick={() => setActiveGuide(null)}
-                      className="absolute top-3 right-3 z-10 size-8 flex items-center justify-center rounded border border-neutral-500/60 bg-black/70 text-sm text-white transition-colors hover:bg-black/90"
-                      aria-label="설명서 닫기"
-                    >
-                      ✕
-                    </button>
-                    {activeGuide === "basic" ? (
-                      <img
-                        src="/images/guide_4v4.webp"
-                        alt="4v4 기본 설명서"
-                        className="block h-auto max-h-[min(90vh,42rem)] w-full object-contain object-top"
-                      />
-                    ) : (
-                      <div className="max-h-[min(90vh,42rem)] overflow-y-auto p-4 pr-12 text-sm leading-relaxed text-neutral-200">
-                        <h3
-                          className="mb-3 text-base text-white"
-                          style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
-                        >
-                          피어리스 모드
-                        </h3>
-                        <ul className="space-y-2 text-xs text-neutral-300">
-                          <li>각 플레이어는 최대 4명의 살인마를 순서대로 픽합니다.</li>
-                          <li>같은 플레이어는 중복 픽이 불가능합니다. 팀·플레이어 간 중복은 가능합니다.</li>
-                          <li>이름표 옆 슬롯을 눌러 살인마를 선택하고, 검색·필터로 목록을 좁힐 수 있습니다.</li>
-                          <li>하드/소프트/개인 필터는 표시용이며, 실제 픽 데이터에는 영향을 주지 않습니다.</li>
-                          <li>밴된 살인마도 픽할 수 있으며, 밴 표시와 픽 닉네임이 함께 보입니다.</li>
-                          <li>살인마 초기화는 픽·밴을 모두 지웁니다. 팀원 초기화는 픽을 유지합니다.</li>
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 
@@ -2693,12 +2689,13 @@ export function Scoreboard() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: [0, 6, 0] }}
                 transition={{ x: { repeat: Infinity, duration: 1.4 }, opacity: { duration: 0.3 } }}
-                className="absolute left-full ml-3 z-50 flex items-center gap-1.5 rounded-md border border-dbd-yellow/80 bg-black/95 px-3 py-1.5 text-xs text-dbd-yellow shadow-[0_0_20px_rgba(234,179,8,0.5)] backdrop-blur-md whitespace-nowrap cursor-pointer hover:brightness-125"
+                className="absolute left-full ml-3 z-50 flex cursor-pointer items-center gap-1.5 rounded-md border border-red-700/85 bg-black/95 px-3 py-1.5 text-xs shadow-[0_0_20px_rgba(185,28,28,0.55)] backdrop-blur-md whitespace-nowrap hover:brightness-125"
                 onClick={handleOpenGuide}
                 style={{ fontFamily: "var(--font-godo)" }}
               >
                 <span className="text-sm">👈</span>
-                <span className="font-bold">최초 접속! 사용설명서를 확인해 보세요</span>
+                <span className="font-bold text-red-400">피어리스 모드 </span>
+                <span className="font-bold text-white">설명서를 확인해 보세요!</span>
               </motion.div>
             )}
           </div>
