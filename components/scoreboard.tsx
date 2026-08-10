@@ -2091,32 +2091,26 @@ export function Scoreboard() {
               />
             </div>
 
-            {/* 양 팀 에이스 2인 이름표 — 양쪽에서 서로를 향해 슬라이딩 및 수직 중앙 정렬 */}
-            <div className="w-full max-w-5xl px-2 md:px-4 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 items-center">
+            {/* 양 팀 에이스 2인 이름표 — 4v4 roster-stage와 동일한 열 간격·정렬 */}
+            <div className="ace-match-roster roster-stage w-full max-w-[1440px] mx-auto px-3 sm:px-4 md:px-6 grid grid-cols-1 gap-[2.8125rem] md:grid-cols-2 md:gap-[4.5rem] lg:gap-[6.75rem] items-center">
               <motion.div
                 initial={{ x: "-100vw", opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-                className="w-full flex flex-col items-center"
+                className="flex w-full max-w-[42rem] flex-col justify-self-end"
               >
-                {thomas.find((p) => p.id === aceThomasId) && (
-                  <div className="w-full max-w-xl">
-                    {renderRow("thomas", thomas.find((p) => p.id === aceThomasId)!, 0)}
-                  </div>
-                )}
+                {thomas.find((p) => p.id === aceThomasId) &&
+                  renderRow("thomas", thomas.find((p) => p.id === aceThomasId)!, 0)}
               </motion.div>
 
               <motion.div
                 initial={{ x: "100vw", opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-                className="w-full flex flex-col items-center"
+                className="flex w-full max-w-[42rem] flex-col justify-self-start"
               >
-                {ada.find((p) => p.id === aceAdaId) && (
-                  <div className="w-full max-w-xl">
-                    {renderRow("ada", ada.find((p) => p.id === aceAdaId)!, 0)}
-                  </div>
-                )}
+                {ada.find((p) => p.id === aceAdaId) &&
+                  renderRow("ada", ada.find((p) => p.id === aceAdaId)!, 0)}
               </motion.div>
             </div>
           </motion.div>

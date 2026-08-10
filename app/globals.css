@@ -885,7 +885,7 @@ input[type="number"] {
 }
 .fearless-killer-slot.is-filled:hover:not(:disabled) .fearless-killer-slot-face img,
 .fearless-killer-slot.is-filled:focus-visible .fearless-killer-slot-face img {
-  filter: saturate(.98) brightness(1.18) contrast(1.06);
+  filter: saturate(1.06) brightness(1.34) contrast(1.06);
   transform: none;
 }
 .fearless-empty-frame {
@@ -1500,7 +1500,7 @@ input[type="number"] {
 }
 .fearless-picker-cell.is-selected.is-picked:not(.is-banned) .fearless-picker-portrait-face {
   filter:
-    var(--fearless-picked-filter) contrast(0.9) brightness(0.69)
+    var(--fearless-picked-filter) contrast(0.9) brightness(0.52)
     drop-shadow(1px 0 0 rgb(105 105 105 / 20%))
     drop-shadow(-1px 0 0 rgb(105 105 105 / 20%))
     drop-shadow(0 1px 0 rgb(105 105 105 / 20%))
@@ -1511,11 +1511,11 @@ input[type="number"] {
     drop-shadow(-1px 1px 0 rgb(105 105 105 / 20%));
 }
 .fearless-picker-cell.is-picked:not(.is-selected):not(.is-banned) .fearless-picker-portrait-face {
-  filter: var(--fearless-picked-filter) contrast(0.88) brightness(0.66);
+  filter: var(--fearless-picked-filter) contrast(0.88) brightness(0.49);
 }
 .fearless-picker-cell.is-picked:not(.is-banned):not(.is-selected):hover .fearless-picker-portrait-face,
 .fearless-picker-cell.is-picked:not(.is-banned):not(.is-selected):focus-visible .fearless-picker-portrait-face {
-  filter: var(--fearless-picked-filter) contrast(0.9) brightness(0.72);
+  filter: var(--fearless-picked-filter) contrast(0.9) brightness(0.55);
 }
 .fearless-picker-cell:hover:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait-face,
 .fearless-picker-cell:focus-visible:not(.is-picked):not(.is-banned):not(.is-selected) .fearless-picker-portrait-face {
@@ -1554,15 +1554,15 @@ input[type="number"] {
   overflow: hidden;
 }
 .fearless-picker-cell.is-banned .fearless-picker-portrait-face {
-  filter: var(--fearless-banned-filter) contrast(0.88) brightness(0.74);
+  filter: var(--fearless-banned-filter) contrast(0.88) brightness(0.56);
 }
 .fearless-picker-cell.is-banned:hover:not(.is-selected) .fearless-picker-portrait-face,
 .fearless-picker-cell.is-banned:focus-visible:not(.is-selected) .fearless-picker-portrait-face {
-  filter: var(--fearless-banned-filter) contrast(0.9) brightness(0.8);
+  filter: var(--fearless-banned-filter) contrast(0.9) brightness(0.62);
 }
 .fearless-picker-cell.is-banned.is-selected .fearless-picker-portrait-face {
   filter:
-    var(--fearless-banned-filter) contrast(0.9) brightness(0.77)
+    var(--fearless-banned-filter) contrast(0.9) brightness(0.59)
     drop-shadow(1px 0 0 rgb(145 50 50 / 34%))
     drop-shadow(-1px 0 0 rgb(145 50 50 / 34%))
     drop-shadow(0 1px 0 rgb(145 50 50 / 34%))
@@ -1590,15 +1590,15 @@ input[type="number"] {
   background: color-mix(in oklch, var(--fearless-team), transparent 48%);
 }
 .fearless-picker-cell.is-banned.is-picked .fearless-picker-portrait-face {
-  filter: var(--fearless-banned-filter) contrast(0.86) brightness(0.58);
+  filter: var(--fearless-banned-filter) contrast(0.86) brightness(0.42);
 }
 .fearless-picker-cell.is-banned.is-picked:hover:not(.is-selected) .fearless-picker-portrait-face,
 .fearless-picker-cell.is-banned.is-picked:focus-visible:not(.is-selected) .fearless-picker-portrait-face {
-  filter: var(--fearless-banned-filter) contrast(0.88) brightness(0.64);
+  filter: var(--fearless-banned-filter) contrast(0.88) brightness(0.48);
 }
 .fearless-picker-cell.is-banned.is-picked.is-selected .fearless-picker-portrait-face {
   filter:
-    var(--fearless-banned-filter) contrast(0.88) brightness(0.61)
+    var(--fearless-banned-filter) contrast(0.88) brightness(0.45)
     drop-shadow(1px 0 0 rgb(135 42 42 / 32%))
     drop-shadow(-1px 0 0 rgb(135 42 42 / 32%))
     drop-shadow(0 1px 0 rgb(135 42 42 / 32%))
@@ -1645,20 +1645,20 @@ input[type="number"] {
   text-shadow: 0 1px 4px #000, 0 0 8px rgb(0 0 0 / 65%);
 }
 .fearless-picker-cell.is-picked .fearless-picker-killer-name {
-  color: rgb(128 128 134 / 94%);
-  text-shadow: 0 1px 4px rgb(0 0 0 / 92%), 0 0 6px rgb(0 0 0 / 78%);
+  color: rgb(54 54 58 / 88%);
+  text-shadow: 0 1px 4px rgb(0 0 0 / 96%), 0 0 6px rgb(0 0 0 / 88%);
 }
 .fearless-picker-cell.is-banned .fearless-picker-killer-name {
-  color: rgb(118 36 36 / 96%);
+  color: rgb(62 16 16 / 92%);
   text-shadow:
-    0 1px 4px rgb(12 0 0 / 98%),
-    0 0 7px rgb(32 0 0 / 72%);
+    0 1px 4px rgb(4 0 0 / 98%),
+    0 0 7px rgb(16 0 0 / 82%);
 }
 .fearless-picker-cell.is-picked.is-banned .fearless-picker-killer-name {
-  color: rgb(92 28 28 / 96%);
+  color: rgb(46 12 12 / 92%);
   text-shadow:
-    0 1px 4px rgb(8 0 0 / 98%),
-    0 0 6px rgb(24 0 0 / 78%);
+    0 1px 4px rgb(2 0 0 / 98%),
+    0 0 6px rgb(12 0 0 / 86%);
 }
 .fearless-picker-status-marks {
   display: flex;
