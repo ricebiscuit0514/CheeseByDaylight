@@ -121,6 +121,16 @@ export function KillerPicker({
   const skipSelectionSyncRef = useRef(false)
   const lastRemoteSelectionSeqRef = useRef(0)
   const lastRemoteFeedbackTokenRef = useRef(0)
+  const onSelectionSyncRef = useRef(onSelectionSync)
+  const onFeedbackSyncRef = useRef(onFeedbackSync)
+
+  useEffect(() => {
+    onSelectionSyncRef.current = onSelectionSync
+  }, [onSelectionSync])
+
+  useEffect(() => {
+    onFeedbackSyncRef.current = onFeedbackSync
+  }, [onFeedbackSync])
   const [mounted, setMounted] = useState(false)
   const [filterMode, setFilterMode] =
     useState<FearlessFilterMode>("hard")
@@ -187,20 +197,22 @@ export function KillerPicker({
   const applySelection = useCallback(
     (killerId: string | null, options?: { sync?: boolean }) => {
       setSelectedKillerId(killerId)
-      if (!readOnly && options?.sync !== false) onSelectionSync?.(killerId)
+      if (!readOnly && options?.sync !== false) {
+        onSelectionSyncRef.current?.(killerId)
+      }
     },
-    [onSelectionSync, readOnly],
+    [readOnly],
   )
 
   const handleSelectKiller = useCallback(
     (killerId: string) => {
       setSelectedKillerId((current) => {
         const next = current === killerId ? null : killerId
-        if (!readOnly) onSelectionSync?.(next)
+        if (!readOnly) onSelectionSyncRef.current?.(next)
         return next
       })
     },
-    [onSelectionSync, readOnly],
+    [readOnly],
   )
 
   useEffect(() => {
@@ -209,10 +221,12 @@ export function KillerPicker({
       skipSelectionSyncRef.current = false
       return
     }
-    applySelection(context.currentKillerId ?? null)
+    const next = context.currentKillerId ?? null
+    setSelectedKillerId(next)
+    if (!readOnly) onSelectionSyncRef.current?.(next)
   }, [
-    applySelection,
     open,
+    readOnly,
     context.mode,
     context.team,
     context.playerId,
@@ -364,9 +378,9 @@ export function KillerPicker({
     (killerId: string, kind: "pick" | "ban" | "unban") => {
       const token = Date.now()
       setCellFeedback({ killerId, kind, token })
-      onFeedbackSync?.(killerId, kind)
+      onFeedbackSyncRef.current?.(killerId, kind)
     },
-    [onFeedbackSync],
+    [],
   )
 
   useEffect(() => {
