@@ -2045,9 +2045,9 @@ export function Scoreboard() {
       />
 
       <div className="relative mx-auto flex min-h-screen max-w-[1440px] flex-col px-3 py-3 pb-12 sm:px-4 md:px-6 md:py-4 md:pb-14">
-        {/* editable team titles & floating coin toss widget */}
-        <div className="relative border-b border-foreground/10 pb-4">
-          {!isAceMatchMode && (
+        {/* editable team titles & floating coin toss widget (normal 4v4) */}
+        {!isAceMatchMode && (
+          <div className="relative border-b border-foreground/10 pb-4">
             <div className="absolute top-[calc(50%-0.75rem)] left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
               {!isViewer && !hasAnyScore && (
                 <button
@@ -2072,58 +2072,58 @@ export function Scoreboard() {
                 }}
               />
             </div>
-          )}
-          <div
-            className={cn(
-              "grid grid-cols-2 gap-4",
-              fearlessEnabled && "fearless-team-titles",
-            )}
-          >
-          <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
-            {/* 숨겨진 span으로 실제 렌더 폭을 측정해 input에 적용 */}
-            <span className="relative inline-block pr-[0.35em]">
-              <span
-                aria-hidden="true"
-                className="invisible whitespace-pre font-bold text-dbd-orange pr-[0.35em]"
-                style={{ fontFamily: "var(--font-aldrich)" }}
-              >{thomasName || " "}</span>
-              <input
-                value={thomasName}
-                readOnly={isViewer}
-                onChange={(e) => setThomasName(e.target.value)}
-                onFocus={(e) => e.currentTarget.select()}
-                onClick={(e) => e.currentTarget.select()}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
-                aria-label="왼쪽 팀 이름"
-                className={cn("absolute inset-0 w-full bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-orange),transparent_55%)] focus:opacity-80 text-dbd-orange pr-[0.35em]", isViewer && "cursor-default")}
-                style={{ fontFamily: "var(--font-aldrich)" }}
-              />
-            </span>
-            <span className="select-none font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
-          </h1>
-          <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
-            <span className="relative inline-block pr-[0.35em]">
-              <span
-                aria-hidden="true"
-                className="invisible whitespace-pre font-bold text-dbd-blue pr-[0.35em]"
-                style={{ fontFamily: "var(--font-aldrich)" }}
-              >{adaName || " "}</span>
-              <input
-                value={adaName}
-                readOnly={isViewer}
-                onChange={(e) => setAdaName(e.target.value)}
-                onFocus={(e) => e.currentTarget.select()}
-                onClick={(e) => e.currentTarget.select()}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
-                aria-label="오른쪽 팀 이름"
-                className={cn("absolute inset-0 w-full bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-blue),transparent_55%)] focus:opacity-80 text-dbd-blue pr-[0.35em]", isViewer && "cursor-default")}
-                style={{ fontFamily: "var(--font-aldrich)" }}
-              />
-            </span>
-            <span className="select-none font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
-          </h1>
-        </div>
-      </div>
+            <div
+              className={cn(
+                "grid grid-cols-2 gap-4",
+                fearlessEnabled && "fearless-team-titles",
+              )}
+            >
+              <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
+                {/* 숨겨진 span으로 실제 렌더 폭을 측정해 input에 적용 */}
+                <span className="relative inline-block pr-[0.35em]">
+                  <span
+                    aria-hidden="true"
+                    className="invisible whitespace-pre font-bold text-dbd-orange pr-[0.35em]"
+                    style={{ fontFamily: "var(--font-aldrich)" }}
+                  >{thomasName || " "}</span>
+                  <input
+                    value={thomasName}
+                    readOnly={isViewer}
+                    onChange={(e) => setThomasName(e.target.value)}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onClick={(e) => e.currentTarget.select()}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
+                    aria-label="왼쪽 팀 이름"
+                    className={cn("absolute inset-0 w-full bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-orange),transparent_55%)] focus:opacity-80 text-dbd-orange pr-[0.35em]", isViewer && "cursor-default")}
+                    style={{ fontFamily: "var(--font-aldrich)" }}
+                  />
+                </span>
+                <span className="select-none font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
+              </h1>
+              <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
+                <span className="relative inline-block pr-[0.35em]">
+                  <span
+                    aria-hidden="true"
+                    className="invisible whitespace-pre font-bold text-dbd-blue pr-[0.35em]"
+                    style={{ fontFamily: "var(--font-aldrich)" }}
+                  >{adaName || " "}</span>
+                  <input
+                    value={adaName}
+                    readOnly={isViewer}
+                    onChange={(e) => setAdaName(e.target.value)}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onClick={(e) => e.currentTarget.select()}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing && e.keyCode !== 229) e.currentTarget.blur() }}
+                    aria-label="오른쪽 팀 이름"
+                    className={cn("absolute inset-0 w-full bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-blue),transparent_55%)] focus:opacity-80 text-dbd-blue pr-[0.35em]", isViewer && "cursor-default")}
+                    style={{ fontFamily: "var(--font-aldrich)" }}
+                  />
+                </span>
+                <span className="select-none font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
+              </h1>
+            </div>
+          </div>
+        )}
 
         {/* rosters */}
         {isAceMatchMode ? (
@@ -2131,47 +2131,93 @@ export function Scoreboard() {
             initial={{ scaleY: 0, opacity: 0 }}
             animate={{ scaleY: 1, opacity: 1 }}
             transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-            className="mt-1 relative w-screen left-1/2 -translate-x-1/2 h-[360px] md:h-[400px] bg-black/95 p-4 md:p-6 shadow-[0_0_60px_rgba(0,0,0,0.95)] flex flex-col items-center justify-center backdrop-blur-md overflow-hidden"
+            className="ace-match-stage"
           >
-            {/* 에이스 결정전 전용 선공 정하기 버튼 — 높이 고정(h-16)으로 레이아웃 밀림 방지 */}
-            <div className="h-16 flex items-center justify-center relative w-full shrink-0 mb-2 overflow-visible">
-              <CoinTossWidget
-                thomasName={thomasName}
-                adaName={adaName}
-                thomasDisplayName={thomas.find((p) => p.id === aceThomasId)?.name.trim() || undefined}
-                adaDisplayName={ada.find((p) => p.id === aceAdaId)?.name.trim() || undefined}
-                activeTeam={firstAttackTeam}
-                disabled={isViewer}
-                onTossResult={(winner) => {
-                  const aceId = winner === "thomas" ? aceThomasId : aceAdaId
-                  if (aceId) {
-                    setFirstAttackerId(aceId)
-                  }
-                }}
-              />
-            </div>
+            <div className="ace-match-cluster">
+              {/* 팀명 행 중앙에 선공 버튼 오버레이 — 팀명 자체 위치는 유지 */}
+              <div className="ace-match-titles-row">
+                <div className="ace-match-toss">
+                  <CoinTossWidget
+                    thomasName={thomasName}
+                    adaName={adaName}
+                    thomasDisplayName={thomas.find((p) => p.id === aceThomasId)?.name.trim() || undefined}
+                    adaDisplayName={ada.find((p) => p.id === aceAdaId)?.name.trim() || undefined}
+                    activeTeam={firstAttackTeam}
+                    disabled={isViewer}
+                    onTossResult={(winner) => {
+                      const aceId = winner === "thomas" ? aceThomasId : aceAdaId
+                      if (aceId) {
+                        setFirstAttackerId(aceId)
+                      }
+                    }}
+                  />
+                </div>
+                <div
+                  className={cn(
+                    "ace-match-team-titles grid w-full grid-cols-2 gap-4 px-3 sm:px-4 md:px-6",
+                    fearlessEnabled && "fearless-team-titles",
+                  )}
+                >
+                  <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
+                    <span className="relative inline-block pr-[0.35em]">
+                      <span
+                        aria-hidden="true"
+                        className="invisible whitespace-pre font-bold text-dbd-orange pr-[0.35em]"
+                        style={{ fontFamily: "var(--font-aldrich)" }}
+                      >{thomasName || " "}</span>
+                      <input
+                        value={thomasName}
+                        readOnly
+                        tabIndex={-1}
+                        aria-label="왼쪽 팀 이름"
+                        className="absolute inset-0 w-full cursor-default bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-orange),transparent_55%)] text-dbd-orange pr-[0.35em]"
+                        style={{ fontFamily: "var(--font-aldrich)" }}
+                      />
+                    </span>
+                    <span className="select-none font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
+                  </h1>
+                  <h1 className="flex items-center justify-center gap-2 text-3xl md:text-5xl overflow-visible">
+                    <span className="relative inline-block pr-[0.35em]">
+                      <span
+                        aria-hidden="true"
+                        className="invisible whitespace-pre font-bold text-dbd-blue pr-[0.35em]"
+                        style={{ fontFamily: "var(--font-aldrich)" }}
+                      >{adaName || " "}</span>
+                      <input
+                        value={adaName}
+                        readOnly
+                        tabIndex={-1}
+                        aria-label="오른쪽 팀 이름"
+                        className="absolute inset-0 w-full cursor-default bg-transparent text-right font-bold outline-none drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-blue),transparent_55%)] text-dbd-blue pr-[0.35em]"
+                        style={{ fontFamily: "var(--font-aldrich)" }}
+                      />
+                    </span>
+                    <span className="select-none font-bold text-white/95" style={{ fontFamily: "var(--font-aldrich)" }}>팀</span>
+                  </h1>
+                </div>
+              </div>
 
-            {/* 양 팀 에이스 2인 이름표 — 4v4 roster-stage와 동일한 열 간격·정렬 */}
-            <div className="ace-match-roster roster-stage w-full max-w-[1440px] mx-auto px-3 sm:px-4 md:px-6 grid grid-cols-1 gap-[2.8125rem] md:grid-cols-2 md:gap-[4.5rem] lg:gap-[6.75rem] items-center">
-              <motion.div
-                initial={{ x: "-100vw", opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-                className="flex w-full max-w-[42rem] flex-col justify-self-end"
-              >
-                {thomas.find((p) => p.id === aceThomasId) &&
-                  renderRow("thomas", thomas.find((p) => p.id === aceThomasId)!, 0)}
-              </motion.div>
+              <div className="ace-match-roster roster-stage grid w-full grid-cols-1 items-center gap-[2.8125rem] px-3 sm:px-4 md:grid-cols-2 md:gap-[4.5rem] md:px-6 lg:gap-[6.75rem]">
+                <motion.div
+                  initial={{ x: "-100vw", opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+                  className="flex w-full max-w-[42rem] flex-col justify-self-end"
+                >
+                  {thomas.find((p) => p.id === aceThomasId) &&
+                    renderRow("thomas", thomas.find((p) => p.id === aceThomasId)!, 0)}
+                </motion.div>
 
-              <motion.div
-                initial={{ x: "100vw", opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-                className="flex w-full max-w-[42rem] flex-col justify-self-start"
-              >
-                {ada.find((p) => p.id === aceAdaId) &&
-                  renderRow("ada", ada.find((p) => p.id === aceAdaId)!, 0)}
-              </motion.div>
+                <motion.div
+                  initial={{ x: "100vw", opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
+                  className="flex w-full max-w-[42rem] flex-col justify-self-start"
+                >
+                  {ada.find((p) => p.id === aceAdaId) &&
+                    renderRow("ada", ada.find((p) => p.id === aceAdaId)!, 0)}
+                </motion.div>
+              </div>
             </div>
           </motion.div>
         ) : (
@@ -2273,7 +2319,12 @@ export function Scoreboard() {
         )}
 
         {/* center score */}
-        <div className="score-stage relative flex min-h-48 md:min-h-52 shrink-0 translate-y-3 items-center justify-center overflow-visible pt-4 pb-2">
+        <div
+          className={cn(
+            "score-stage relative flex min-h-48 md:min-h-52 shrink-0 translate-y-3 items-center justify-center overflow-visible pt-4 pb-2",
+            isAceMatchMode && "ace-match-score",
+          )}
+        >
           <TeamScore
             left={leftScore}
             right={rightScore}
@@ -2854,9 +2905,9 @@ export function Scoreboard() {
         {/* 에이스 결정전 2차 무승부 리매치 팝업 */}
         {showAceRematchPrompt && !isViewer && (
           <div className="ace-modal-backdrop">
-            <div className="ace-modal-panel">
+            <div className="ace-modal-panel ace-modal-panel--rematch">
               <h2 className="ace-modal-title">에이스 결정전 무승부</h2>
-              <p className="ace-modal-body mb-6">
+              <p className="ace-modal-body ace-modal-body--rematch">
                 다시 결정전을 진행하시겠습니까?
               </p>
               <div className="ace-modal-stack">
@@ -2869,7 +2920,8 @@ export function Scoreboard() {
                       setAda((prev) => prev.map((p) => (p.id === aceAdaId ? { ...p, kills: 0, played: false } : p)))
                     }
                   }}
-                  className="ace-modal-btn ace-modal-btn--primary ace-modal-btn--block"
+                  fillClassName="bg-neutral-400/30"
+                  className="ace-modal-btn ace-modal-btn--muted ace-modal-btn--block"
                 >
                   현재 멤버로 재경기 (꾹 누르기)
                 </HoldButton>
@@ -2915,7 +2967,8 @@ export function Scoreboard() {
                     setAceModalInitialStep("method_select")
                     setShowAcePromptModal(true)
                   }}
-                  className="ace-modal-btn ace-modal-btn--accent ace-modal-btn--block"
+                  fillClassName="bg-neutral-400/30"
+                  className="ace-modal-btn ace-modal-btn--muted ace-modal-btn--block"
                 >
                   멤버 다시 뽑기 (꾹 누르기)
                 </HoldButton>
@@ -2924,7 +2977,8 @@ export function Scoreboard() {
                     setShowAceRematchPrompt(false)
                     handleExitAceMatch()
                   }}
-                  className="ace-modal-btn ace-modal-btn--muted ace-modal-btn--block"
+                  fillClassName="bg-red-500/35"
+                  className="ace-modal-btn ace-modal-btn--danger ace-modal-btn--block"
                 >
                   결정전 종료 (꾹 누르기)
                 </HoldButton>
@@ -2940,7 +2994,7 @@ export function Scoreboard() {
               <HoldButton
                 onConfirm={handleExitAceMatch}
                 fillClassName="bg-red-500/35"
-                className="rounded border border-red-600/80 bg-black/90 px-6 py-1.5 text-sm font-normal text-red-400 hover:bg-red-950/80 transition-all tracking-wider"
+                className="ace-dock-btn ace-dock-btn--danger"
                 style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
               >
                 에이스 결정전 종료하기 (꾹 누르기)
@@ -2957,7 +3011,8 @@ export function Scoreboard() {
                     setAceModalInitialStep("prompt")
                     setShowAcePromptModal(true)
                   }}
-                  className="rounded border border-dbd-yellow/90 bg-black/90 px-6 py-1.5 text-sm font-normal text-dbd-yellow hover:bg-dbd-yellow/20 shadow-[0_0_15px_rgba(234,179,8,0.3)] transition-all tracking-wider"
+                  fillClassName="bg-dbd-yellow/30"
+                  className="ace-dock-btn ace-dock-btn--proceed"
                   style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
                 >
                   에이스 결정전 진행하기 (꾹 누르기)

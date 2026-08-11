@@ -507,8 +507,27 @@
 .player-name-cell {
   max-width: 100%;
 }
-.player-name-input { width: 100%; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; color: var(--foreground); font-family: var(--font-s-core); font-size: 1.15rem; font-weight: 500; letter-spacing: -.02em; outline: none; }
-.player-name-input::placeholder { color: color-mix(in oklch, var(--muted-foreground), transparent 62%); }
+.player-name-input {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  color: var(--foreground);
+  font-family: var(--font-s-core);
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  outline: none;
+}
+.player-name-input:placeholder-shown { text-overflow: clip; }
+.player-name-input::placeholder {
+  color: color-mix(in oklch, var(--muted-foreground), transparent 62%);
+  font-size: 1rem;
+  letter-spacing: 0;
+}
 .pinball-command-input {
   font-family: var(--font-s-core);
   font-weight: 400;
@@ -2184,6 +2203,9 @@ input[type="number"] {
 .ace-modal-slot-body .ace-modal-roster {
   height: 100%;
   gap: 7px;
+  /* Keep plate edges clear of absolute-layer paint/clip quirks. */
+  width: calc(100% - 2px);
+  margin-inline: 1px;
 }
 .ace-modal-slot-body .ace-modal-roster > .ace-modal-player,
 .ace-modal-panel--wide .ace-modal-slot-body .ace-modal-roster > .ace-modal-player {
@@ -2257,6 +2279,174 @@ input[type="number"] {
 }
 .ace-modal-body + .ace-modal-actions {
   margin-top: 1.2rem;
+}
+.ace-modal-panel--rematch .ace-modal-title {
+  margin-bottom: .45rem;
+}
+.ace-modal-body--rematch {
+  margin: 0 0 .85rem;
+}
+.ace-modal-panel--rematch .ace-modal-btn {
+  font-family: var(--font-s-core);
+  font-weight: 400;
+  font-size: 1rem;
+  letter-spacing: .02em;
+}
+
+.ace-dock-btn {
+  border-radius: .2rem;
+  background: rgb(0 0 0 / 55%);
+  padding: .4rem 1.35rem;
+  font-size: .875rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  opacity: .38;
+  transition:
+    opacity .18s ease,
+    border-color .18s ease,
+    background-color .18s ease,
+    color .18s ease,
+    box-shadow .18s ease;
+}
+.ace-dock-btn:hover {
+  opacity: 1;
+}
+.ace-dock-btn--neutral {
+  border: 1px solid color-mix(in oklch, var(--foreground), transparent 55%);
+  color: color-mix(in oklch, var(--foreground), transparent 18%);
+}
+.ace-dock-btn--neutral:hover {
+  border-color: color-mix(in oklch, var(--foreground), transparent 28%);
+  background: rgb(0 0 0 / 88%);
+  color: #fff;
+}
+.ace-dock-btn--proceed {
+  border: 1px solid color-mix(in oklch, var(--dbd-yellow), transparent 45%);
+  color: color-mix(in oklch, var(--dbd-yellow), transparent 20%);
+}
+.ace-dock-btn--proceed:hover {
+  border-color: var(--dbd-yellow);
+  background: rgb(0 0 0 / 88%);
+  color: var(--dbd-yellow);
+  box-shadow: 0 0 14px color-mix(in oklch, var(--dbd-yellow), transparent 70%);
+}
+.ace-dock-btn--danger {
+  border: 1px solid color-mix(in oklch, #ef4444, transparent 40%);
+  color: color-mix(in oklch, #f87171, transparent 20%);
+}
+.ace-dock-btn--danger:hover {
+  border-color: #ef4444;
+  background: rgb(40 10 10 / 90%);
+  color: #fca5a5;
+}
+
+/* Ace match stage — soft vertical fade, content clustered low-center */
+.ace-match-stage {
+  --ace-bar-shift: 4.75rem;
+  /* Lift stage + following score/etc. together. */
+  --ace-cluster-lift: 5.25rem;
+  /* Former toss row height+gap — keeps titles Y when toss overlays the title row. */
+  --ace-toss-slot: 3.15rem;
+  --ace-plate-nudge: 0.85rem;
+  position: relative;
+  width: 100vw;
+  /* Extra height + bottom padding keep the cluster where it was while the bar drops. */
+  height: calc(400px + var(--ace-bar-shift));
+  margin-top: calc(0.25rem - var(--ace-cluster-lift));
+  /* Pull score stage back up — bar overlap + toss-slot reclaimed space. */
+  margin-bottom: calc(-1 * (var(--ace-bar-shift) + var(--ace-toss-slot)));
+  /* Full-bleed without transform (motion uses scaleY on this node). */
+  margin-left: calc(50% - 50vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 2.5rem 1rem calc(2.75rem + var(--ace-bar-shift) + var(--ace-toss-slot));
+  overflow: hidden;
+  transform-origin: center center;
+}
+@media (min-width: 768px) {
+  .ace-match-stage {
+    height: calc(440px + var(--ace-bar-shift));
+    padding: 2.75rem 1.5rem calc(3rem + var(--ace-bar-shift) + var(--ace-toss-slot));
+  }
+}
+.ace-match-stage::before {
+  content: "";
+  position: absolute;
+  top: var(--ace-bar-shift);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: rgb(0 0 0 / 0.94);
+  box-shadow: 0 0 48px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 0.35) 10%,
+    #000 26%,
+    #000 74%,
+    rgb(0 0 0 / 0.35) 90%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(0 0 0 / 0.35) 10%,
+    #000 26%,
+    #000 74%,
+    rgb(0 0 0 / 0.35) 90%,
+    transparent 100%
+  );
+}
+.ace-match-cluster {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  max-width: 1440px;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.65rem;
+}
+.ace-match-titles-row {
+  position: relative;
+  width: 100%;
+}
+.ace-match-toss {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 30;
+  display: flex;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.ace-match-toss > * {
+  pointer-events: auto;
+}
+.ace-match-team-titles {
+  opacity: 0.42;
+  pointer-events: none;
+  user-select: none;
+}
+.ace-match-roster {
+  width: 100%;
+  /* Visual-only nudge — does not reflow titles/score. */
+  position: relative;
+  top: var(--ace-plate-nudge);
+}
+.score-stage.ace-match-score {
+  /* Same visual nudge as ace nameplates. */
+  top: 0.85rem;
 }
 
 .ace-modal-btn {
@@ -2332,6 +2522,16 @@ input[type="number"] {
 .ace-modal-btn--muted:hover:not(:disabled) {
   border-color: color-mix(in oklch, var(--foreground), transparent 48%);
   color: #fff;
+}
+.ace-modal-btn--danger {
+  border-color: color-mix(in oklch, var(--dbd-red, #dc2626), transparent 35%);
+  background: rgb(18 8 8 / 90%);
+  color: color-mix(in oklch, #f87171, transparent 8%);
+}
+.ace-modal-btn--danger:hover:not(:disabled) {
+  border-color: #ef4444;
+  background: rgb(40 10 10 / 92%);
+  color: #fca5a5;
 }
 .ace-modal-btn--ghost {
   border: none;
@@ -2541,8 +2741,25 @@ input[type="number"] {
   --ace-roster-gap: 7px;
   --ace-reel-cell: 61px;
   --ace-reel-rows: 4;
+  position: relative;
   height: calc(var(--ace-reel-cell) * var(--ace-reel-rows));
   min-height: calc(var(--ace-reel-cell) * var(--ace-reel-rows));
+  /* Do not clip roster nameplates (borders/clip-path); reel clips itself. */
+  overflow: visible;
+}
+
+.ace-modal-slot-body-layer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ace-modal-slot-body-layer:has(.ace-modal-reel) {
+  overflow: hidden;
 }
 .ace-modal-reel {
   --team: var(--dbd-yellow);

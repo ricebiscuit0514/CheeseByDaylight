@@ -375,7 +375,11 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
       tabIndex={tabIndex}
       onChange={(event) => onNameChange(event.target.value)}
       onFocus={(event) => event.currentTarget.select()}
-      onBlur={(event) => onNameCommit(event.target.value)}
+      onBlur={(event) => {
+        // Overflowed Hangul can leave scrollLeft > 0 and hide the first glyph.
+        event.currentTarget.scrollLeft = 0
+        onNameCommit(event.target.value)
+      }}
       onKeyDown={(event) => {
         onNameKeyDown?.(event)
         if (event.key === "Enter" && !event.nativeEvent.isComposing && event.keyCode !== 229) {
@@ -454,12 +458,14 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
           {isFlashReady && <span className="exalted-flash" aria-hidden="true" />}
           {isThomas ? (
             <>
-              <div className="player-plate-leading flex min-w-0 flex-1 items-center overflow-hidden gap-[inherit]">
+              <div className="player-plate-leading flex min-w-0 flex-1 items-center gap-[inherit]">
                 <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
-                <div className="player-name-cell flex min-w-0 flex-1 items-center max-w-32 sm:max-w-36">
-                  {nameInput}
+                <div className="flex min-w-0 flex-1 items-center overflow-hidden gap-[inherit]">
+                  <div className="player-name-cell flex w-[8.75rem] max-w-[8.75rem] shrink-0 items-center sm:w-[9.5rem] sm:max-w-[9.5rem]">
+                    {nameInput}
+                  </div>
+                  <div className="min-w-0 flex-1 pointer-events-none" aria-hidden="true" />
                 </div>
-                <div className="min-w-0 flex-1 pointer-events-none" aria-hidden="true" />
               </div>
               <NoKillButton team={team} played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
               {skullGroup}
@@ -468,10 +474,12 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
             <>
               {skullGroup}
               <NoKillButton team={team} played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
-              <div className="player-plate-trailing flex min-w-0 flex-1 items-center overflow-hidden gap-[inherit]">
-                <div className="min-w-0 flex-1 pointer-events-none" aria-hidden="true" />
-                <div className="player-name-cell flex min-w-0 flex-1 items-center justify-end max-w-32 sm:max-w-36">
-                  {nameInput}
+              <div className="player-plate-trailing flex min-w-0 flex-1 items-center gap-[inherit]">
+                <div className="flex min-w-0 flex-1 items-center justify-end overflow-hidden gap-[inherit]">
+                  <div className="min-w-0 flex-1 pointer-events-none" aria-hidden="true" />
+                  <div className="player-name-cell flex w-[8.75rem] max-w-[8.75rem] shrink-0 items-center justify-end sm:w-[9.5rem] sm:max-w-[9.5rem]">
+                    {nameInput}
+                  </div>
                 </div>
                 <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
               </div>

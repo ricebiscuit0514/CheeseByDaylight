@@ -911,19 +911,37 @@ function SlotColumn({
         className="ace-modal-slot-body"
         style={{ ["--ace-reel-rows" as string]: String(Math.max(1, roster.length)) }}
       >
-        {showReel ? (
-          <AceSlotReel
-            team={team}
-            players={activePlayers}
-            startActiveIdx={reelStart}
-            maxSteps={reelSteps}
-            spinToken={spinToken}
-            baseDelay={SLOT_SPIN_BASE_DELAY_MS}
-            visibleRows={roster.length}
-            settleStyle={settleStyle}
-          />
-        ) : (
-          <div className="ace-modal-roster">
+        <AnimatePresence mode="sync" initial={false}>
+          {showReel ? (
+            <motion.div
+              key="reel"
+              className="ace-modal-slot-body-layer"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <AceSlotReel
+                team={team}
+                players={activePlayers}
+                startActiveIdx={reelStart}
+                maxSteps={reelSteps}
+                spinToken={spinToken}
+                baseDelay={SLOT_SPIN_BASE_DELAY_MS}
+                visibleRows={roster.length}
+                settleStyle={settleStyle}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="roster"
+              className="ace-modal-slot-body-layer"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <div className="ace-modal-roster">
             {roster.map((player, index) => {
               const isPicked = (slotFinished || isRolling) && index === slotIdx
               const isExcluded = Boolean(excludedIds[player.id])
@@ -971,8 +989,10 @@ function SlotColumn({
                 </div>
               )
             })}
-          </div>
-        )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )
