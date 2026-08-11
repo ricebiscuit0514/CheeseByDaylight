@@ -10,6 +10,7 @@ import {
   estimateDualSlotSpinDurationMs,
   getAceRerollButtonLabel,
   getAceRerollButtonState,
+  buildNextAceRematchExcludedIds,
   mergeAceDrawExcludedIds,
   SLOT_REEL_OVERSHOOT_MS,
 } from "@/lib/ace-modal-sync"
@@ -122,6 +123,16 @@ describe("ace modal sync helpers", () => {
       "a1",
       "t2",
     ])
+  })
+
+  it("replaces rematch exclusions so manual re-includes stick", () => {
+    // Previously excluded t2 was re-included in the modal → drop from snapshot.
+    expect(
+      buildNextAceRematchExcludedIds(["t1"], ["t3", "a1"]),
+    ).toEqual(["t1", "t3", "a1"])
+    expect(
+      buildNextAceRematchExcludedIds([], ["t1", "a1"]),
+    ).toEqual(["t1", "a1"])
   })
 
   it("estimates spin duration from the step delay curve", () => {

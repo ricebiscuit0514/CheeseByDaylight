@@ -326,6 +326,12 @@
               "lockAda": {
                 ".validate": "newData.isBoolean()"
               },
+              "thomasSettleStyle": {
+                ".validate": "newData.isString() && (newData.val() === 'overshoot' || newData.val() === 'undershoot')"
+              },
+              "adaSettleStyle": {
+                ".validate": "newData.isString() && (newData.val() === 'overshoot' || newData.val() === 'undershoot')"
+              },
               "$other": {
                 ".validate": false
               }

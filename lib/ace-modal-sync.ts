@@ -74,6 +74,14 @@ export function mergeAceDrawExcludedIds(
   return [...new Set([...previous, ...next].filter(Boolean))]
 }
 
+/** Snapshot exclusions for the next rematch open (respects manual re-includes). */
+export function buildNextAceRematchExcludedIds(
+  modalExcludedIds: readonly string[],
+  selectedAceIds: readonly string[],
+): string[] {
+  return [...new Set([...modalExcludedIds, ...selectedAceIds].filter(Boolean))]
+}
+
 export type AceRerollButtonState =
   | { kind: "draw" }
   | { kind: "reroll-all" }

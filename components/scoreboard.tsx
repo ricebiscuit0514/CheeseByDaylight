@@ -8,6 +8,7 @@ import {
   aceModalSyncToSetup,
   aceSetupToModalSync,
   buildExcludedIdsFromList,
+  buildNextAceRematchExcludedIds,
   mergeAceDrawExcludedIds,
   DEFAULT_ACE_MODAL_SYNC,
   type AceModalSyncState,
@@ -1206,9 +1207,9 @@ export function Scoreboard() {
     excludedIds: string[] = [],
   ) => {
     setShowAcePromptModal(false)
-    setAceRematchExcludedIds((previous) =>
-      mergeAceDrawExcludedIds(previous, [
-        ...excludedIds,
+    // Replace (don't merge previous): manual re-includes must stick across rematches.
+    setAceRematchExcludedIds(
+      buildNextAceRematchExcludedIds(excludedIds, [
         selectedThomasId,
         selectedAdaId,
       ]),
@@ -2880,7 +2881,7 @@ export function Scoreboard() {
         )}
 
         {showAceRematchPrompt && isViewer && (
-          <div className="ace-modal-backdrop">
+          <div className="ace-modal-backdrop ace-modal-backdrop--passthrough">
             <div className="ace-modal-panel">
               <h2 className="ace-modal-title">에이스 결정전 무승부</h2>
               <p className="ace-modal-body">

@@ -286,7 +286,12 @@ export function AceMatchModal({
   }, [])
 
   return (
-    <div className="ace-modal-backdrop">
+    <div
+      className={cn(
+        "ace-modal-backdrop",
+        readOnly && "ace-modal-backdrop--passthrough",
+      )}
+    >
       <AnimatePresence mode="wait">
         {step === "prompt" && (
           <motion.div
@@ -342,7 +347,9 @@ export function AceMatchModal({
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
             className="ace-modal-panel"
           >
-            <h2 className="ace-modal-title mb-6">참여 멤버 결정 방법</h2>
+            <h2 className="ace-modal-title mb-6">
+              {readOnly ? "참여 방법 결정" : "참여 멤버 결정 방법"}
+            </h2>
             {!readOnly ? (
               <>
                 <div className="grid grid-cols-2 gap-4">
@@ -952,7 +959,8 @@ function SlotColumn({
                     !readOnly && !isLocked && onToggleExclude(player.id)
                   }
                   className={cn(
-                    "ace-modal-player justify-between",
+                    "ace-modal-player",
+                    !readOnly && "justify-between",
                     team === "thomas"
                       ? "ace-modal-player--thomas"
                       : "ace-modal-player--ada",
@@ -984,7 +992,9 @@ function SlotColumn({
                     </div>
                   )}
                   {readOnly && isExcluded && (
-                    <span className="ace-modal-player-meta">제외</span>
+                    <span className="ace-modal-player-meta ace-modal-player-meta--overlay">
+                      제외
+                    </span>
                   )}
                 </div>
               )

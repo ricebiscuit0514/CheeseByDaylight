@@ -2139,6 +2139,14 @@ input[type="number"] {
   pointer-events: auto;
 }
 
+/* Viewer: let utility controls (UI 끄기/켜기 등) stay clickable under the shell. */
+.ace-modal-backdrop--passthrough {
+  pointer-events: none;
+}
+.ace-modal-backdrop--passthrough .ace-modal-panel {
+  pointer-events: auto;
+}
+
 .ace-modal-panel {
   --ace-accent: var(--dbd-yellow);
   position: relative;
@@ -2609,6 +2617,7 @@ input[type="number"] {
 .ace-modal-player {
   --team: var(--dbd-yellow);
   --team-muted: color-mix(in oklch, var(--team) 40%, #7a7a7a);
+  position: relative;
   display: flex;
   width: 100%;
   align-items: center;
@@ -2710,6 +2719,13 @@ input[type="number"] {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: .6875rem;
   color: color-mix(in oklch, var(--foreground), transparent 52%);
+}
+.ace-modal-player-meta--overlay {
+  position: absolute;
+  right: .85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .ace-modal-slot-col {
