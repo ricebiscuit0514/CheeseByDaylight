@@ -4,8 +4,8 @@
     ".write": false,
     "scoreboardRooms": {
       "$roomId": {
-        ".read": "auth != null && data.child('status').val() === 'active' && data.child('expiresAt').val() > now && (!data.child('hostDisconnectedAt').isNumber() || data.child('hostDisconnectedAt').val() + 7200000 > now)",
-        ".write": "auth != null && $roomId.matches(/^[a-f0-9]{48,128}$/) && ((data.exists() && data.child('ownerUid').val() === auth.uid && (!newData.exists() || (!data.child('hostConnections').exists() && !data.child('hostDisconnectedAt').exists()) || data.child('hostConnections').hasChildren() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 7200000 > now))) || (!data.exists() && newData.exists() && newData.child('ownerUid').val() === auth.uid))",
+        ".read": "auth != null && data.child('status').val() === 'active' && data.child('expiresAt').val() > now && (!data.child('hostDisconnectedAt').isNumber() || data.child('hostDisconnectedAt').val() + 10800000 > now)",
+        ".write": "auth != null && $roomId.matches(/^[a-f0-9]{48,128}$/) && ((data.exists() && data.child('ownerUid').val() === auth.uid && (!newData.exists() || (!data.child('hostConnections').exists() && !data.child('hostDisconnectedAt').exists()) || data.child('hostConnections').hasChildren() || (data.child('hostDisconnectedAt').isNumber() && data.child('hostDisconnectedAt').val() + 10800000 > now))) || (!data.exists() && newData.exists() && newData.child('ownerUid').val() === auth.uid))",
         ".validate": "!newData.exists() || newData.hasChildren(['version', 'ownerUid', 'status', 'createdAt', 'updatedAt', 'expiresAt', 'scoreboard'])",
         "version": {
           ".validate": "newData.val() === 1"
@@ -23,7 +23,7 @@
           ".validate": "newData.isNumber() && newData.val() <= now + 5000 && newData.val() >= newData.parent().child('createdAt').val()"
         },
         "expiresAt": {
-          ".validate": "newData.isNumber() && newData.val() > now && newData.val() <= now + 7205000"
+          ".validate": "newData.isNumber() && newData.val() > now && newData.val() <= now + 10805000"
         },
         "hostDisconnectedAt": {
           ".validate": "newData.isNumber() && newData.val() >= newData.parent().child('createdAt').val() && newData.val() <= now + 5000"

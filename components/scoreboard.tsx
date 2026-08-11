@@ -101,7 +101,7 @@ const LS_KEY = "dbd-scoreboard-v1"
 const GUIDE_SEEN_4V4_KEY = "dbd-fearless-guide-seen-4v4"
 const ACE_REDO_HINT_SEEN_KEY = "dbd-ace-redo-hint-seen"
 const ACE_IMPROVEMENT_NOTICE_SEEN_KEY = "dbd-ace-improvement-notice-seen"
-const EXPIRATION_TIME_MS = 60 * 60 * 1000 // 마지막 조작 기준 1시간 만료
+const EXPIRATION_TIME_MS = 3 * 60 * 60 * 1000 // 마지막 조작 기준 3시간 만료
 
 const teamScore = (players: Player[]) => players.reduce((s, p) => s + p.kills, 0)
 

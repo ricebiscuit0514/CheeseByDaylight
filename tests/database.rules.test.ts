@@ -113,7 +113,7 @@ beforeEach(async () => {
       {
         ...roomData(),
         hostConnections: null,
-        hostDisconnectedAt: Date.now() - 115 * 60 * 1000,
+        hostDisconnectedAt: Date.now() - 175 * 60 * 1000,
       },
     )
     await set(
@@ -121,7 +121,7 @@ beforeEach(async () => {
       {
         ...roomData(),
         hostConnections: null,
-        hostDisconnectedAt: Date.now() - 121 * 60 * 1000,
+        hostDisconnectedAt: Date.now() - 181 * 60 * 1000,
       },
     )
   })
@@ -315,7 +315,7 @@ describe("Realtime Database scoreboard room rules", () => {
     )
   })
 
-  it("allows a 2-hour host reconnect grace and closes stale rooms", async () => {
+  it("allows a 3-hour host reconnect grace and closes stale rooms", async () => {
     const viewerDatabase = testEnv
       .authenticatedContext(VIEWER_UID)
       .database()
