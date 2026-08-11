@@ -846,13 +846,29 @@ input[type="number"] {
   --fearless-team: var(--dbd-orange);
   --fearless-slot-size: clamp(2.33rem, 10.8vw, 3rem);
   --fearless-slot-gap: 2px;
+  --fearless-slot-count: 4;
   display: flex;
-  width: calc(var(--fearless-slot-size) * 4 + var(--fearless-slot-gap) * 3);
-  min-width: calc(var(--fearless-slot-size) * 4 + var(--fearless-slot-gap) * 3);
+  width: calc(
+    var(--fearless-slot-size) * var(--fearless-slot-count) +
+      var(--fearless-slot-gap) * (var(--fearless-slot-count) - 1)
+  );
+  min-width: calc(
+    var(--fearless-slot-size) * var(--fearless-slot-count) +
+      var(--fearless-slot-gap) * (var(--fearless-slot-count) - 1)
+  );
   flex: 0 0 auto;
   align-items: center;
   gap: var(--fearless-slot-gap);
   font-family: var(--font-s-core);
+}
+.fearless-killer-slots.is-five-slot-outside {
+  --fearless-slot-count: 5;
+}
+.fearless-killer-slots-thomas.is-five-slot-outside {
+  margin-left: calc(-1 * (var(--fearless-slot-size) + var(--fearless-slot-gap)));
+}
+.fearless-killer-slots-ada.is-five-slot-outside {
+  margin-right: calc(-1 * (var(--fearless-slot-size) + var(--fearless-slot-gap)));
 }
 .fearless-killer-slots.is-single-slot {
   width: var(--fearless-slot-size);
@@ -2024,6 +2040,8 @@ input[type="number"] {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .cold-warning-title { 
@@ -2081,6 +2099,460 @@ input[type="number"] {
   letter-spacing: .04em;
   color: var(--dbd-yellow);
   text-shadow: 0 0 12px color-mix(in oklch, var(--dbd-yellow), transparent 40%);
+}
+
+/* Ace match modal — plate / fearless-picker hybrid shell */
+.ace-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: auto;
+}
+
+.ace-modal-panel {
+  --ace-accent: var(--dbd-yellow);
+  position: relative;
+  width: 100%;
+  max-width: 28rem;
+  overflow: hidden;
+  padding: 1.35rem 1.4rem 1.45rem;
+  text-align: center;
+  color: #f1f1f1;
+  border: 1px solid rgb(255 255 255 / 14%);
+  background: rgb(8 8 9 / 98%);
+  box-shadow:
+    0 24px 80px rgb(0 0 0 / 72%),
+    inset 0 0 45px rgb(255 255 255 / 2%);
+  clip-path: polygon(0 0, calc(100% - .75rem) 0, 100% .75rem, 100% 100%, .75rem 100%, 0 calc(100% - .75rem));
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ace-modal-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .18;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    167deg,
+    transparent 0 7px,
+    color-mix(in oklch, var(--foreground), transparent 92%) 8px,
+    transparent 9px 15px
+  );
+}
+.ace-modal-panel > * { position: relative; z-index: 1; }
+.ace-modal-panel--wide {
+  max-width: 44rem;
+  padding: 1.15rem 1.5rem 1.2rem;
+}
+.ace-modal-panel--wide .ace-modal-title {
+  margin-bottom: .7rem;
+}
+.ace-modal-panel--wide .ace-modal-player {
+  min-height: 3.55rem;
+  padding-block: 1.05rem;
+  font-size: 1.05rem;
+}
+.ace-modal-panel--wide .ace-modal-slot-col {
+  padding: 0;
+}
+.ace-modal-roster {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+}
+.ace-modal-slot-header {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  margin-bottom: .45rem;
+  padding-bottom: .4rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--foreground), transparent 90%);
+  min-height: 2.5rem;
+}
+.ace-modal-slot-header--thomas { flex-direction: row; }
+.ace-modal-slot-header--ada { flex-direction: row-reverse; }
+.ace-modal-slot-header .ace-modal-team-label {
+  flex: 1;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  min-width: 0;
+}
+.ace-modal-slot-header--thomas .ace-modal-team-label { text-align: left; }
+.ace-modal-slot-header--ada .ace-modal-team-label { text-align: right; }
+.ace-modal-slot-header-action {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.75rem;
+  min-height: 2.35rem;
+}
+.ace-modal-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: .75rem;
+  text-align: left;
+}
+
+.ace-modal-title {
+  margin: 0 0 .85rem;
+  font-family: var(--font-aldrich);
+  font-size: clamp(1.2rem, 3.5vw, 1.55rem);
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--dbd-yellow);
+  text-shadow: 2px 2px 0 var(--background);
+}
+.ace-modal-title--white {
+  color: #f5f5f5;
+}
+.ace-modal-body {
+  margin: 0;
+  font-family: var(--font-godo);
+  font-size: .875rem;
+  line-height: 1.65;
+  color: color-mix(in oklch, var(--foreground), transparent 18%);
+}
+.ace-modal-body .ace-modal-em {
+  color: var(--dbd-yellow);
+  font-weight: 700;
+}
+.ace-modal-body + .ace-modal-actions {
+  margin-top: 1.2rem;
+}
+
+.ace-modal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: .2rem;
+  border: 1px solid color-mix(in oklch, var(--foreground), transparent 72%);
+  background: rgb(0 0 0 / 82%);
+  padding: .65rem 1.35rem;
+  font-family: var(--font-godo);
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: color-mix(in oklch, var(--foreground), transparent 12%);
+  cursor: pointer;
+  transition:
+    border-color .15s ease,
+    color .15s ease,
+    background-color .15s ease,
+    box-shadow .15s ease,
+    opacity .15s ease;
+}
+.ace-modal-btn:hover:not(:disabled) {
+  border-color: color-mix(in oklch, var(--foreground), transparent 42%);
+  color: #fff;
+}
+.ace-modal-btn:disabled {
+  cursor: not-allowed;
+  opacity: .4;
+}
+.ace-modal-btn--primary {
+  border-color: color-mix(in oklch, var(--dbd-yellow), transparent 55%);
+  color: var(--dbd-yellow);
+}
+.ace-modal-btn--primary:hover:not(:disabled) {
+  border-color: var(--dbd-yellow);
+  background: rgb(0 0 0 / 90%);
+  color: var(--dbd-yellow);
+}
+.ace-modal-btn--thomas {
+  border-color: color-mix(in oklch, var(--dbd-orange), transparent 45%);
+  color: var(--dbd-orange);
+}
+.ace-modal-btn--thomas:hover:not(:disabled) {
+  border-color: var(--dbd-orange);
+  background: rgb(0 0 0 / 90%);
+  color: var(--dbd-orange);
+}
+.ace-modal-btn--ada {
+  border-color: color-mix(in oklch, var(--dbd-blue), transparent 45%);
+  color: var(--dbd-blue);
+}
+.ace-modal-btn--ada:hover:not(:disabled) {
+  border-color: var(--dbd-blue);
+  background: rgb(0 0 0 / 90%);
+  color: var(--dbd-blue);
+}
+.ace-modal-btn--accent {
+  border-color: color-mix(in oklch, var(--dbd-blue), transparent 55%);
+  color: var(--dbd-blue);
+}
+.ace-modal-btn--accent:hover:not(:disabled) {
+  border-color: var(--dbd-blue);
+  background: rgb(0 0 0 / 90%);
+  color: var(--dbd-blue);
+}
+.ace-modal-btn--muted {
+  border-color: color-mix(in oklch, var(--foreground), transparent 78%);
+  background: rgb(18 18 18 / 90%);
+  color: color-mix(in oklch, var(--foreground), transparent 28%);
+}
+.ace-modal-btn--muted:hover:not(:disabled) {
+  border-color: color-mix(in oklch, var(--foreground), transparent 48%);
+  color: #fff;
+}
+.ace-modal-btn--ghost {
+  border: none;
+  background: transparent;
+  padding: .35rem .5rem;
+  font-size: .75rem;
+  font-weight: 500;
+  color: color-mix(in oklch, var(--foreground), transparent 42%);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ace-modal-btn--ghost:hover:not(:disabled) {
+  color: #fff;
+  background: transparent;
+  box-shadow: none;
+}
+.ace-modal-btn--block {
+  width: 100%;
+  padding-block: .7rem;
+}
+.ace-modal-btn--compact {
+  padding: .35rem .55rem;
+  font-size: .625rem;
+  line-height: 1.15;
+}
+
+.ace-modal-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: 1.15rem .85rem;
+  border: 1px solid color-mix(in oklch, var(--foreground), transparent 82%);
+  border-left: 3px solid color-mix(in oklch, var(--foreground), transparent 58%);
+  background: rgb(0 0 0 / 55%);
+  clip-path: polygon(0 0, calc(100% - .45rem) 0, 100% .45rem, 100% 100%, .4rem 100%, 0 calc(100% - .4rem));
+  color: color-mix(in oklch, var(--foreground), transparent 8%);
+  cursor: pointer;
+  transition:
+    border-color .15s ease,
+    background-color .15s ease,
+    box-shadow .15s ease;
+}
+.ace-modal-choice:hover {
+  border-color: color-mix(in oklch, var(--foreground), transparent 58%);
+  background: rgb(12 12 12 / 72%);
+}
+.ace-modal-choice-title {
+  font-family: var(--font-godo);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+.ace-modal-choice-desc {
+  font-family: var(--font-godo);
+  font-size: .8125rem;
+  color: color-mix(in oklch, var(--foreground), transparent 48%);
+}
+
+.ace-modal-team-label {
+  margin-bottom: .45rem;
+  padding-bottom: .3rem;
+  border-bottom: 1px solid color-mix(in oklch, var(--team, var(--dbd-yellow)), transparent 55%);
+  font-family: var(--font-godo);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--team, var(--dbd-yellow));
+}
+.ace-modal-team-label--thomas { --team: var(--dbd-orange); }
+.ace-modal-team-label--ada { --team: var(--dbd-blue); }
+.ace-modal-team-label--edge-left { text-align: left; }
+.ace-modal-team-label--edge-right { text-align: right; }
+
+.ace-modal-player {
+  --team: var(--dbd-yellow);
+  --team-muted: color-mix(in oklch, var(--team) 40%, #7a7a7a);
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: .65rem .85rem;
+  border: 2px solid color-mix(in oklch, var(--foreground), transparent 78%);
+  border-left: 4px solid color-mix(in oklch, var(--team-muted), transparent 35%);
+  background:
+    linear-gradient(104deg, color-mix(in oklch, var(--team-muted), transparent 90%), transparent 40%),
+    rgb(0 0 0 / 55%);
+  clip-path: polygon(0 0, calc(100% - .4rem) 0, 100% .4rem, 100% 100%, .35rem 100%, 0 calc(100% - .35rem));
+  font-family: var(--font-godo);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: color-mix(in oklch, var(--foreground), transparent 28%);
+  text-align: center;
+  transition:
+    border-color .15s ease,
+    background-color .15s ease,
+    color .15s ease,
+    box-shadow .15s ease,
+    transform .15s ease,
+    opacity .15s ease;
+}
+.ace-modal-player:not(.is-readonly):not(.is-selected):hover {
+  border-color: color-mix(in oklch, var(--foreground), transparent 52%);
+  color: color-mix(in oklch, var(--foreground), transparent 12%);
+  cursor: pointer;
+}
+.ace-modal-player.is-readonly { cursor: default; }
+.ace-modal-player.is-selected {
+  border-color: color-mix(in oklch, var(--team), transparent 22%);
+  border-left-color: var(--team);
+  background: color-mix(in oklch, var(--team), transparent 88%);
+  color: var(--team);
+}
+.ace-modal-player--thomas { --team: var(--dbd-orange); }
+.ace-modal-player--ada {
+  --team: var(--dbd-blue);
+  border-left: 2px solid color-mix(in oklch, var(--foreground), transparent 78%);
+  border-right: 4px solid color-mix(in oklch, var(--team-muted), transparent 35%);
+  clip-path: polygon(.4rem 0, 100% 0, 100% calc(100% - .35rem), calc(100% - .35rem) 100%, 0 100%, 0 .4rem);
+  background:
+    linear-gradient(284deg, color-mix(in oklch, var(--team-muted), transparent 90%), transparent 40%),
+    rgb(0 0 0 / 55%);
+}
+.ace-modal-player--ada.is-selected {
+  border-left-color: var(--team);
+  border-right-color: var(--team);
+}
+.ace-modal-player.is-picked {
+  border-color: color-mix(in oklch, var(--team), transparent 18%);
+  border-left-color: var(--team);
+  background: color-mix(in oklch, var(--team), transparent 86%);
+  color: var(--team);
+  font-weight: 800;
+  transform: scale(1.015);
+}
+.ace-modal-player--ada.is-picked {
+  border-left-color: var(--team);
+  border-right-color: var(--team);
+}
+.ace-modal-player.is-picked.is-locked {
+  border-color: color-mix(in oklch, var(--team), transparent 22%);
+  border-left-color: var(--team);
+  background:
+    linear-gradient(104deg, color-mix(in oklch, var(--team), transparent 78%), transparent 44%),
+    rgb(0 0 0 / 65%);
+  color: var(--team);
+}
+.ace-modal-player--ada.is-picked.is-locked {
+  border-left-color: var(--team);
+  border-right-color: var(--team);
+  background:
+    linear-gradient(284deg, color-mix(in oklch, var(--team), transparent 78%), transparent 44%),
+    rgb(0 0 0 / 65%);
+}
+.ace-modal-player.is-excluded {
+  border-color: color-mix(in oklch, var(--foreground), transparent 88%);
+  background: rgb(8 8 9 / 72%);
+  color: color-mix(in oklch, var(--foreground), transparent 62%);
+  opacity: .45;
+}
+.ace-modal-player.is-excluded .ace-modal-player-name {
+  text-decoration: line-through;
+}
+.ace-modal-player.is-dimmed {
+  border-color: color-mix(in oklch, var(--foreground), transparent 86%);
+  background: rgb(8 8 9 / 65%);
+  color: color-mix(in oklch, var(--foreground), transparent 48%);
+  opacity: .55;
+}
+.ace-modal-player-name { flex: 1; text-align: center; }
+.ace-modal-player-meta {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: .6875rem;
+  color: color-mix(in oklch, var(--foreground), transparent 52%);
+}
+
+.ace-modal-slot-col {
+  --team: var(--dbd-yellow);
+  padding: 0;
+  border: 2px solid transparent;
+  background: transparent;
+  clip-path: none;
+  transition:
+    border-color .2s ease,
+    background-color .2s ease,
+    box-shadow .2s ease;
+}
+.ace-modal-slot-col--thomas { --team: var(--dbd-orange); }
+.ace-modal-slot-col--ada {
+  --team: var(--dbd-blue);
+}
+.ace-modal-slot-col.is-locked {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.ace-modal-slot-col--ada.is-locked {
+  background: transparent;
+}
+.ace-modal-slot-lock {
+  width: auto;
+  min-width: 5.75rem;
+  min-height: 2.35rem;
+  border-radius: .2rem;
+  border: 1px solid color-mix(in oklch, var(--foreground), transparent 78%);
+  background: rgb(18 18 18 / 85%);
+  padding: .5rem .85rem;
+  font-family: var(--font-godo);
+  font-size: .8125rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: color-mix(in oklch, var(--foreground), transparent 42%);
+  cursor: pointer;
+  transition: border-color .15s ease, color .15s ease, background-color .15s ease, opacity .15s ease;
+}
+.ace-modal-slot-lock--placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+.ace-modal-footer {
+  border-top: 1px solid color-mix(in oklch, var(--foreground), transparent 90%);
+  padding-top: .55rem;
+  margin-top: 0;
+}
+.ace-modal-slot-lock:hover {
+  border-color: color-mix(in oklch, var(--foreground), transparent 52%);
+  color: color-mix(in oklch, var(--foreground), transparent 12%);
+}
+.ace-modal-slot-lock.is-active {
+  border-color: color-mix(in oklch, var(--team), transparent 38%);
+  background: color-mix(in oklch, var(--team), transparent 90%);
+  color: var(--team);
+}
+.ace-modal-slot-lock.is-badge {
+  cursor: default;
+  text-align: center;
+}
+.ace-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+.ace-modal-stack {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
 }
 
 @media (prefers-reduced-motion: reduce) {

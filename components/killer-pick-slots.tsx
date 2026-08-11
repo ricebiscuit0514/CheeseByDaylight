@@ -18,6 +18,7 @@ export type KillerPickSlotsProps = {
   readOnly?: boolean
   /** Team-neutral styling for modes without team colors (e.g. 1v4). */
   monochrome?: boolean
+  extendOutward?: boolean
   onOpen: (slotIndex: number | null) => void
 }
 
@@ -37,6 +38,7 @@ export function KillerPickSlots({
   disabled = false,
   readOnly = false,
   monochrome = false,
+  extendOutward = false,
   onOpen,
 }: KillerPickSlotsProps) {
   const displayName = safePlayerName(playerName)
@@ -50,6 +52,7 @@ export function KillerPickSlots({
         "fearless-killer-slots",
         monochrome ? "fearless-killer-slots-neutral" : `fearless-killer-slots-${team}`,
         singleSlot && "is-single-slot",
+        extendOutward && maxSlots > 4 && "is-five-slot-outside",
       )}
       aria-label={`${displayName} 살인마 픽`}
     >

@@ -137,7 +137,7 @@ describe("fearless pick and ban updates", () => {
     expect(original.killerPicks).toEqual(["nurse"])
   })
 
-  it("cancels an indexed slot and enforces max four", () => {
+  it("cancels an indexed slot and enforces max picks", () => {
     const picks = player("p1", "Player", ["nurse", "artist", "clown"])
     expect(cancelPlayerKillerPick(picks, 1).killerPicks).toEqual([
       "nurse",
@@ -151,6 +151,13 @@ describe("fearless pick and ban updates", () => {
       "doctor",
     ])
     expect(setPlayerKillerPick(full, "wraith", null)).toBe(full)
+    expect(setPlayerKillerPick(full, "wraith", null, 5).killerPicks).toEqual([
+      "nurse",
+      "artist",
+      "clown",
+      "doctor",
+      "wraith",
+    ])
   })
 
   it("uses no-op policy for invalid catalog IDs and indices", () => {

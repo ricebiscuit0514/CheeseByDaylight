@@ -5,8 +5,11 @@ import { motion, AnimatePresence } from "motion/react"
 import { type Player } from "@/components/player-row"
 import { cn } from "@/lib/utils"
 import {
+  buildExcludedIdsFromList,
   buildSlotSpinPlan,
+  DEFAULT_ACE_LOCKED_TEAMS,
   DEFAULT_ACE_MODAL_SYNC,
+  getAceRerollButtonState,
   pickInitialSlotIndices,
   runSlotSpinAnimation,
   type AceModalSyncState,
@@ -27,6 +30,8 @@ interface AceMatchModalProps {
   onSyncState?: (state: AceModalSyncState) => void
   readOnly?: boolean
   syncState?: AceModalSyncState | null
+  /** Pre-check players excluded from random draw (e.g. prior ace round). */
+  initialExcludedIds?: readonly string[]
 }
 
 export function AceMatchModal({
@@ -41,11 +46,14 @@ export function AceMatchModal({
   onSyncState,
   readOnly = false,
   syncState = null,
+  initialExcludedIds = [],
 }: AceMatchModalProps) {
-  const [localState, setLocalState] = useState<AceModalSyncState>({
+  const [localState, setLocalState] = useState<AceModalSyncState>(() => ({
     ...DEFAULT_ACE_MODAL_SYNC,
     step: initialStep,
-  })
+    excludedIds: buildExcludedIdsFromList(initialExcludedIds),
+  }))
+  const [hasCompletedDraw, setHasCompletedDraw] = useState(false)
   const [viewerSlotDisplay, setViewerSlotDisplay] = useState({
     slotThomasIdx: 0,
     slotAdaIdx: 0,
@@ -61,6 +69,7 @@ export function AceMatchModal({
   }, [localState])
 
   const excludedIdsKey = JSON.stringify(localState.excludedIds)
+  const lockedTeamsKey = JSON.stringify(localState.slotLockedTeams)
   const slotThomasSyncKey =
     localState.isRolling && !localState.slotFinished
       ? -1
@@ -75,6 +84,7 @@ export function AceMatchModal({
     onSyncState(localState)
   }, [
     excludedIdsKey,
+    lockedTeamsKey,
     localState.isRolling,
     localState.selectedAdaId,
     localState.selectedThomasId,
@@ -102,6 +112,7 @@ export function AceMatchModal({
     isRolling,
     slotFinished,
     excludedIds,
+    slotLockedTeams,
   } = state
 
   const patchLocalState = (
@@ -113,6 +124,7 @@ export function AceMatchModal({
 
   const setStep = (nextStep: ModalStep) => {
     if (readOnly) return
+    if (nextStep !== "random_slot") setHasCompletedDraw(false)
     setLocalState((current) => ({ ...current, step: nextStep }))
     onStepChange?.(nextStep)
   }
@@ -128,10 +140,27 @@ export function AceMatchModal({
     }))
   }
 
+  const toggleTeamLock = (team: "thomas" | "ada") => {
+    if (readOnly || isRolling) return
+    setLocalState((current) => {
+      const currentlyLocked = current.slotLockedTeams[team]
+      if (!currentlyLocked && !current.slotFinished) return current
+      return {
+        ...current,
+        slotLockedTeams: {
+          ...current.slotLockedTeams,
+          [team]: !currentlyLocked,
+        },
+      }
+    })
+  }
+
   const startSlotMachine = () => {
     if (readOnly || thomas.length === 0 || ada.length === 0) return
 
     const current = localStateRef.current
+    if (current.slotLockedTeams.thomas && current.slotLockedTeams.ada) return
+
     const spinToken = current.slotSpinToken + 1
     const plan = buildSlotSpinPlan(
       thomas,
@@ -140,6 +169,7 @@ export function AceMatchModal({
       current.slotThomasIdx,
       current.slotAdaIdx,
       spinToken,
+      current.slotLockedTeams,
     )
     if (!plan) return
 
@@ -162,6 +192,10 @@ export function AceMatchModal({
       },
     )
   }
+
+  useEffect(() => {
+    if (slotFinished) setHasCompletedDraw(true)
+  }, [slotFinished])
 
   useEffect(() => {
     if (readOnly) return
@@ -236,7 +270,7 @@ export function AceMatchModal({
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto p-4">
+    <div className="ace-modal-backdrop">
       <AnimatePresence mode="wait">
         {step === "prompt" && (
           <motion.div
@@ -244,20 +278,10 @@ export function AceMatchModal({
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
-            className="w-full max-w-md rounded-lg border border-neutral-600 bg-black/95 p-6 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]"
+            className="ace-modal-panel"
           >
-            <h2
-              className="text-xl font-bold text-dbd-yellow mb-3"
-              style={{ fontFamily: "var(--font-godo)" }}
-            >
-              에이스 결정전
-            </h2>
-            <p
-              className={cn(
-                "text-sm text-neutral-300 leading-relaxed",
-                !readOnly && "mb-6",
-              )}
-            >
+            <h2 className="ace-modal-title">에이스 결정전</h2>
+            <p className="ace-modal-body">
               {readOnly ? (
                 <>
                   에이스 결정전 시작 여부를
@@ -268,24 +292,24 @@ export function AceMatchModal({
                 <>
                   경기가 무승부로 종료되었습니다.
                   <br />
-                  <span className="text-dbd-yellow font-bold">에이스 결정전</span>
+                  <span className="ace-modal-em">에이스 결정전</span>
                   을 진행하시겠습니까?
                 </>
               )}
             </p>
             {!readOnly && (
-              <div className="flex gap-4 justify-center">
+              <div className="ace-modal-actions">
                 <button
                   type="button"
                   onClick={() => setStep("method_select")}
-                  className="rounded border border-neutral-600 bg-black/90 px-6 py-2.5 text-sm font-bold text-dbd-yellow hover:border-neutral-400 hover:bg-dbd-yellow/20 transition-all cursor-pointer"
+                  className="ace-modal-btn ace-modal-btn--primary"
                 >
                   예
                 </button>
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="rounded border border-neutral-600 bg-neutral-900/90 px-6 py-2.5 text-sm font-bold text-neutral-300 hover:border-neutral-400 hover:text-white transition-all cursor-pointer"
+                  className="ace-modal-btn ace-modal-btn--muted"
                 >
                   아니오
                 </button>
@@ -300,24 +324,19 @@ export function AceMatchModal({
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
-            className="w-full max-w-md rounded-lg border border-neutral-600 bg-black/95 p-6 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]"
+            className="ace-modal-panel"
           >
-            <h2
-              className="text-xl font-bold text-dbd-yellow mb-6"
-              style={{ fontFamily: "var(--font-godo)" }}
-            >
-              참여 멤버 결정 방법
-            </h2>
+            <h2 className="ace-modal-title mb-6">참여 멤버 결정 방법</h2>
             {!readOnly ? (
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     type="button"
                     onClick={() => setStep("manual_select")}
-                    className="flex flex-col items-center justify-center p-5 rounded-lg border border-neutral-600 bg-black/80 hover:bg-neutral-800/80 hover:border-neutral-400 text-neutral-200 transition-all cursor-pointer group"
+                    className="ace-modal-choice"
                   >
-                    <span className="font-bold text-sm">직접 선택</span>
-                    <span className="text-[11px] text-neutral-400 mt-1">
+                    <span className="ace-modal-choice-title">직접 선택</span>
+                    <span className="ace-modal-choice-desc">
                       원하는 선수를 클릭하여 지정
                     </span>
                   </button>
@@ -332,15 +351,16 @@ export function AceMatchModal({
                       patchLocalState({
                         slotFinished: false,
                         isRolling: false,
+                        slotLockedTeams: DEFAULT_ACE_LOCKED_TEAMS,
                         slotThomasIdx: initial.slotThomasIdx,
                         slotAdaIdx: initial.slotAdaIdx,
                       })
                       setStep("random_slot")
                     }}
-                    className="flex flex-col items-center justify-center p-5 rounded-lg border border-neutral-600 bg-black/80 hover:bg-neutral-800/80 hover:border-neutral-400 text-neutral-200 transition-all cursor-pointer group"
+                    className="ace-modal-choice"
                   >
-                    <span className="font-bold text-sm">무작위 추첨</span>
-                    <span className="text-[11px] text-neutral-400 mt-1">
+                    <span className="ace-modal-choice-title">무작위 추첨</span>
+                    <span className="ace-modal-choice-desc">
                       슬롯머신으로 랜덤 추첨
                     </span>
                   </button>
@@ -348,13 +368,13 @@ export function AceMatchModal({
                 <button
                   type="button"
                   onClick={() => setStep("prompt")}
-                  className="mt-5 text-xs text-neutral-400 hover:text-white underline cursor-pointer"
+                  className="ace-modal-btn ace-modal-btn--ghost mt-5"
                 >
                   이전으로 돌아가기
                 </button>
               </>
             ) : (
-              <p className="text-sm text-neutral-300 leading-relaxed">
+              <p className="ace-modal-body">
                 참여 멤버 결정 방법을 선택하고 있습니다.
               </p>
             )}
@@ -367,27 +387,25 @@ export function AceMatchModal({
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
-            className="w-full max-w-2xl rounded-lg border border-neutral-600 bg-black/95 p-6 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]"
+            className="ace-modal-panel ace-modal-panel--wide"
           >
-            <h2
-              className="text-xl font-bold text-dbd-yellow mb-6"
-              style={{ fontFamily: "var(--font-godo)" }}
-            >
+            <h2 className="ace-modal-title ace-modal-title--white">
               {readOnly ? "출전 인원 선택중..." : "출전 인원을 선택해주세요"}
             </h2>
 
-            <div className="grid grid-cols-2 gap-6 text-left mb-6">
+            <div className="ace-modal-columns">
               <div>
-                <div className="font-bold text-dbd-orange text-sm mb-2 pb-1 border-b border-dbd-orange/40 text-center">
+                <div className="ace-modal-team-label ace-modal-team-label--thomas ace-modal-team-label--edge-left">
                   {thomasName} 팀
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="ace-modal-roster">
                   {thomas.map((player) => {
                     const isSelected = selectedThomasId === player.id
                     return (
                       <PlayerChoice
                         key={player.id}
                         label={player.name || "이름 없음"}
+                        team="thomas"
                         isSelected={isSelected}
                         readOnly={readOnly}
                         onClick={() =>
@@ -400,16 +418,17 @@ export function AceMatchModal({
               </div>
 
               <div>
-                <div className="font-bold text-dbd-blue text-sm mb-2 pb-1 border-b border-dbd-blue/40 text-center">
+                <div className="ace-modal-team-label ace-modal-team-label--ada ace-modal-team-label--edge-right">
                   {adaName} 팀
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="ace-modal-roster">
                   {ada.map((player) => {
                     const isSelected = selectedAdaId === player.id
                     return (
                       <PlayerChoice
                         key={player.id}
                         label={player.name || "이름 없음"}
+                        team="ada"
                         isSelected={isSelected}
                         readOnly={readOnly}
                         onClick={() =>
@@ -423,11 +442,11 @@ export function AceMatchModal({
             </div>
 
             {!readOnly && (
-              <div className="flex justify-between items-center pt-2 border-t border-neutral-800">
+              <div className="ace-modal-footer flex justify-between items-center">
                 <button
                   type="button"
                   onClick={() => setStep("method_select")}
-                  className="text-xs text-neutral-400 hover:text-white underline cursor-pointer"
+                  className="ace-modal-btn ace-modal-btn--ghost"
                 >
                   방법 다시 선택
                 </button>
@@ -440,12 +459,7 @@ export function AceMatchModal({
                       onConfirmAceMatch(selectedThomasId, selectedAdaId)
                     }
                   }}
-                  className={cn(
-                    "rounded border px-8 py-2.5 text-sm font-bold transition-all cursor-pointer disabled:cursor-not-allowed",
-                    selectedThomasId && selectedAdaId
-                      ? "border-neutral-600 bg-black/90 text-dbd-yellow hover:border-neutral-400 hover:bg-dbd-yellow/20"
-                      : "border-neutral-800 bg-neutral-900 text-neutral-500 opacity-50",
-                  )}
+                  className="ace-modal-btn ace-modal-btn--primary px-8"
                 >
                   진행하기
                 </button>
@@ -460,53 +474,73 @@ export function AceMatchModal({
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
-            className="w-full max-w-2xl rounded-lg border border-neutral-600 bg-black/95 p-6 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]"
+            className="ace-modal-panel ace-modal-panel--wide"
           >
-            <div className="grid grid-cols-2 gap-6 text-left mb-6">
+            <div className="ace-modal-columns">
               <SlotColumn
+                team="thomas"
                 teamName={thomasName}
-                teamColor="text-dbd-orange border-dbd-orange/40"
                 roster={thomas}
                 slotIdx={slotThomasIdx}
                 excludedIds={excludedIds}
                 isRolling={isRolling}
                 slotFinished={slotFinished}
+                isLocked={slotLockedTeams.thomas}
+                keepLockControlsVisible={
+                  hasCompletedDraw ||
+                  slotFinished ||
+                  slotLockedTeams.thomas ||
+                  slotLockedTeams.ada
+                }
                 readOnly={readOnly}
                 onToggleExclude={toggleExcludePlayer}
+                onToggleLock={() => toggleTeamLock("thomas")}
               />
               <SlotColumn
+                team="ada"
                 teamName={adaName}
-                teamColor="text-dbd-blue border-dbd-blue/40"
                 roster={ada}
                 slotIdx={slotAdaIdx}
                 excludedIds={excludedIds}
                 isRolling={isRolling}
                 slotFinished={slotFinished}
+                isLocked={slotLockedTeams.ada}
+                keepLockControlsVisible={
+                  hasCompletedDraw ||
+                  slotFinished ||
+                  slotLockedTeams.thomas ||
+                  slotLockedTeams.ada
+                }
                 readOnly={readOnly}
                 onToggleExclude={toggleExcludePlayer}
+                onToggleLock={() => toggleTeamLock("ada")}
               />
             </div>
 
             {!readOnly && (
-              <div className="relative flex items-center justify-center pt-2 border-t border-neutral-800">
+              <div className="ace-modal-footer relative min-h-[2.5rem]">
                 <button
                   type="button"
                   onClick={() => setStep("method_select")}
-                  className="absolute left-0 text-xs text-neutral-400 hover:text-white underline cursor-pointer"
+                  className="ace-modal-btn ace-modal-btn--ghost absolute left-0 top-1.5"
                 >
                   방법 다시 선택
                 </button>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
+                <div className="absolute left-1/2 top-1.5 -translate-x-1/2">
+                  <AceRerollButton
+                    state={getAceRerollButtonState(
+                      slotLockedTeams,
+                      thomasName,
+                      adaName,
+                      slotFinished,
+                    )}
                     disabled={isRolling}
                     onClick={startSlotMachine}
-                    className="rounded px-5 py-2.5 border border-neutral-600 bg-black/90 text-sm font-bold text-dbd-yellow hover:border-neutral-400 hover:bg-dbd-yellow/20 disabled:opacity-40 cursor-pointer transition-all"
-                  >
-                    {slotFinished ? "다시 뽑기" : "추첨하기"}
-                  </button>
+                  />
+                </div>
 
+                <div className="absolute right-0 top-1.5">
                   {slotFinished && (
                     <button
                       type="button"
@@ -518,7 +552,7 @@ export function AceMatchModal({
                           onConfirmAceMatch(pickedThomas.id, pickedAda.id)
                         }
                       }}
-                      className="rounded border border-neutral-600 bg-black/90 px-6 py-2.5 text-sm font-bold text-dbd-yellow hover:border-neutral-400 hover:bg-dbd-yellow/20 transition-all cursor-pointer"
+                      className="ace-modal-btn ace-modal-btn--primary"
                     >
                       진행하기
                     </button>
@@ -535,22 +569,22 @@ export function AceMatchModal({
 
 function PlayerChoice({
   label,
+  team,
   isSelected,
   readOnly,
   onClick,
 }: {
   label: string
+  team: "thomas" | "ada"
   isSelected: boolean
   readOnly: boolean
   onClick: () => void
 }) {
   const className = cn(
-    "w-full px-4 py-2.5 rounded border text-center justify-center flex items-center transition-all duration-200",
-    isSelected
-      ? "border-dbd-yellow bg-dbd-yellow/20 text-dbd-yellow font-bold shadow-[0_0_15px_rgba(234,179,8,0.4)]"
-      : "border-neutral-700 bg-neutral-900/80 text-neutral-200",
-    !readOnly && !isSelected && "hover:border-neutral-500 cursor-pointer",
-    readOnly && "cursor-default",
+    "ace-modal-player",
+    team === "thomas" ? "ace-modal-player--thomas" : "ace-modal-player--ada",
+    isSelected && "is-selected",
+    readOnly && "is-readonly",
   )
 
   if (readOnly) {
@@ -564,75 +598,169 @@ function PlayerChoice({
   )
 }
 
+function AceRerollButton({
+  state,
+  disabled,
+  onClick,
+}: {
+  state: ReturnType<typeof getAceRerollButtonState>
+  disabled: boolean
+  onClick: () => void
+}) {
+  if (state.kind === "hidden") return null
+
+  const teamColorClass =
+    state.kind === "reroll-team" && state.team === "thomas"
+      ? "text-dbd-orange"
+      : state.kind === "reroll-team" && state.team === "ada"
+        ? "text-dbd-blue"
+        : "text-dbd-yellow"
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "ace-modal-btn",
+        state.kind === "reroll-team" && state.team === "thomas"
+          ? "ace-modal-btn--thomas"
+          : state.kind === "reroll-team" && state.team === "ada"
+            ? "ace-modal-btn--ada"
+            : "ace-modal-btn--primary",
+      )}
+    >
+      {state.kind === "draw" && "추첨하기"}
+      {state.kind === "reroll-all" && "다시 뽑기"}
+      {state.kind === "reroll-team" && (
+        <>
+          <span className={teamColorClass}>{state.teamName}</span>
+          <span className="text-white">{" "}팀 다시 추첨하기</span>
+        </>
+      )}
+    </button>
+  )
+}
+
 function SlotColumn({
+  team,
   teamName,
-  teamColor,
   roster,
   slotIdx,
   excludedIds,
   isRolling,
   slotFinished,
+  isLocked,
+  keepLockControlsVisible,
   readOnly,
   onToggleExclude,
+  onToggleLock,
 }: {
+  team: "thomas" | "ada"
   teamName: string
-  teamColor: string
   roster: Player[]
   slotIdx: number
   excludedIds: Record<string, boolean>
   isRolling: boolean
   slotFinished: boolean
+  isLocked: boolean
+  keepLockControlsVisible: boolean
   readOnly: boolean
   onToggleExclude: (id: string) => void
+  onToggleLock: () => void
 }) {
+  const showLockControl =
+    !readOnly && (keepLockControlsVisible || slotFinished || isLocked)
+
   return (
-    <div>
+    <div
+      className={cn(
+        "ace-modal-slot-col",
+        team === "thomas" ? "ace-modal-slot-col--thomas" : "ace-modal-slot-col--ada",
+        isLocked && "is-locked",
+      )}
+    >
       <div
         className={cn(
-          "font-bold text-sm mb-2 pb-1 border-b text-center",
-          teamColor,
+          "ace-modal-slot-header",
+          team === "thomas"
+            ? "ace-modal-slot-header--thomas"
+            : "ace-modal-slot-header--ada",
         )}
       >
-        {teamName} 팀
+        <div
+          className={cn(
+            "ace-modal-team-label",
+            team === "thomas"
+              ? "ace-modal-team-label--thomas"
+              : "ace-modal-team-label--ada",
+          )}
+        >
+          {teamName} 팀
+        </div>
+        <div className="ace-modal-slot-header-action">
+          {showLockControl ? (
+            <button
+              type="button"
+              onClick={onToggleLock}
+              disabled={isRolling || (!slotFinished && !isLocked)}
+              className={cn(
+                "ace-modal-slot-lock",
+                isLocked && "is-active",
+              )}
+            >
+              {isLocked ? "확정 해제" : "멤버 확정"}
+            </button>
+          ) : readOnly && isLocked ? (
+            <span className="ace-modal-slot-lock is-active is-badge">
+              확정됨
+            </span>
+          ) : (
+            <span
+              aria-hidden="true"
+              className="ace-modal-slot-lock ace-modal-slot-lock--placeholder"
+            >
+              멤버 확정
+            </span>
+          )}
+        </div>
       </div>
-      <div className="flex flex-col gap-2">
+
+      <div className="ace-modal-roster">
         {roster.map((player, index) => {
           const isPicked = (slotFinished || isRolling) && index === slotIdx
           const isExcluded = Boolean(excludedIds[player.id])
           return (
             <div
               key={player.id}
-              onClick={() => !readOnly && onToggleExclude(player.id)}
+              onClick={() =>
+                !readOnly && !isLocked && onToggleExclude(player.id)
+              }
               className={cn(
-                "w-full px-3 py-2.5 rounded border flex items-center justify-between transition-all duration-150 select-none",
-                isExcluded
-                  ? "border-neutral-900 bg-neutral-950/80 text-neutral-600 opacity-45"
-                  : isPicked
-                    ? "border-dbd-yellow bg-dbd-yellow/25 text-dbd-yellow font-extrabold scale-[1.02] shadow-[0_0_20px_rgba(234,179,8,0.5)]"
-                    : "border-neutral-800 bg-neutral-900/50 text-neutral-300",
-                !readOnly && !isExcluded && "cursor-pointer hover:border-neutral-700",
-                readOnly && "cursor-default",
+                "ace-modal-player justify-between",
+                team === "thomas"
+                  ? "ace-modal-player--thomas"
+                  : "ace-modal-player--ada",
+                isExcluded && "is-excluded",
+                !isExcluded && isPicked && "is-picked",
+                !isExcluded && isPicked && isLocked && "is-locked",
+                !isExcluded && isLocked && !isPicked && "is-dimmed",
+                !readOnly && !isExcluded && !isLocked && "cursor-pointer",
+                readOnly && "is-readonly",
               )}
             >
-              <span
-                className={cn(
-                  "flex-1 text-center font-bold text-sm",
-                  isExcluded && "line-through text-neutral-600",
-                )}
-              >
+              <span className="ace-modal-player-name">
                 {player.name || "이름 없음"}
               </span>
               {!readOnly && (
                 <div
-                  className="flex items-center gap-1.5 shrink-0"
+                  className="ace-modal-player-meta"
                   onClick={(event) => event.stopPropagation()}
                 >
-                  <span className="text-[11px] text-neutral-500 font-mono">
-                    {isExcluded ? "제외" : "포함"}
-                  </span>
+                  <span>{isExcluded ? "제외" : "포함"}</span>
                   <input
                     type="checkbox"
-                    disabled={isRolling}
+                    disabled={isRolling || isLocked}
                     checked={!isExcluded}
                     onChange={() => onToggleExclude(player.id)}
                     title={isExcluded ? "추첨 대상에 포함" : "추첨에서 제외"}
@@ -641,9 +769,7 @@ function SlotColumn({
                 </div>
               )}
               {readOnly && isExcluded && (
-                <span className="text-[11px] text-neutral-500 font-mono shrink-0">
-                  제외
-                </span>
+                <span className="ace-modal-player-meta">제외</span>
               )}
             </div>
           )

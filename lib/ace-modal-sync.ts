@@ -7,6 +7,11 @@ export type AceModalStep =
   | "random_slot"
   | null
 
+export type AceLockedTeams = {
+  thomas: boolean
+  ada: boolean
+}
+
 export type AceSlotSpinPlan = {
   targetThomasIdx: number
   targetAdaIdx: number
@@ -15,6 +20,8 @@ export type AceSlotSpinPlan = {
   startThomasActiveIdx: number
   startAdaActiveIdx: number
   spinToken: number
+  lockThomas: boolean
+  lockAda: boolean
 }
 
 export type AceModalSyncState = {
@@ -26,8 +33,14 @@ export type AceModalSyncState = {
   isRolling: boolean
   slotFinished: boolean
   excludedIds: Record<string, boolean>
+  slotLockedTeams: AceLockedTeams
   slotSpinToken: number
   slotSpinPlan: AceSlotSpinPlan | null
+}
+
+export const DEFAULT_ACE_LOCKED_TEAMS: AceLockedTeams = {
+  thomas: false,
+  ada: false,
 }
 
 export const DEFAULT_ACE_MODAL_SYNC: AceModalSyncState = {
@@ -39,8 +52,70 @@ export const DEFAULT_ACE_MODAL_SYNC: AceModalSyncState = {
   isRolling: false,
   slotFinished: false,
   excludedIds: {},
+  slotLockedTeams: DEFAULT_ACE_LOCKED_TEAMS,
   slotSpinToken: 0,
   slotSpinPlan: null,
+}
+
+export function buildExcludedIdsFromList(ids: readonly string[]) {
+  return Object.fromEntries(ids.map((id) => [id, true]))
+}
+
+export function mergeAceDrawExcludedIds(
+  previous: readonly string[],
+  next: readonly string[],
+): string[] {
+  return [...new Set([...previous, ...next].filter(Boolean))]
+}
+
+export type AceRerollButtonState =
+  | { kind: "draw" }
+  | { kind: "reroll-all" }
+  | { kind: "reroll-team"; team: "thomas" | "ada"; teamName: string }
+  | { kind: "hidden" }
+
+export function getAceRerollButtonState(
+  lockedTeams: AceLockedTeams,
+  thomasName: string,
+  adaName: string,
+  slotFinished: boolean,
+): AceRerollButtonState {
+  if (!slotFinished) return { kind: "draw" }
+  if (lockedTeams.thomas && lockedTeams.ada) return { kind: "hidden" }
+  if (lockedTeams.thomas) {
+    return {
+      kind: "reroll-team",
+      team: "ada",
+      teamName: adaName.trim() || "아다",
+    }
+  }
+  if (lockedTeams.ada) {
+    return {
+      kind: "reroll-team",
+      team: "thomas",
+      teamName: thomasName.trim() || "토마스",
+    }
+  }
+  return { kind: "reroll-all" }
+}
+
+/** @deprecated Use getAceRerollButtonState for rendered labels. */
+export function getAceRerollButtonLabel(
+  lockedTeams: AceLockedTeams,
+  thomasName: string,
+  adaName: string,
+  slotFinished: boolean,
+): string | null {
+  const state = getAceRerollButtonState(
+    lockedTeams,
+    thomasName,
+    adaName,
+    slotFinished,
+  )
+  if (state.kind === "hidden") return null
+  if (state.kind === "draw") return "추첨하기"
+  if (state.kind === "reroll-all") return "다시 뽑기"
+  return `${state.teamName}팀 다시 추첨하기`
 }
 
 export function aceSetupToModalSync(
@@ -53,6 +128,7 @@ export function aceSetupToModalSync(
     setupSlotRolling: boolean
     setupSlotFinished: boolean
     setupSlotExcludedIds: string[]
+    setupSlotLockedTeams: AceLockedTeams
     setupSlotSpinToken: number
     setupSlotSpinPlan: AceSlotSpinPlan | null
   },
@@ -69,6 +145,7 @@ export function aceSetupToModalSync(
     excludedIds: Object.fromEntries(
       ace.setupSlotExcludedIds.map((id) => [id, true]),
     ),
+    slotLockedTeams: ace.setupSlotLockedTeams,
     slotSpinToken: ace.setupSlotSpinToken,
     slotSpinPlan: ace.setupSlotSpinPlan,
   }
@@ -85,6 +162,7 @@ export function aceModalSyncToSetup(
   setupSlotRolling: boolean
   setupSlotFinished: boolean
   setupSlotExcludedIds: string[]
+  setupSlotLockedTeams: AceLockedTeams
   setupSlotSpinToken: number
   setupSlotSpinPlan: AceSlotSpinPlan | null
 } {
@@ -99,6 +177,7 @@ export function aceModalSyncToSetup(
     setupSlotExcludedIds: Object.keys(modal.excludedIds).filter(
       (id) => modal.excludedIds[id],
     ),
+    setupSlotLockedTeams: modal.slotLockedTeams,
     setupSlotSpinToken: modal.slotSpinToken,
     setupSlotSpinPlan: modal.slotSpinPlan,
   }
@@ -141,42 +220,70 @@ export function buildSlotSpinPlan(
   slotThomasIdx: number,
   slotAdaIdx: number,
   spinToken: number,
+  lockedTeams: AceLockedTeams = DEFAULT_ACE_LOCKED_TEAMS,
 ): AceSlotSpinPlan | null {
   if (thomas.length === 0 || ada.length === 0) return null
+  if (lockedTeams.thomas && lockedTeams.ada) return null
 
   const activeThomas = getActiveRoster(thomas, excludedIds)
   const activeAda = getActiveRoster(ada, excludedIds)
-  const randTIdx = getSecureRandomInt(activeThomas.length)
-  const randAIdx = getSecureRandomInt(activeAda.length)
-  const chosenThomas = activeThomas[randTIdx]
-  const chosenAda = activeAda[randAIdx]
-  const targetThomasIdx = thomas.findIndex((player) => player.id === chosenThomas.id)
-  const targetAdaIdx = ada.findIndex((player) => player.id === chosenAda.id)
-
   const tActiveLen = activeThomas.length
   const aActiveLen = activeAda.length
 
-  let startThomasActiveIdx = activeThomas.findIndex(
-    (player) => player.id === thomas[slotThomasIdx]?.id,
-  )
-  if (startThomasActiveIdx === -1) startThomasActiveIdx = 0
+  let targetThomasIdx = slotThomasIdx
+  let targetAdaIdx = slotAdaIdx
+  let thomasMaxSteps = 0
+  let adaMaxSteps = 0
+  let startThomasActiveIdx = 0
+  let startAdaActiveIdx = 0
 
-  let startAdaActiveIdx = activeAda.findIndex(
-    (player) => player.id === ada[slotAdaIdx]?.id,
-  )
-  if (startAdaActiveIdx === -1) startAdaActiveIdx = 0
+  if (lockedTeams.thomas) {
+    const lockedPlayer = thomas[slotThomasIdx]
+    startThomasActiveIdx = activeThomas.findIndex(
+      (player) => player.id === lockedPlayer?.id,
+    )
+    if (startThomasActiveIdx === -1) startThomasActiveIdx = 0
+    targetThomasIdx = slotThomasIdx
+  } else {
+    const randTIdx = getSecureRandomInt(activeThomas.length)
+    const chosenThomas = activeThomas[randTIdx]
+    targetThomasIdx = thomas.findIndex((player) => player.id === chosenThomas.id)
 
-  const tStepsToTarget =
-    (randTIdx - startThomasActiveIdx + tActiveLen * 10) % tActiveLen
-  const aStepsToTarget =
-    (randAIdx - startAdaActiveIdx + aActiveLen * 10) % aActiveLen
+    startThomasActiveIdx = activeThomas.findIndex(
+      (player) => player.id === thomas[slotThomasIdx]?.id,
+    )
+    if (startThomasActiveIdx === -1) startThomasActiveIdx = 0
 
-  const thomasMaxSteps =
-    (tStepsToTarget === 0 ? tActiveLen : tStepsToTarget) +
-    tActiveLen * (3 + getSecureRandomInt(2))
-  const adaMaxSteps =
-    (aStepsToTarget === 0 ? aActiveLen : aStepsToTarget) +
-    aActiveLen * (4 + getSecureRandomInt(2))
+    const tStepsToTarget =
+      (randTIdx - startThomasActiveIdx + tActiveLen * 10) % tActiveLen
+    thomasMaxSteps =
+      (tStepsToTarget === 0 ? tActiveLen : tStepsToTarget) +
+      tActiveLen * (3 + getSecureRandomInt(2))
+  }
+
+  if (lockedTeams.ada) {
+    const lockedPlayer = ada[slotAdaIdx]
+    startAdaActiveIdx = activeAda.findIndex(
+      (player) => player.id === lockedPlayer?.id,
+    )
+    if (startAdaActiveIdx === -1) startAdaActiveIdx = 0
+    targetAdaIdx = slotAdaIdx
+  } else {
+    const randAIdx = getSecureRandomInt(activeAda.length)
+    const chosenAda = activeAda[randAIdx]
+    targetAdaIdx = ada.findIndex((player) => player.id === chosenAda.id)
+
+    startAdaActiveIdx = activeAda.findIndex(
+      (player) => player.id === ada[slotAdaIdx]?.id,
+    )
+    if (startAdaActiveIdx === -1) startAdaActiveIdx = 0
+
+    const aStepsToTarget =
+      (randAIdx - startAdaActiveIdx + aActiveLen * 10) % aActiveLen
+    adaMaxSteps =
+      (aStepsToTarget === 0 ? aActiveLen : aStepsToTarget) +
+      aActiveLen * (4 + getSecureRandomInt(2))
+  }
 
   return {
     targetThomasIdx,
@@ -186,6 +293,8 @@ export function buildSlotSpinPlan(
     startThomasActiveIdx,
     startAdaActiveIdx,
     spinToken,
+    lockThomas: lockedTeams.thomas,
+    lockAda: lockedTeams.ada,
   }
 }
 
@@ -208,8 +317,8 @@ export function runSlotSpinAnimation(
 
   let thomasStep = 0
   let adaStep = 0
-  let thomasDone = false
-  let adaDone = false
+  let thomasDone = plan.lockThomas || plan.thomasMaxSteps === 0
+  let adaDone = plan.lockAda || plan.adaMaxSteps === 0
   let curTIdx = plan.startThomasActiveIdx
   let curAIdx = plan.startAdaActiveIdx
   let cancelled = false
@@ -232,8 +341,15 @@ export function runSlotSpinAnimation(
     slotFinished: false,
   })
 
+  if (thomasDone && adaDone) {
+    finish()
+    return () => {
+      cancelled = true
+    }
+  }
+
   const rollThomas = () => {
-    if (cancelled) return
+    if (cancelled || plan.lockThomas) return
     thomasStep += 1
     curTIdx = (curTIdx + 1) % tActiveLen
     const nextPlayer = activeThomas[curTIdx]
@@ -259,7 +375,7 @@ export function runSlotSpinAnimation(
   }
 
   const rollAda = () => {
-    if (cancelled) return
+    if (cancelled || plan.lockAda) return
     adaStep += 1
     curAIdx = (curAIdx + 1) % aActiveLen
     const nextPlayer = activeAda[curAIdx]
@@ -286,8 +402,8 @@ export function runSlotSpinAnimation(
     window.setTimeout(rollAda, delay)
   }
 
-  rollThomas()
-  rollAda()
+  if (!thomasDone) rollThomas()
+  if (!adaDone) rollAda()
 
   return () => {
     cancelled = true

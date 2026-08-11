@@ -7,6 +7,8 @@ import { CoinTossWidget } from "@/components/coin-toss-widget"
 import {
   aceModalSyncToSetup,
   aceSetupToModalSync,
+  buildExcludedIdsFromList,
+  mergeAceDrawExcludedIds,
   DEFAULT_ACE_MODAL_SYNC,
   type AceModalSyncState,
 } from "@/lib/ace-modal-sync"
@@ -52,6 +54,7 @@ import {
 import {
   cancelPlayerKillerPick,
   flattenFearlessPicks,
+  MAX_FOUR_V_FOUR_FEARLESS_PICKS,
   setPlayerKillerPick,
   toggleKillerBan,
 } from "@/lib/fearless"
@@ -605,6 +608,10 @@ export function Scoreboard() {
   )
   const [viewerAceModalSync, setViewerAceModalSync] =
     useState<AceModalSyncState | null>(null)
+  const [aceRematchExcludedIds, setAceRematchExcludedIds] = useState<string[]>(
+    [],
+  )
+  const [aceModalOpenKey, setAceModalOpenKey] = useState(0)
 
   const [isLoaded, setIsLoaded] = useState(false)
   const [viewerSessionEndReason, setViewerSessionEndReason] =
@@ -749,8 +756,9 @@ export function Scoreboard() {
     setAceModalSync({
       ...DEFAULT_ACE_MODAL_SYNC,
       step: aceModalInitialStep,
+      excludedIds: buildExcludedIdsFromList(aceRematchExcludedIds),
     })
-  }, [aceModalInitialStep, showAcePromptModal])
+  }, [aceModalInitialStep, aceRematchExcludedIds, showAcePromptModal])
 
   const sync = useScoreboardRoom({
     gameMode: "4v4",
@@ -1166,6 +1174,9 @@ export function Scoreboard() {
 
   const handleConfirmAceMatch = (selectedThomasId: string, selectedAdaId: string) => {
     setShowAcePromptModal(false)
+    setAceRematchExcludedIds((previous) =>
+      mergeAceDrawExcludedIds(previous, [selectedThomasId, selectedAdaId]),
+    )
     setShowAceProceedButton(false)
     setHasCompletedAceMatch(true)
 
@@ -1220,6 +1231,7 @@ export function Scoreboard() {
     setAceThomasBackup(null)
     setAceAdaBackup(null)
     setAceFirstAttackerBackup(null)
+    setAceRematchExcludedIds([])
     setHasCompletedAceMatch(true)
     setShowAceProceedButton(false)
     setOverlayDismissed(true)
@@ -1519,14 +1531,24 @@ export function Scoreboard() {
       return
     }
 
-    const nextPlayer = setPlayerKillerPick(player, killerId, slotIndex)
+    const nextPlayer = setPlayerKillerPick(
+      player,
+      killerId,
+      slotIndex,
+      MAX_FOUR_V_FOUR_FEARLESS_PICKS,
+    )
     if (nextPlayer === player) return
 
     const setTeam = team === "thomas" ? setThomas : setAda
     setTeam((current) =>
       current.map((candidate) =>
         candidate.id === playerId
-          ? setPlayerKillerPick(candidate, killerId, slotIndex)
+          ? setPlayerKillerPick(
+              candidate,
+              killerId,
+              slotIndex,
+              MAX_FOUR_V_FOUR_FEARLESS_PICKS,
+            )
           : candidate,
       ),
     )
@@ -1584,6 +1606,8 @@ export function Scoreboard() {
         playerName={p.name}
         team={team}
         killerPicks={p.killerPicks ?? []}
+        maxSlots={MAX_FOUR_V_FOUR_FEARLESS_PICKS}
+        extendOutward
         disabled={removeMode === team}
         readOnly={isViewer}
         onOpen={(slotIndex) => openKillerPicker(team, p, slotIndex)}
@@ -1872,6 +1896,7 @@ export function Scoreboard() {
     setAceRoundLog([])
     setAceVictoryOverlay(null)
     setShowAceRematchPrompt(false)
+    setAceRematchExcludedIds([])
     setHasCompletedAceMatch(false)
     setShowAceProceedButton(false)
   }
@@ -2397,7 +2422,7 @@ export function Scoreboard() {
                     )
                   })()
                 ) : cold.winnerName === "tie" ? (
-                  <span className="text-dbd-yellow">최종 결과: 무승부!</span>
+                  <span className="text-white">무승부!</span>
                 ) : (
                   <>
                     <span className={`cold-team-name ${cold.winnerName === thomasName ? 'cold-team-thomas text-dbd-orange' : 'cold-team-ada text-dbd-blue'}`}>
@@ -2723,6 +2748,9 @@ export function Scoreboard() {
             onDismiss={() => {
               setOverlayDismissed(true)
               if (cold.winnerName === "tie" && !hasCompletedAceMatch) {
+                setAceRematchExcludedIds([])
+                setAceModalOpenKey((value) => value + 1)
+                setAceModalInitialStep("prompt")
                 setShowAcePromptModal(true)
               }
             }}
@@ -2732,15 +2760,18 @@ export function Scoreboard() {
         {/* 에이스 결정전 선택 모달 */}
         {showAcePromptModal && !isViewer && (
           <AceMatchModal
+            key={aceModalOpenKey}
             thomas={thomas}
             ada={ada}
             thomasName={thomasName}
             adaName={adaName}
             initialStep={aceModalInitialStep}
+            initialExcludedIds={aceRematchExcludedIds}
             onStepChange={setAceModalStep}
             onSyncState={setAceModalSync}
             onCancel={() => {
               setShowAcePromptModal(false)
+              setAceRematchExcludedIds([])
               setAceModalSync(DEFAULT_ACE_MODAL_SYNC)
               setShowAceProceedButton(true)
             }}
@@ -2762,18 +2793,10 @@ export function Scoreboard() {
         )}
 
         {showAceRematchPrompt && isViewer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto p-4">
-            <div className="w-full max-w-md rounded-lg border border-neutral-600 bg-black/95 p-6 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]">
-              <h2
-                className="text-xl font-bold text-dbd-yellow mb-3"
-                style={{ fontFamily: "var(--font-godo)" }}
-              >
-                에이스 결정전 무승부
-              </h2>
-              <p
-                className="text-sm text-neutral-300 leading-relaxed"
-                style={{ fontFamily: "var(--font-godo)" }}
-              >
+          <div className="ace-modal-backdrop">
+            <div className="ace-modal-panel">
+              <h2 className="ace-modal-title">에이스 결정전 무승부</h2>
+              <p className="ace-modal-body">
                 결정전 재경기 여부를
                 <br />
                 확인하고 있습니다.
@@ -2792,17 +2815,15 @@ export function Scoreboard() {
           />
         )}
 
-        {/* 에이스 결정전 2차 무승부 리매치 팝업 — 흐림/어두움 배경 제거 및 직각 플레이어 이름표 스타일 적용 */}
+        {/* 에이스 결정전 2차 무승부 리매치 팝업 */}
         {showAceRematchPrompt && !isViewer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-auto p-4">
-            <div className="w-full max-w-md rounded-lg border border-neutral-600 bg-black/95 p-6 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]">
-              <h2 className="text-xl font-bold text-dbd-yellow mb-3" style={{ fontFamily: "var(--font-godo)" }}>
-                에이스 결정전 무승부
-              </h2>
-              <p className="text-sm text-neutral-300 mb-6 leading-relaxed">
+          <div className="ace-modal-backdrop">
+            <div className="ace-modal-panel">
+              <h2 className="ace-modal-title">에이스 결정전 무승부</h2>
+              <p className="ace-modal-body mb-6">
                 다시 결정전을 진행하시겠습니까?
               </p>
-              <div className="flex flex-col gap-3">
+              <div className="ace-modal-stack">
                 <HoldButton
                   onConfirm={() => {
                     setShowAceRematchPrompt(false)
@@ -2812,12 +2833,15 @@ export function Scoreboard() {
                       setAda((prev) => prev.map((p) => (p.id === aceAdaId ? { ...p, kills: 0, played: false } : p)))
                     }
                   }}
-                  className="rounded border border-neutral-600 bg-black/90 py-2.5 text-sm font-bold text-dbd-yellow hover:border-neutral-400 hover:bg-dbd-yellow/20 transition-all"
+                  className="ace-modal-btn ace-modal-btn--primary ace-modal-btn--block"
                 >
                   현재 멤버로 재경기 (꾹 누르기)
                 </HoldButton>
                 <HoldButton
                   onConfirm={() => {
+                    const previousAceIds = [aceThomasId, aceAdaId].filter(
+                      (id): id is string => Boolean(id),
+                    )
                     setShowAceRematchPrompt(false)
                     // Restore 4v4 scores only; keep killer picks recorded during ace match.
                     if (aceThomasBackup) {
@@ -2848,10 +2872,14 @@ export function Scoreboard() {
                     setAceThomasBackup(null)
                     setAceAdaBackup(null)
                     setAceFirstAttackerBackup(null)
+                    setAceRematchExcludedIds((previous) =>
+                      mergeAceDrawExcludedIds(previous, previousAceIds),
+                    )
+                    setAceModalOpenKey((value) => value + 1)
                     setAceModalInitialStep("method_select")
                     setShowAcePromptModal(true)
                   }}
-                  className="rounded border border-neutral-600 bg-black/90 py-2.5 text-sm font-bold text-dbd-blue hover:border-neutral-400 hover:bg-dbd-blue/20 transition-all"
+                  className="ace-modal-btn ace-modal-btn--accent ace-modal-btn--block"
                 >
                   멤버 다시 뽑기 (꾹 누르기)
                 </HoldButton>
@@ -2860,7 +2888,7 @@ export function Scoreboard() {
                     setShowAceRematchPrompt(false)
                     handleExitAceMatch()
                   }}
-                  className="rounded border border-neutral-600 bg-neutral-900/90 py-2.5 text-sm font-bold text-neutral-300 hover:border-neutral-400 hover:text-white transition-all"
+                  className="ace-modal-btn ace-modal-btn--muted ace-modal-btn--block"
                 >
                   결정전 종료 (꾹 누르기)
                 </HoldButton>
@@ -2886,6 +2914,8 @@ export function Scoreboard() {
                 <HoldButton
                   onConfirm={() => {
                     setShowAceProceedButton(false)
+                    setAceRematchExcludedIds([])
+                    setAceModalOpenKey((value) => value + 1)
                     setAceModalInitialStep("prompt")
                     setShowAcePromptModal(true)
                   }}

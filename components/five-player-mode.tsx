@@ -814,7 +814,7 @@ export function FivePlayerMode() {
             className="lg:col-span-5 flex flex-col gap-3"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative max-w-[310px] w-full mx-auto flex items-center justify-center border-b border-neutral-700/60 pb-2">
+            <div className="relative max-w-[310px] w-full mx-auto flex items-center justify-center border-b border-neutral-700/60 pb-2 select-none">
               <h2
                 className="text-xl font-bold italic text-dbd-yellow text-center"
                 style={{ fontFamily: "var(--font-aldrich)" }}
@@ -841,7 +841,7 @@ export function FivePlayerMode() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 max-w-[310px] w-full mx-auto pt-1">
+            <div className="grid grid-cols-2 gap-3 max-w-[310px] w-full mx-auto pt-1 select-none">
               {/* Receiving Config */}
               <div className="flex flex-col space-y-3.5">
                 <div className="text-center font-bold text-emerald-400 text-sm border-b border-emerald-500/20 pb-1 w-full max-w-[145px] mx-auto" style={{ fontFamily: "var(--font-godo)" }}>
@@ -932,7 +932,7 @@ export function FivePlayerMode() {
             style={{ "--team": "#a3a3a3" } as React.CSSProperties}
           >
             <span className="plate-grain rounded-md" aria-hidden="true" />
-            <span className="font-bold text-emerald-400 text-sm whitespace-nowrap z-10" style={{ fontFamily: "var(--font-godo)" }}>
+            <span className="font-bold text-emerald-400 text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
               받는 사람:
             </span>
             <input
@@ -963,7 +963,7 @@ export function FivePlayerMode() {
             style={{ "--team": "#a3a3a3" } as React.CSSProperties}
           >
             <span className="plate-grain rounded-md" aria-hidden="true" />
-            <span className="font-bold text-dbd-orange text-sm whitespace-nowrap z-10" style={{ fontFamily: "var(--font-godo)" }}>
+            <span className="font-bold text-dbd-orange text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
               주는 사람:
             </span>
             <input
@@ -1450,7 +1450,7 @@ function PinballNumberInput({
       className={cn(
         "w-9 bg-neutral-900/90 text-white font-bold text-center py-0.5 text-sm rounded border border-neutral-700 focus:outline-none transition-all",
         color === "emerald" ? "focus:border-emerald-500" : "focus:border-dbd-orange",
-        disabled && "cursor-default border-neutral-800"
+        disabled && "cursor-default border-neutral-800 select-none"
       )}
     />
   )

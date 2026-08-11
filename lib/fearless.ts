@@ -6,12 +6,14 @@ import {
 } from "./killer-catalog"
 
 export const MAX_FEARLESS_PICKS = 4
+export const MAX_FOUR_V_FOUR_FEARLESS_PICKS = 5
 
 const FEARLESS_PICK_ORDINALS = [
   "첫 번째",
   "두 번째",
   "세 번째",
   "네 번째",
+  "다섯 번째",
 ] as const
 
 /** Human-readable fearless pick slot label (e.g. "첫 번째 살인마 선택"). */
@@ -158,19 +160,21 @@ export function playerOwnsKillerPick(
 
 /**
  * Appends when slotIndex is null and replaces an existing pick otherwise.
- * Invalid IDs/indices, appends beyond the four-pick limit, and same-player
+ * Invalid IDs/indices, appends beyond the pick limit, and same-player
  * duplicate killers are no-ops. Cross-player duplicates remain allowed.
  */
 export function setPlayerKillerPick<T extends FearlessPlayer>(
   player: T,
   killerId: string,
   slotIndex: number | null,
+  maxPicks: number = MAX_FEARLESS_PICKS,
 ): T {
   if (!isKillerId(killerId)) return player
 
   const picks = player.killerPicks ?? []
+  const pickLimit = Math.max(1, maxPicks)
   if (slotIndex === null || slotIndex === picks.length) {
-    if (picks.length >= MAX_FEARLESS_PICKS) return player
+    if (picks.length >= pickLimit) return player
     if (playerOwnsKillerPick(player, killerId)) return player
     return { ...player, killerPicks: [...picks, killerId] }
   }
@@ -421,7 +425,7 @@ function isPickArray(
 }
 
 /**
- * Returns four row slots. Filled slots are always visible; empty slots stay hidden
+ * Returns row slots. Filled slots are always visible; empty slots stay hidden
  * until the previous slot is filled, then the next empty slot is revealed.
  */
 export function getFearlessRowSlots(
@@ -431,10 +435,7 @@ export function getFearlessRowSlots(
   const picks: readonly string[] = isPickArray(playerOrPicks)
     ? playerOrPicks
     : (playerOrPicks.killerPicks ?? [])
-  const slotCount = Math.min(
-    Math.max(1, maxSlots),
-    MAX_FEARLESS_PICKS,
-  )
+  const slotCount = Math.max(1, maxSlots)
 
   return Array.from({ length: slotCount }, (_, slotIndex) => {
     const killerId = picks[slotIndex]

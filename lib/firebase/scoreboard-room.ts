@@ -7,7 +7,15 @@ import {
   MAX_ACE_ROUND_LOG,
   normalizeAceRoundLog,
 } from "@/lib/ace-round-log"
-import type { AceModalStep, AceSlotSpinPlan } from "@/lib/ace-modal-sync"
+import type {
+  AceLockedTeams,
+  AceModalStep,
+  AceSlotSpinPlan,
+} from "@/lib/ace-modal-sync"
+import { DEFAULT_ACE_LOCKED_TEAMS } from "@/lib/ace-modal-sync"
+import {
+  MAX_FOUR_V_FOUR_FEARLESS_PICKS,
+} from "@/lib/fearless"
 import {
   isKillerId,
   KILLERS,
@@ -65,6 +73,7 @@ export type AceSyncState = {
   setupSlotRolling: boolean
   setupSlotFinished: boolean
   setupSlotExcludedIds: string[]
+  setupSlotLockedTeams: AceLockedTeams
   setupSlotSpinToken: number
   setupSlotSpinPlan: AceSlotSpinPlan | null
 }
@@ -79,6 +88,7 @@ export const CLOSED_ACE_SETUP: Pick<
   | "setupSlotRolling"
   | "setupSlotFinished"
   | "setupSlotExcludedIds"
+  | "setupSlotLockedTeams"
   | "setupSlotSpinToken"
   | "setupSlotSpinPlan"
 > = {
@@ -90,6 +100,7 @@ export const CLOSED_ACE_SETUP: Pick<
   setupSlotRolling: false,
   setupSlotFinished: false,
   setupSlotExcludedIds: [],
+  setupSlotLockedTeams: DEFAULT_ACE_LOCKED_TEAMS,
   setupSlotSpinToken: 0,
   setupSlotSpinPlan: null,
 }
@@ -209,6 +220,7 @@ type WireAceState = {
   setupSlotRolling?: boolean
   setupSlotFinished?: boolean
   setupSlotExcludedIds?: Record<string, true>
+  setupSlotLockedTeams?: Record<"thomas" | "ada", true>
   setupSlotSpinToken?: number
   setupSlotSpinPlan?: AceSlotSpinPlan
   thomasId?: string
@@ -285,7 +297,7 @@ function isFourVFourPlayer(value: unknown): value is Player {
   return (
     value.killerPicks === undefined ||
     (Array.isArray(value.killerPicks) &&
-      value.killerPicks.length <= 4 &&
+      value.killerPicks.length <= MAX_FOUR_V_FOUR_FEARLESS_PICKS &&
       value.killerPicks.every(
         (killerId) => typeof killerId === "string" && isKillerId(killerId),
       ))
@@ -360,6 +372,11 @@ function isAceState(value: unknown): value is AceSyncState {
         ace.setupSlotExcludedIds.every(
           (id) => typeof id === "string" && id.length > 0 && id.length <= 80,
         ))) &&
+    (ace.setupSlotLockedTeams === undefined ||
+      (typeof ace.setupSlotLockedTeams === "object" &&
+        ace.setupSlotLockedTeams !== null &&
+        typeof ace.setupSlotLockedTeams.thomas === "boolean" &&
+        typeof ace.setupSlotLockedTeams.ada === "boolean")) &&
     (ace.setupSlotSpinToken === undefined ||
       (typeof ace.setupSlotSpinToken === "number" &&
         ace.setupSlotSpinToken >= 0)) &&
@@ -392,8 +409,42 @@ function isSlotSpinPlan(value: unknown): value is AceSlotSpinPlan {
     plan.startAdaActiveIdx >= 0 &&
     plan.startAdaActiveIdx <= 3 &&
     typeof plan.spinToken === "number" &&
-    plan.spinToken >= 0
+    plan.spinToken >= 0 &&
+    (plan.lockThomas === undefined || typeof plan.lockThomas === "boolean") &&
+    (plan.lockAda === undefined || typeof plan.lockAda === "boolean")
   )
+}
+
+function lockedTeamsFromWire(
+  value: Partial<Record<"thomas" | "ada", true>> | AceLockedTeams | undefined,
+): AceLockedTeams {
+  if (!value) return DEFAULT_ACE_LOCKED_TEAMS
+  if (typeof value.thomas === "boolean" && typeof value.ada === "boolean") {
+    return { thomas: value.thomas, ada: value.ada }
+  }
+  return {
+    thomas: value.thomas === true,
+    ada: value.ada === true,
+  }
+}
+
+function lockedTeamsToWire(teams: AceLockedTeams) {
+  if (!teams.thomas && !teams.ada) return undefined
+  const wire: Partial<Record<"thomas" | "ada", true>> = {}
+  if (teams.thomas) wire.thomas = true
+  if (teams.ada) wire.ada = true
+  return wire
+}
+
+function normalizeSlotSpinPlan(
+  plan: AceSlotSpinPlan | null,
+): AceSlotSpinPlan | null {
+  if (!plan) return null
+  return {
+    ...plan,
+    lockThomas: plan.lockThomas === true,
+    lockAda: plan.lockAda === true,
+  }
 }
 
 function excludedIdsFromWire(
@@ -554,7 +605,7 @@ export function normalizeFourVFourPlayer(player: Player): Player {
       }
       seen.add(killerId)
       requestedPicks.push(killerId)
-      if (requestedPicks.length === 4) break
+      if (requestedPicks.length === MAX_FOUR_V_FOUR_FEARLESS_PICKS) break
     }
   }
   const legacyPick =
@@ -671,11 +722,13 @@ function toWireAce(ace: AceSyncState): WireAceState {
     wire.setupSlotFinished = ace.setupSlotFinished
     const excludedWire = excludedIdsToWire(ace.setupSlotExcludedIds)
     if (excludedWire) wire.setupSlotExcludedIds = excludedWire
+    const lockedTeamsWire = lockedTeamsToWire(ace.setupSlotLockedTeams)
+    if (lockedTeamsWire) wire.setupSlotLockedTeams = lockedTeamsWire
     if (ace.setupSlotSpinToken > 0) {
       wire.setupSlotSpinToken = ace.setupSlotSpinToken
     }
     if (ace.setupSlotSpinPlan) {
-      wire.setupSlotSpinPlan = ace.setupSlotSpinPlan
+      wire.setupSlotSpinPlan = normalizeSlotSpinPlan(ace.setupSlotSpinPlan)!
     }
   }
 
@@ -781,8 +834,13 @@ function fromWireFourVFourState(
             setupSlotExcludedIds: excludedIdsFromWire(
               wire.ace.setupSlotExcludedIds,
             ),
+            setupSlotLockedTeams: lockedTeamsFromWire(
+              wire.ace.setupSlotLockedTeams,
+            ),
             setupSlotSpinToken: wire.ace.setupSlotSpinToken ?? 0,
-            setupSlotSpinPlan: wire.ace.setupSlotSpinPlan ?? null,
+            setupSlotSpinPlan: normalizeSlotSpinPlan(
+              wire.ace.setupSlotSpinPlan ?? null,
+            ),
           }
         : {}),
     },

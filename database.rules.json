@@ -109,7 +109,7 @@
               "killerPicks": {
                 ".validate": "newData.parent().parent().parent().child('mode').val() === '4v4'",
                 "$pickIndex": {
-                  ".validate": "$pickIndex.matches(/^[0-3]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  ".validate": "$pickIndex.matches(/^[0-4]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
                 }
               },
               "$other": {
@@ -138,7 +138,7 @@
               "killerPicks": {
                 ".validate": "newData.parent().parent().parent().child('mode').val() === '4v4'",
                 "$pickIndex": {
-                  ".validate": "$pickIndex.matches(/^[0-3]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  ".validate": "$pickIndex.matches(/^[0-4]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
                 }
               },
               "$other": {
@@ -220,7 +220,7 @@
               "killerPicks": {
                 ".validate": "newData.parent().parent().parent().child('mode').val() === '4v4'",
                 "$pickIndex": {
-                  ".validate": "$pickIndex.matches(/^[0-3]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  ".validate": "$pickIndex.matches(/^[0-4]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
                 }
               },
               "$other": {
@@ -247,7 +247,7 @@
               "killerPicks": {
                 ".validate": "newData.parent().parent().parent().child('mode').val() === '4v4'",
                 "$pickIndex": {
-                  ".validate": "$pickIndex.matches(/^[0-3]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  ".validate": "$pickIndex.matches(/^[0-4]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
                 }
               },
               "$other": {
@@ -286,6 +286,14 @@
                 ".validate": "newData.val() === true"
               }
             },
+            "setupSlotLockedTeams": {
+              "thomas": {
+                ".validate": "newData.val() === true"
+              },
+              "ada": {
+                ".validate": "newData.val() === true"
+              }
+            },
             "setupSlotSpinToken": {
               ".validate": "newData.isNumber() && newData.val() >= 0"
             },
@@ -311,6 +319,12 @@
               },
               "spinToken": {
                 ".validate": "newData.isNumber() && newData.val() >= 0"
+              },
+              "lockThomas": {
+                ".validate": "newData.isBoolean()"
+              },
+              "lockAda": {
+                ".validate": "newData.isBoolean()"
               },
               "$other": {
                 ".validate": false
