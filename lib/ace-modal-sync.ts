@@ -1,10 +1,14 @@
 import type { Player } from "@/components/player-row"
 
+export type AceSpinTeam = "thomas" | "ada"
+
 export type AceModalStep =
   | "prompt"
   | "method_select"
   | "manual_select"
   | "random_slot"
+  | "matched_balance_team_pick"
+  | "matched_balance_slot"
   | null
 
 export type AceLockedTeams = {
@@ -42,6 +46,8 @@ export type AceModalSyncState = {
   slotLockedTeams: AceLockedTeams
   slotSpinToken: number
   slotSpinPlan: AceSlotSpinPlan | null
+  /** Which team uses the slot machine in matched-balance draw (null otherwise). */
+  spinTeam: AceSpinTeam | null
 }
 
 export const DEFAULT_ACE_LOCKED_TEAMS: AceLockedTeams = {
@@ -61,6 +67,27 @@ export const DEFAULT_ACE_MODAL_SYNC: AceModalSyncState = {
   slotLockedTeams: DEFAULT_ACE_LOCKED_TEAMS,
   slotSpinToken: 0,
   slotSpinPlan: null,
+  spinTeam: null,
+}
+
+export function buildMatchedBalanceLockedTeams(
+  spinTeam: AceSpinTeam,
+): AceLockedTeams {
+  return {
+    thomas: spinTeam === "ada",
+    ada: spinTeam === "thomas",
+  }
+}
+
+export function canProceedMatchedBalance(
+  spinTeam: AceSpinTeam,
+  slotFinished: boolean,
+  selectedThomasId: string | null,
+  selectedAdaId: string | null,
+): boolean {
+  if (!slotFinished) return false
+  const manualId = spinTeam === "thomas" ? selectedAdaId : selectedThomasId
+  return manualId !== null
 }
 
 export function buildExcludedIdsFromList(ids: readonly string[]) {
@@ -145,6 +172,7 @@ export function aceSetupToModalSync(
     setupSlotLockedTeams: AceLockedTeams
     setupSlotSpinToken: number
     setupSlotSpinPlan: AceSlotSpinPlan | null
+    setupSpinTeam?: AceSpinTeam | null
   },
 ): AceModalSyncState | null {
   if (!ace.setupStep) return null
@@ -162,6 +190,7 @@ export function aceSetupToModalSync(
     slotLockedTeams: ace.setupSlotLockedTeams,
     slotSpinToken: ace.setupSlotSpinToken,
     slotSpinPlan: ace.setupSlotSpinPlan,
+    spinTeam: ace.setupSpinTeam ?? null,
   }
 }
 
@@ -179,6 +208,7 @@ export function aceModalSyncToSetup(
   setupSlotLockedTeams: AceLockedTeams
   setupSlotSpinToken: number
   setupSlotSpinPlan: AceSlotSpinPlan | null
+  setupSpinTeam: AceSpinTeam | null
 } {
   return {
     setupStep: modal.step,
@@ -194,6 +224,7 @@ export function aceModalSyncToSetup(
     setupSlotLockedTeams: modal.slotLockedTeams,
     setupSlotSpinToken: modal.slotSpinToken,
     setupSlotSpinPlan: modal.slotSpinPlan,
+    setupSpinTeam: modal.spinTeam,
   }
 }
 

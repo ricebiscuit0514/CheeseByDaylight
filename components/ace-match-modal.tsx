@@ -6,7 +6,9 @@ import { type Player } from "@/components/player-row"
 import { cn } from "@/lib/utils"
 import {
   buildExcludedIdsFromList,
+  buildMatchedBalanceLockedTeams,
   buildSlotSpinPlan,
+  canProceedMatchedBalance,
   DEFAULT_ACE_LOCKED_TEAMS,
   DEFAULT_ACE_MODAL_SYNC,
   estimateSlotSpinDurationMs,
@@ -18,6 +20,7 @@ import {
   SLOT_SPIN_BASE_DELAY_MS,
   type AceModalSyncState,
   type AceSlotSpinPlan,
+  type AceSpinTeam,
 } from "@/lib/ace-modal-sync"
 
 export type { AceModalSyncState } from "@/lib/ace-modal-sync"
@@ -79,6 +82,7 @@ export function AceMatchModal({
 
   const excludedIdsKey = JSON.stringify(localState.excludedIds)
   const lockedTeamsKey = JSON.stringify(localState.slotLockedTeams)
+  const spinTeamKey = localState.spinTeam ?? ""
   const slotThomasSyncKey =
     localState.isRolling && !localState.slotFinished
       ? -1
@@ -101,6 +105,7 @@ export function AceMatchModal({
     localState.slotSpinPlan,
     localState.slotSpinToken,
     localState.step,
+    spinTeamKey,
     onSyncState,
     readOnly,
     slotAdaSyncKey,
@@ -108,8 +113,11 @@ export function AceMatchModal({
   ])
 
   const baseState = readOnly && syncState ? syncState : localState
+  const isSlotStep =
+    baseState.step === "random_slot" ||
+    baseState.step === "matched_balance_slot"
   const state =
-    readOnly && baseState.step === "random_slot"
+    readOnly && isSlotStep
       ? { ...baseState, ...viewerSlotDisplay }
       : baseState
   const {
@@ -124,6 +132,7 @@ export function AceMatchModal({
     slotLockedTeams,
     slotSpinPlan,
     slotSpinToken,
+    spinTeam,
   } = state
 
   const listExcludedIds = () =>
@@ -140,9 +149,34 @@ export function AceMatchModal({
 
   const setStep = (nextStep: ModalStep) => {
     if (readOnly) return
-    if (nextStep !== "random_slot") setHasCompletedDraw(false)
+    if (nextStep !== "random_slot" && nextStep !== "matched_balance_slot") {
+      setHasCompletedDraw(false)
+    }
     setLocalState((current) => ({ ...current, step: nextStep }))
     onStepChange?.(nextStep)
+  }
+
+  const enterMatchedBalanceSlot = (team: AceSpinTeam) => {
+    if (readOnly) return
+    const initial = pickInitialSlotIndices(
+      thomas,
+      ada,
+      localStateRef.current.excludedIds,
+    )
+    setLocalState((current) => ({
+      ...current,
+      step: "matched_balance_slot",
+      spinTeam: team,
+      slotFinished: false,
+      isRolling: false,
+      selectedThomasId: null,
+      selectedAdaId: null,
+      slotLockedTeams: buildMatchedBalanceLockedTeams(team),
+      slotThomasIdx: initial.slotThomasIdx,
+      slotAdaIdx: initial.slotAdaIdx,
+      slotSpinPlan: null,
+    }))
+    onStepChange?.("matched_balance_slot")
   }
 
   const toggleExcludePlayer = (id: string) => {
@@ -175,7 +209,11 @@ export function AceMatchModal({
     if (readOnly || thomas.length === 0 || ada.length === 0) return
 
     const current = localStateRef.current
-    if (current.slotLockedTeams.thomas && current.slotLockedTeams.ada) return
+    const lockedTeams =
+      current.spinTeam !== null
+        ? buildMatchedBalanceLockedTeams(current.spinTeam)
+        : current.slotLockedTeams
+    if (lockedTeams.thomas && lockedTeams.ada) return
 
     const spinToken = current.slotSpinToken + 1
     const plan = buildSlotSpinPlan(
@@ -185,13 +223,14 @@ export function AceMatchModal({
       current.slotThomasIdx,
       current.slotAdaIdx,
       spinToken,
-      current.slotLockedTeams,
+      lockedTeams,
     )
     if (!plan) return
 
     cancelSpinRef.current?.()
     setLocalState({
       ...current,
+      slotLockedTeams: lockedTeams,
       isRolling: true,
       slotFinished: false,
       slotSpinToken: spinToken,
@@ -261,7 +300,9 @@ export function AceMatchModal({
 
   useEffect(() => {
     if (!readOnly || !syncState) return
-    if (syncState.step !== "random_slot") return
+    if (syncState.step !== "random_slot" && syncState.step !== "matched_balance_slot") {
+      return
+    }
     if (syncState.isRolling) return
     setViewerSlotDisplay({
       slotThomasIdx: syncState.slotThomasIdx,
@@ -352,7 +393,7 @@ export function AceMatchModal({
             </h2>
             {!readOnly ? (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <button
                     type="button"
                     onClick={() => setStep("manual_select")}
@@ -372,6 +413,7 @@ export function AceMatchModal({
                         excludedIds,
                       )
                       patchLocalState({
+                        spinTeam: null,
                         slotFinished: false,
                         isRolling: false,
                         slotLockedTeams: DEFAULT_ACE_LOCKED_TEAMS,
@@ -384,7 +426,17 @@ export function AceMatchModal({
                   >
                     <span className="ace-modal-choice-title">무작위 추첨</span>
                     <span className="ace-modal-choice-desc">
-                      슬롯머신으로 랜덤 추첨
+                      양 팀 모두 랜덤 추첨
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => enterMatchedBalanceSlot("thomas")}
+                    className="ace-modal-choice sm:col-span-2"
+                  >
+                    <span className="ace-modal-choice-title">맞밸런스 추첨</span>
+                    <span className="ace-modal-choice-desc">
+                      한 팀만 추첨하고 다른 팀은 직접 선택
                     </span>
                   </button>
                 </div>
@@ -400,6 +452,62 @@ export function AceMatchModal({
               <p className="ace-modal-body">
                 참여 멤버 결정 방법을 선택하고 있습니다.
               </p>
+            )}
+          </motion.div>
+        )}
+
+        {step === "matched_balance_team_pick" && (
+          <motion.div
+            key="matched_balance_team_pick"
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+            className="ace-modal-panel"
+          >
+            <h2 className="ace-modal-title mb-6">
+              {readOnly ? "추첨 팀 선택중..." : "어느 팀을 추첨할까요?"}
+            </h2>
+            {!readOnly ? (
+              <>
+                <div className="grid grid-cols-1 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => enterMatchedBalanceSlot("thomas")}
+                    className="ace-modal-choice"
+                  >
+                    <span className="ace-modal-choice-title">
+                      {thomasName} 팀 추첨
+                    </span>
+                    <span className="ace-modal-choice-desc">
+                      {adaName} 팀 직접 선택
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => enterMatchedBalanceSlot("ada")}
+                    className="ace-modal-choice"
+                  >
+                    <span className="ace-modal-choice-title">
+                      {adaName} 팀 추첨
+                    </span>
+                    <span className="ace-modal-choice-desc">
+                      {thomasName} 팀 직접 선택
+                    </span>
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    patchLocalState({ spinTeam: null })
+                    setStep("method_select")
+                  }}
+                  className="ace-modal-btn ace-modal-btn--ghost mt-5"
+                >
+                  방법 다시 선택
+                </button>
+              </>
+            ) : (
+              <p className="ace-modal-body">추첨할 팀을 선택하고 있습니다.</p>
             )}
           </motion.div>
         )}
@@ -490,6 +598,135 @@ export function AceMatchModal({
                 >
                   진행하기
                 </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {step === "matched_balance_slot" && spinTeam && (
+          <motion.div
+            key="matched_balance_slot"
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+            className="ace-modal-panel ace-modal-panel--wide"
+          >
+            <div className="ace-modal-columns">
+              {spinTeam === "thomas" ? (
+                <>
+                  <SlotColumn
+                    team="thomas"
+                    teamName={thomasName}
+                    roster={thomas}
+                    slotIdx={slotThomasIdx}
+                    excludedIds={excludedIds}
+                    isRolling={isRolling}
+                    slotFinished={slotFinished}
+                    isLocked={false}
+                    spinPlan={slotSpinPlan}
+                    spinToken={slotSpinToken}
+                    keepLockControlsVisible={false}
+                    readOnly={readOnly}
+                    onToggleExclude={toggleExcludePlayer}
+                    onToggleLock={() => {}}
+                  />
+                  <ManualPickColumn
+                    team="ada"
+                    teamName={adaName}
+                    roster={ada}
+                    selectedId={selectedAdaId}
+                    isRolling={isRolling}
+                    readOnly={readOnly}
+                    onSelect={(id) => patchLocalState({ selectedAdaId: id })}
+                  />
+                </>
+              ) : (
+                <>
+                  <ManualPickColumn
+                    team="thomas"
+                    teamName={thomasName}
+                    roster={thomas}
+                    selectedId={selectedThomasId}
+                    isRolling={isRolling}
+                    readOnly={readOnly}
+                    onSelect={(id) => patchLocalState({ selectedThomasId: id })}
+                  />
+                  <SlotColumn
+                    team="ada"
+                    teamName={adaName}
+                    roster={ada}
+                    slotIdx={slotAdaIdx}
+                    excludedIds={excludedIds}
+                    isRolling={isRolling}
+                    slotFinished={slotFinished}
+                    isLocked={false}
+                    spinPlan={slotSpinPlan}
+                    spinToken={slotSpinToken}
+                    keepLockControlsVisible={false}
+                    readOnly={readOnly}
+                    onToggleExclude={toggleExcludePlayer}
+                    onToggleLock={() => {}}
+                  />
+                </>
+              )}
+            </div>
+
+            {!readOnly && (
+              <div className="ace-modal-footer relative min-h-[2.5rem]">
+                <button
+                  type="button"
+                  onClick={() => setStep("method_select")}
+                  className="ace-modal-btn ace-modal-btn--ghost absolute left-0 top-1.5"
+                >
+                  방법 다시 선택
+                </button>
+
+                <div className="absolute left-1/2 top-1.5 -translate-x-1/2">
+                  <AceRerollButton
+                    state={getAceRerollButtonState(
+                      slotLockedTeams,
+                      thomasName,
+                      adaName,
+                      slotFinished,
+                    )}
+                    disabled={isRolling}
+                    onClick={startSlotMachine}
+                  />
+                </div>
+
+                <div className="absolute right-0 top-1.5">
+                  <button
+                    type="button"
+                    disabled={
+                      isRolling ||
+                      !canProceedMatchedBalance(
+                        spinTeam,
+                        slotFinished,
+                        selectedThomasId,
+                        selectedAdaId,
+                      )
+                    }
+                    onClick={() => {
+                      const spinId =
+                        spinTeam === "thomas"
+                          ? thomas[slotThomasIdx]?.id
+                          : ada[slotAdaIdx]?.id
+                      const manualId =
+                        spinTeam === "thomas"
+                          ? selectedAdaId
+                          : selectedThomasId
+                      if (!spinId || !manualId) return
+                      onConfirmAceMatch(
+                        spinTeam === "thomas" ? spinId : manualId,
+                        spinTeam === "ada" ? spinId : manualId,
+                        listExcludedIds(),
+                      )
+                    }}
+                    className="ace-modal-btn ace-modal-btn--primary"
+                  >
+                    진행하기
+                  </button>
+                </div>
               </div>
             )}
           </motion.div>
@@ -628,6 +865,76 @@ function PlayerChoice({
     <button type="button" onClick={onClick} className={className}>
       {label}
     </button>
+  )
+}
+
+function ManualPickColumn({
+  team,
+  teamName,
+  roster,
+  selectedId,
+  isRolling,
+  readOnly,
+  onSelect,
+}: {
+  team: "thomas" | "ada"
+  teamName: string
+  roster: Player[]
+  selectedId: string | null
+  isRolling: boolean
+  readOnly: boolean
+  onSelect: (id: string) => void
+}) {
+  return (
+    <div
+      className={cn(
+        "ace-modal-slot-col",
+        team === "thomas" ? "ace-modal-slot-col--thomas" : "ace-modal-slot-col--ada",
+      )}
+    >
+      <div
+        className={cn(
+          "ace-modal-slot-header",
+          team === "thomas"
+            ? "ace-modal-slot-header--thomas"
+            : "ace-modal-slot-header--ada",
+        )}
+      >
+        <div
+          className={cn(
+            "ace-modal-team-label",
+            team === "thomas"
+              ? "ace-modal-team-label--thomas"
+              : "ace-modal-team-label--ada",
+          )}
+        >
+          {teamName} 팀
+        </div>
+        <div className="ace-modal-slot-header-action">
+          <span className="ace-modal-slot-lock is-active is-badge">
+            직접 선택
+          </span>
+        </div>
+      </div>
+
+      <div
+        className="ace-modal-slot-body"
+        style={{ ["--ace-reel-rows" as string]: String(Math.max(1, roster.length)) }}
+      >
+        <div className="ace-modal-roster">
+          {roster.map((player) => (
+            <PlayerChoice
+              key={player.id}
+              label={player.name || "이름 없음"}
+              team={team}
+              isSelected={selectedId === player.id}
+              readOnly={readOnly || isRolling}
+              onClick={() => onSelect(player.id)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }
 

@@ -2328,6 +2328,17 @@ input[type="number"] {
   background: rgb(0 0 0 / 88%);
   color: #fff;
 }
+.ace-dock-btn--highlight {
+  opacity: 1;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.55);
+  background: rgb(0 0 0 / 45%);
+}
+.ace-dock-btn--highlight:hover {
+  border-color: rgba(255, 255, 255, 0.75);
+  background: rgb(0 0 0 / 65%);
+  color: rgba(255, 255, 255, 0.9);
+}
 .ace-dock-btn--proceed {
   border: 1px solid color-mix(in oklch, var(--dbd-yellow), transparent 45%);
   color: color-mix(in oklch, var(--dbd-yellow), transparent 20%);
@@ -2589,13 +2600,14 @@ input[type="number"] {
   background: rgb(12 12 12 / 72%);
 }
 .ace-modal-choice-title {
-  font-family: var(--font-godo);
+  font-family: var(--font-s-core);
   font-size: 1.125rem;
-  font-weight: 700;
+  font-weight: 400;
 }
 .ace-modal-choice-desc {
-  font-family: var(--font-godo);
+  font-family: var(--font-s-core);
   font-size: .8125rem;
+  font-weight: 400;
   color: color-mix(in oklch, var(--foreground), transparent 48%);
 }
 
