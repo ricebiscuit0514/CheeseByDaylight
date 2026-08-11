@@ -9,12 +9,16 @@ import {
   buildMatchedBalanceLockedTeams,
   buildSlotSpinPlan,
   canProceedMatchedBalance,
+  canProceedRandomSlot,
   DEFAULT_ACE_LOCKED_TEAMS,
   DEFAULT_ACE_MODAL_SYNC,
   estimateSlotSpinDurationMs,
   getAceRerollButtonState,
   getActiveRoster,
+  getEligiblePlayers,
   pickInitialSlotIndices,
+  resolveMatchedBalanceAceIds,
+  resolveRandomSlotAceIds,
   runSlotSpinAnimation,
   SLOT_REEL_OVERSHOOT_MS,
   SLOT_SPIN_BASE_DELAY_MS,
@@ -704,21 +708,25 @@ export function AceMatchModal({
                         slotFinished,
                         selectedThomasId,
                         selectedAdaId,
+                        spinTeam === "thomas" ? thomas : ada,
+                        excludedIds,
                       )
                     }
                     onClick={() => {
-                      const spinId =
-                        spinTeam === "thomas"
-                          ? thomas[slotThomasIdx]?.id
-                          : ada[slotAdaIdx]?.id
-                      const manualId =
-                        spinTeam === "thomas"
-                          ? selectedAdaId
-                          : selectedThomasId
-                      if (!spinId || !manualId) return
+                      const resolved = resolveMatchedBalanceAceIds(
+                        spinTeam,
+                        thomas,
+                        ada,
+                        excludedIds,
+                        slotThomasIdx,
+                        slotAdaIdx,
+                        selectedThomasId,
+                        selectedAdaId,
+                      )
+                      if (!resolved) return
                       onConfirmAceMatch(
-                        spinTeam === "thomas" ? spinId : manualId,
-                        spinTeam === "ada" ? spinId : manualId,
+                        resolved.thomasId,
+                        resolved.adaId,
                         listExcludedIds(),
                       )
                     }}
@@ -811,17 +819,29 @@ export function AceMatchModal({
                 <div className="absolute right-0 top-1.5">
                   <button
                     type="button"
-                    disabled={isRolling || !slotFinished}
+                    disabled={
+                      isRolling ||
+                      !canProceedRandomSlot(
+                        slotFinished,
+                        thomas,
+                        ada,
+                        excludedIds,
+                      )
+                    }
                     onClick={() => {
-                      const pickedThomas = thomas[slotThomasIdx]
-                      const pickedAda = ada[slotAdaIdx]
-                      if (pickedThomas && pickedAda) {
-                        onConfirmAceMatch(
-                          pickedThomas.id,
-                          pickedAda.id,
-                          listExcludedIds(),
-                        )
-                      }
+                      const resolved = resolveRandomSlotAceIds(
+                        thomas,
+                        ada,
+                        excludedIds,
+                        slotThomasIdx,
+                        slotAdaIdx,
+                      )
+                      if (!resolved) return
+                      onConfirmAceMatch(
+                        resolved.thomasId,
+                        resolved.adaId,
+                        listExcludedIds(),
+                      )
                     }}
                     className="ace-modal-btn ace-modal-btn--primary"
                   >
@@ -1150,6 +1170,9 @@ function SlotColumn({
   const showLockControl =
     !readOnly && (keepLockControlsVisible || slotFinished || isLocked)
   const activePlayers = getActiveRoster(roster, excludedIds)
+  const eligiblePlayers = getEligiblePlayers(roster, excludedIds)
+  const soleEligibleId =
+    eligiblePlayers.length === 1 ? eligiblePlayers[0].id : null
   const reelSteps =
     team === "thomas" ? spinPlan?.thomasMaxSteps ?? 0 : spinPlan?.adaMaxSteps ?? 0
   const reelStart =
@@ -1257,7 +1280,9 @@ function SlotColumn({
             >
               <div className="ace-modal-roster">
             {roster.map((player, index) => {
-              const isPicked = (slotFinished || isRolling) && index === slotIdx
+              const isPicked =
+                ((slotFinished || isRolling) && index === slotIdx) ||
+                soleEligibleId === player.id
               const isExcluded = Boolean(excludedIds[player.id])
               return (
                 <div

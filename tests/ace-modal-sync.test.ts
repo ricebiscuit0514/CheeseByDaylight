@@ -7,6 +7,7 @@ import {
   buildMatchedBalanceLockedTeams,
   buildSlotSpinPlan,
   canProceedMatchedBalance,
+  canProceedRandomSlot,
   DEFAULT_ACE_LOCKED_TEAMS,
   estimateSlotSpinDurationMs,
   estimateDualSlotSpinDurationMs,
@@ -14,6 +15,8 @@ import {
   getAceRerollButtonLabel,
   buildNextAceRematchExcludedIds,
   mergeAceDrawExcludedIds,
+  resolveMatchedBalanceAceIds,
+  resolveRandomSlotAceIds,
   SLOT_REEL_OVERSHOOT_MS,
 } from "@/lib/ace-modal-sync"
 
@@ -206,16 +209,81 @@ describe("ace modal sync helpers", () => {
 
   it("requires spin finish and manual pick before matched-balance proceed", () => {
     expect(
-      canProceedMatchedBalance("thomas", false, null, "a1"),
+      canProceedMatchedBalance("thomas", false, null, "a1", thomas, {}),
     ).toBe(false)
     expect(
-      canProceedMatchedBalance("thomas", true, null, null),
+      canProceedMatchedBalance("thomas", true, null, null, thomas, {}),
     ).toBe(false)
     expect(
-      canProceedMatchedBalance("thomas", true, null, "a1"),
+      canProceedMatchedBalance("thomas", true, null, "a1", thomas, {}),
     ).toBe(true)
     expect(
-      canProceedMatchedBalance("ada", true, "t2", null),
+      canProceedMatchedBalance("ada", true, "t2", null, ada, {}),
     ).toBe(true)
+  })
+
+  it("allows matched-balance proceed when spin team has one eligible member", () => {
+    expect(
+      canProceedMatchedBalance(
+        "thomas",
+        false,
+        null,
+        "a1",
+        thomas,
+        buildExcludedIdsFromList(["t2"]),
+      ),
+    ).toBe(true)
+    expect(
+      canProceedMatchedBalance(
+        "thomas",
+        false,
+        null,
+        "a1",
+        thomas,
+        buildExcludedIdsFromList([]),
+      ),
+    ).toBe(false)
+  })
+
+  it("allows random-slot proceed when each team has one eligible member", () => {
+    expect(
+      canProceedRandomSlot(
+        false,
+        thomas,
+        ada,
+        buildExcludedIdsFromList(["t2", "a2"]),
+      ),
+    ).toBe(true)
+    expect(
+      canProceedRandomSlot(false, thomas, ada, buildExcludedIdsFromList([])),
+    ).toBe(false)
+    expect(
+      canProceedRandomSlot(true, thomas, ada, buildExcludedIdsFromList([])),
+    ).toBe(true)
+  })
+
+  it("resolves sole eligible members for random and matched-balance confirms", () => {
+    expect(
+      resolveRandomSlotAceIds(
+        thomas,
+        ada,
+        buildExcludedIdsFromList(["t2", "a1"]),
+        1,
+        0,
+      ),
+    ).toEqual({ thomasId: "t1", adaId: "a2" })
+
+    expect(
+      resolveMatchedBalanceAceIds(
+        "thomas",
+        thomas,
+        ada,
+        buildExcludedIdsFromList(["t1"]),
+        0,
+        0,
+        null,
+        "a2",
+      ),
+    ).toEqual({ thomasId: "t2", adaId: "a2" })
   })
 })

@@ -79,15 +79,86 @@ export function buildMatchedBalanceLockedTeams(
   }
 }
 
+/** Eligible players only (no fallback to full roster). */
+export function getEligiblePlayers(
+  roster: Player[],
+  excludedIds: Record<string, boolean>,
+) {
+  return roster.filter((player) => !excludedIds[player.id])
+}
+
+export function canProceedRandomSlot(
+  slotFinished: boolean,
+  thomas: Player[],
+  ada: Player[],
+  excludedIds: Record<string, boolean>,
+): boolean {
+  if (slotFinished) return true
+  return (
+    getEligiblePlayers(thomas, excludedIds).length === 1 &&
+    getEligiblePlayers(ada, excludedIds).length === 1
+  )
+}
+
+export function resolveRandomSlotAceIds(
+  thomas: Player[],
+  ada: Player[],
+  excludedIds: Record<string, boolean>,
+  slotThomasIdx: number,
+  slotAdaIdx: number,
+): { thomasId: string; adaId: string } | null {
+  const eligibleThomas = getEligiblePlayers(thomas, excludedIds)
+  const eligibleAda = getEligiblePlayers(ada, excludedIds)
+  if (eligibleThomas.length === 1 && eligibleAda.length === 1) {
+    return {
+      thomasId: eligibleThomas[0].id,
+      adaId: eligibleAda[0].id,
+    }
+  }
+  const pickedThomas = thomas[slotThomasIdx]
+  const pickedAda = ada[slotAdaIdx]
+  if (!pickedThomas || !pickedAda) return null
+  return { thomasId: pickedThomas.id, adaId: pickedAda.id }
+}
+
 export function canProceedMatchedBalance(
   spinTeam: AceSpinTeam,
   slotFinished: boolean,
   selectedThomasId: string | null,
   selectedAdaId: string | null,
+  spinRoster: Player[] = [],
+  excludedIds: Record<string, boolean> = {},
 ): boolean {
-  if (!slotFinished) return false
   const manualId = spinTeam === "thomas" ? selectedAdaId : selectedThomasId
-  return manualId !== null
+  if (!manualId) return false
+  if (slotFinished) return true
+  return getEligiblePlayers(spinRoster, excludedIds).length === 1
+}
+
+export function resolveMatchedBalanceAceIds(
+  spinTeam: AceSpinTeam,
+  thomas: Player[],
+  ada: Player[],
+  excludedIds: Record<string, boolean>,
+  slotThomasIdx: number,
+  slotAdaIdx: number,
+  selectedThomasId: string | null,
+  selectedAdaId: string | null,
+): { thomasId: string; adaId: string } | null {
+  const spinRoster = spinTeam === "thomas" ? thomas : ada
+  const eligibleSpin = getEligiblePlayers(spinRoster, excludedIds)
+  const spinId =
+    eligibleSpin.length === 1
+      ? eligibleSpin[0].id
+      : spinTeam === "thomas"
+        ? thomas[slotThomasIdx]?.id
+        : ada[slotAdaIdx]?.id
+  const manualId = spinTeam === "thomas" ? selectedAdaId : selectedThomasId
+  if (!spinId || !manualId) return null
+  return {
+    thomasId: spinTeam === "thomas" ? spinId : manualId,
+    adaId: spinTeam === "ada" ? spinId : manualId,
+  }
 }
 
 export function buildExcludedIdsFromList(ids: readonly string[]) {
