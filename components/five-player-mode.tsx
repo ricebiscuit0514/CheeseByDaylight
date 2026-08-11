@@ -668,7 +668,7 @@ export function FivePlayerMode() {
         {/* Title Header matching DBD font & style */}
         <div className="border-b border-foreground/10 pb-2 text-center">
           <h1
-            className="text-2xl md:text-4xl font-bold italic text-dbd-orange drop-shadow-[0_3px_12px_color-mix(in_oklch,var(--dbd-orange),transparent_55%)]"
+            className="select-none text-2xl md:text-4xl font-bold italic text-neutral-500 drop-shadow-none"
             style={{ fontFamily: "var(--font-aldrich)" }}
           >
             5인 내전 모드
@@ -816,7 +816,7 @@ export function FivePlayerMode() {
           >
             <div className="relative max-w-[310px] w-full mx-auto flex items-center justify-center border-b border-neutral-700/60 pb-2 select-none">
               <h2
-                className="text-xl font-bold italic text-dbd-yellow text-center"
+                className="text-xl font-bold italic text-neutral-300 text-center"
                 style={{ fontFamily: "var(--font-aldrich)" }}
               >
                 핀볼 갯수 설정
@@ -844,7 +844,7 @@ export function FivePlayerMode() {
             <div className="grid grid-cols-2 gap-3 max-w-[310px] w-full mx-auto pt-1 select-none">
               {/* Receiving Config */}
               <div className="flex flex-col space-y-3.5">
-                <div className="text-center font-bold text-emerald-400 text-sm border-b border-emerald-500/20 pb-1 w-full max-w-[145px] mx-auto" style={{ fontFamily: "var(--font-godo)" }}>
+                <div className="text-center font-bold text-neutral-300 text-sm border-b border-neutral-600/40 pb-1 w-full max-w-[145px] mx-auto" style={{ fontFamily: "var(--font-godo)" }}>
                   받는 사람
                 </div>
                 {[0, 1, 2, 3, 4].map((k) => (
@@ -883,7 +883,7 @@ export function FivePlayerMode() {
 
               {/* Giving Config */}
               <div className="flex flex-col space-y-3.5">
-                <div className="text-center font-bold text-dbd-orange text-sm border-b border-dbd-orange/20 pb-1 w-full max-w-[145px] mx-auto" style={{ fontFamily: "var(--font-godo)" }}>
+                <div className="text-center font-bold text-neutral-300 text-sm border-b border-neutral-600/40 pb-1 w-full max-w-[145px] mx-auto" style={{ fontFamily: "var(--font-godo)" }}>
                   주는 사람
                 </div>
                 {[0, 1, 2, 3, 4].map((k) => (
@@ -932,7 +932,7 @@ export function FivePlayerMode() {
             style={{ "--team": "#a3a3a3" } as React.CSSProperties}
           >
             <span className="plate-grain rounded-md" aria-hidden="true" />
-            <span className="font-bold text-emerald-400 text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
+            <span className="font-bold text-neutral-300 text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
               받는 사람:
             </span>
             <input
@@ -963,7 +963,7 @@ export function FivePlayerMode() {
             style={{ "--team": "#a3a3a3" } as React.CSSProperties}
           >
             <span className="plate-grain rounded-md" aria-hidden="true" />
-            <span className="font-bold text-dbd-orange text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
+            <span className="font-bold text-neutral-300 text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
               주는 사람:
             </span>
             <input

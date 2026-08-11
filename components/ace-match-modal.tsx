@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { type Player } from "@/components/player-row"
 import { cn } from "@/lib/utils"
@@ -9,10 +9,15 @@ import {
   buildSlotSpinPlan,
   DEFAULT_ACE_LOCKED_TEAMS,
   DEFAULT_ACE_MODAL_SYNC,
+  estimateSlotSpinDurationMs,
   getAceRerollButtonState,
+  getActiveRoster,
   pickInitialSlotIndices,
   runSlotSpinAnimation,
+  SLOT_REEL_OVERSHOOT_MS,
+  SLOT_SPIN_BASE_DELAY_MS,
   type AceModalSyncState,
+  type AceSlotSpinPlan,
 } from "@/lib/ace-modal-sync"
 
 export type { AceModalSyncState } from "@/lib/ace-modal-sync"
@@ -24,7 +29,11 @@ interface AceMatchModalProps {
   thomasName: string
   adaName: string
   onCancel: () => void
-  onConfirmAceMatch: (selectedThomasId: string, selectedAdaId: string) => void
+  onConfirmAceMatch: (
+    selectedThomasId: string,
+    selectedAdaId: string,
+    excludedIds: string[],
+  ) => void
   initialStep?: ModalStep
   onStepChange?: (step: ModalStep) => void
   onSyncState?: (state: AceModalSyncState) => void
@@ -113,7 +122,14 @@ export function AceMatchModal({
     slotFinished,
     excludedIds,
     slotLockedTeams,
+    slotSpinPlan,
+    slotSpinToken,
   } = state
+
+  const listExcludedIds = () =>
+    Object.keys(localStateRef.current.excludedIds).filter(
+      (id) => localStateRef.current.excludedIds[id],
+    )
 
   const patchLocalState = (
     patch: Partial<AceModalSyncState>,
@@ -456,7 +472,11 @@ export function AceMatchModal({
                   disabled={!selectedThomasId || !selectedAdaId}
                   onClick={() => {
                     if (selectedThomasId && selectedAdaId) {
-                      onConfirmAceMatch(selectedThomasId, selectedAdaId)
+                      onConfirmAceMatch(
+                        selectedThomasId,
+                        selectedAdaId,
+                        listExcludedIds(),
+                      )
                     }
                   }}
                   className="ace-modal-btn ace-modal-btn--primary px-8"
@@ -486,6 +506,8 @@ export function AceMatchModal({
                 isRolling={isRolling}
                 slotFinished={slotFinished}
                 isLocked={slotLockedTeams.thomas}
+                spinPlan={slotSpinPlan}
+                spinToken={slotSpinToken}
                 keepLockControlsVisible={
                   hasCompletedDraw ||
                   slotFinished ||
@@ -505,6 +527,8 @@ export function AceMatchModal({
                 isRolling={isRolling}
                 slotFinished={slotFinished}
                 isLocked={slotLockedTeams.ada}
+                spinPlan={slotSpinPlan}
+                spinToken={slotSpinToken}
                 keepLockControlsVisible={
                   hasCompletedDraw ||
                   slotFinished ||
@@ -541,22 +565,24 @@ export function AceMatchModal({
                 </div>
 
                 <div className="absolute right-0 top-1.5">
-                  {slotFinished && (
-                    <button
-                      type="button"
-                      disabled={isRolling || !slotFinished}
-                      onClick={() => {
-                        const pickedThomas = thomas[slotThomasIdx]
-                        const pickedAda = ada[slotAdaIdx]
-                        if (pickedThomas && pickedAda) {
-                          onConfirmAceMatch(pickedThomas.id, pickedAda.id)
-                        }
-                      }}
-                      className="ace-modal-btn ace-modal-btn--primary"
-                    >
-                      진행하기
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    disabled={isRolling || !slotFinished}
+                    onClick={() => {
+                      const pickedThomas = thomas[slotThomasIdx]
+                      const pickedAda = ada[slotAdaIdx]
+                      if (pickedThomas && pickedAda) {
+                        onConfirmAceMatch(
+                          pickedThomas.id,
+                          pickedAda.id,
+                          listExcludedIds(),
+                        )
+                      }
+                    }}
+                    className="ace-modal-btn ace-modal-btn--primary"
+                  >
+                    진행하기
+                  </button>
                 </div>
               </div>
             )}
@@ -642,6 +668,140 @@ function AceRerollButton({
   )
 }
 
+function AceSlotReel({
+  team,
+  players,
+  startActiveIdx,
+  maxSteps,
+  spinToken,
+  baseDelay,
+  visibleRows,
+  settleStyle,
+}: {
+  team: "thomas" | "ada"
+  players: Player[]
+  startActiveIdx: number
+  maxSteps: number
+  spinToken: number
+  baseDelay: number
+  visibleRows: number
+  settleStyle: "overshoot" | "undershoot"
+}) {
+  // Must match --ace-reel-cell (61px) in CSS exactly.
+  const cellPx = 61
+  const safeStart = Math.max(0, startActiveIdx)
+  const safeSteps = Math.max(0, maxSteps)
+  const rows = Math.max(1, visibleRows)
+  const centerOffset = (rows - 1) / 2
+  const travelMs = Math.max(
+    0,
+    estimateSlotSpinDurationMs(safeSteps, baseDelay) - SLOT_REEL_OVERSHOOT_MS,
+  )
+  // Keep in sync with runSlotSpinAnimation — no artificial floor, or the
+  // slower reel can still be moving when isRolling flips false.
+  const travelDuration = Math.max(0.05, travelMs / 1000)
+  const snapDuration = SLOT_REEL_OVERSHOOT_MS / 1000
+  const totalDuration = travelDuration + snapDuration
+  const settlePx = Math.round(cellPx * 0.34)
+  const targetIndex = safeStart + safeSteps
+  const leadIn = Math.max(players.length * 4, safeSteps)
+  const startIndex = targetIndex + leadIn
+  const stripLength = startIndex + rows + 4
+  const [landed, setLanded] = useState(false)
+
+  useEffect(() => {
+    setLanded(false)
+    // Fire shine as the settle/clack begins, not after it fully finishes.
+    const shineAtMs = Math.max(0, travelDuration * 1000 - 30)
+    const timer = window.setTimeout(() => setLanded(true), shineAtMs)
+    return () => window.clearTimeout(timer)
+  }, [spinToken, travelDuration])
+
+  const strip = useMemo(() => {
+    if (players.length === 0) return []
+    return Array.from({ length: stripLength }, (_, index) => {
+      const player = players[index % players.length]
+      return {
+        key: `${spinToken}-${index}-${player.id}`,
+        player,
+        index,
+      }
+    })
+  }, [players, spinToken, stripLength])
+
+  // Top → bottom: start further down the strip, settle on target in the center frame.
+  const startY = (centerOffset - startIndex) * cellPx
+  const endY = (centerOffset - targetIndex) * cellPx
+  const overshootY = endY + settlePx
+  const undershootY = endY - settlePx
+  const peakY = settleStyle === "overshoot" ? overshootY : undershootY
+
+  return (
+    <div
+      className={cn(
+        "ace-modal-reel",
+        team === "thomas" ? "ace-modal-reel--thomas" : "ace-modal-reel--ada",
+        landed && "is-landed",
+      )}
+      style={{ ["--ace-reel-rows" as string]: String(rows) }}
+    >
+      <div className="ace-modal-reel-focus" aria-hidden="true" />
+      <motion.div
+        key={`${spinToken}-${settleStyle}`}
+        className="ace-modal-reel-strip"
+        initial={{ y: startY }}
+        animate={{
+          y: [startY, peakY, endY],
+        }}
+        transition={{
+          duration: totalDuration,
+          times: [0, travelDuration / totalDuration, 1],
+          ease:
+            settleStyle === "overshoot"
+              ? [
+                  // Cruise past the winner, then snap back.
+                  [0.05, 0.85, 0.12, 1],
+                  [0.22, 1.55, 0.36, 1],
+                ]
+              : [
+                  // Stop short, then 철컥! the remaining distance with overshoot.
+                  [0.05, 0.82, 0.12, 1],
+                  [0.2, 1.7, 0.32, 1],
+                ],
+        }}
+      >
+        {strip.map(({ key, player, index }) => {
+          const isWinner = index === targetIndex
+          return (
+            <div
+              key={key}
+              className={cn(
+                "ace-modal-reel-cell",
+                landed && isWinner && "is-winner",
+                landed && !isWinner && "is-dimmed",
+              )}
+            >
+              <div
+                className={cn(
+                  "ace-modal-player is-readonly",
+                  team === "thomas"
+                    ? "ace-modal-player--thomas"
+                    : "ace-modal-player--ada",
+                  landed && isWinner && "is-picked",
+                )}
+              >
+                <span className="ace-modal-player-name">
+                  {player.name || "이름 없음"}
+                </span>
+              </div>
+            </div>
+          )
+        })}
+      </motion.div>
+    </div>
+  )
+}
+
 function SlotColumn({
   team,
   teamName,
@@ -651,6 +811,8 @@ function SlotColumn({
   isRolling,
   slotFinished,
   isLocked,
+  spinPlan,
+  spinToken,
   keepLockControlsVisible,
   readOnly,
   onToggleExclude,
@@ -664,6 +826,8 @@ function SlotColumn({
   isRolling: boolean
   slotFinished: boolean
   isLocked: boolean
+  spinPlan: AceSlotSpinPlan | null
+  spinToken: number
   keepLockControlsVisible: boolean
   readOnly: boolean
   onToggleExclude: (id: string) => void
@@ -671,6 +835,23 @@ function SlotColumn({
 }) {
   const showLockControl =
     !readOnly && (keepLockControlsVisible || slotFinished || isLocked)
+  const activePlayers = getActiveRoster(roster, excludedIds)
+  const reelSteps =
+    team === "thomas" ? spinPlan?.thomasMaxSteps ?? 0 : spinPlan?.adaMaxSteps ?? 0
+  const reelStart =
+    team === "thomas"
+      ? spinPlan?.startThomasActiveIdx ?? 0
+      : spinPlan?.startAdaActiveIdx ?? 0
+  const settleStyle =
+    team === "thomas"
+      ? spinPlan?.thomasSettleStyle ?? "undershoot"
+      : spinPlan?.adaSettleStyle ?? "undershoot"
+  const showReel =
+    Boolean(spinPlan) &&
+    isRolling &&
+    !isLocked &&
+    reelSteps > 0 &&
+    activePlayers.length > 0
 
   return (
     <div
@@ -726,54 +907,72 @@ function SlotColumn({
         </div>
       </div>
 
-      <div className="ace-modal-roster">
-        {roster.map((player, index) => {
-          const isPicked = (slotFinished || isRolling) && index === slotIdx
-          const isExcluded = Boolean(excludedIds[player.id])
-          return (
-            <div
-              key={player.id}
-              onClick={() =>
-                !readOnly && !isLocked && onToggleExclude(player.id)
-              }
-              className={cn(
-                "ace-modal-player justify-between",
-                team === "thomas"
-                  ? "ace-modal-player--thomas"
-                  : "ace-modal-player--ada",
-                isExcluded && "is-excluded",
-                !isExcluded && isPicked && "is-picked",
-                !isExcluded && isPicked && isLocked && "is-locked",
-                !isExcluded && isLocked && !isPicked && "is-dimmed",
-                !readOnly && !isExcluded && !isLocked && "cursor-pointer",
-                readOnly && "is-readonly",
-              )}
-            >
-              <span className="ace-modal-player-name">
-                {player.name || "이름 없음"}
-              </span>
-              {!readOnly && (
+      <div
+        className="ace-modal-slot-body"
+        style={{ ["--ace-reel-rows" as string]: String(Math.max(1, roster.length)) }}
+      >
+        {showReel ? (
+          <AceSlotReel
+            team={team}
+            players={activePlayers}
+            startActiveIdx={reelStart}
+            maxSteps={reelSteps}
+            spinToken={spinToken}
+            baseDelay={SLOT_SPIN_BASE_DELAY_MS}
+            visibleRows={roster.length}
+            settleStyle={settleStyle}
+          />
+        ) : (
+          <div className="ace-modal-roster">
+            {roster.map((player, index) => {
+              const isPicked = (slotFinished || isRolling) && index === slotIdx
+              const isExcluded = Boolean(excludedIds[player.id])
+              return (
                 <div
-                  className="ace-modal-player-meta"
-                  onClick={(event) => event.stopPropagation()}
+                  key={player.id}
+                  onClick={() =>
+                    !readOnly && !isLocked && onToggleExclude(player.id)
+                  }
+                  className={cn(
+                    "ace-modal-player justify-between",
+                    team === "thomas"
+                      ? "ace-modal-player--thomas"
+                      : "ace-modal-player--ada",
+                    isExcluded && "is-excluded",
+                    !isExcluded && isPicked && "is-picked",
+                    !isExcluded && isPicked && isLocked && "is-locked",
+                    !isExcluded && isLocked && !isPicked && "is-dimmed",
+                    !readOnly && !isExcluded && !isLocked && "cursor-pointer",
+                    readOnly && "is-readonly",
+                  )}
                 >
-                  <span>{isExcluded ? "제외" : "포함"}</span>
-                  <input
-                    type="checkbox"
-                    disabled={isRolling || isLocked}
-                    checked={!isExcluded}
-                    onChange={() => onToggleExclude(player.id)}
-                    title={isExcluded ? "추첨 대상에 포함" : "추첨에서 제외"}
-                    className="size-3.5 accent-dbd-yellow cursor-pointer"
-                  />
+                  <span className="ace-modal-player-name">
+                    {player.name || "이름 없음"}
+                  </span>
+                  {!readOnly && (
+                    <div
+                      className="ace-modal-player-meta"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <span>{isExcluded ? "제외" : "포함"}</span>
+                      <input
+                        type="checkbox"
+                        disabled={isRolling || isLocked}
+                        checked={!isExcluded}
+                        onChange={() => onToggleExclude(player.id)}
+                        title={isExcluded ? "추첨 대상에 포함" : "추첨에서 제외"}
+                        className="size-3.5 accent-dbd-yellow cursor-pointer"
+                      />
+                    </div>
+                  )}
+                  {readOnly && isExcluded && (
+                    <span className="ace-modal-player-meta">제외</span>
+                  )}
                 </div>
-              )}
-              {readOnly && isExcluded && (
-                <span className="ace-modal-player-meta">제외</span>
-              )}
-            </div>
-          )
-        })}
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -6,9 +6,12 @@ import {
   buildExcludedIdsFromList,
   buildSlotSpinPlan,
   DEFAULT_ACE_LOCKED_TEAMS,
+  estimateSlotSpinDurationMs,
+  estimateDualSlotSpinDurationMs,
   getAceRerollButtonLabel,
   getAceRerollButtonState,
   mergeAceDrawExcludedIds,
+  SLOT_REEL_OVERSHOOT_MS,
 } from "@/lib/ace-modal-sync"
 
 const thomas: Player[] = [
@@ -119,5 +122,24 @@ describe("ace modal sync helpers", () => {
       "a1",
       "t2",
     ])
+  })
+
+  it("estimates spin duration from the step delay curve", () => {
+    expect(estimateSlotSpinDurationMs(0)).toBe(0)
+    expect(estimateSlotSpinDurationMs(1, 52)).toBe(SLOT_REEL_OVERSHOOT_MS)
+    // After step 1 of 2: remaining=1 → 52 + 6^2 * 18
+    expect(estimateSlotSpinDurationMs(2, 52)).toBe(
+      52 + 36 * 18 + SLOT_REEL_OVERSHOOT_MS,
+    )
+    expect(estimateSlotSpinDurationMs(8, 52)).toBeGreaterThan(7 * 52)
+  })
+
+  it("uses the slower reel when estimating dual spin duration", () => {
+    expect(estimateDualSlotSpinDurationMs(2, 8, 52)).toBe(
+      estimateSlotSpinDurationMs(8, 52),
+    )
+    expect(estimateDualSlotSpinDurationMs(10, 3, 52)).toBe(
+      estimateSlotSpinDurationMs(10, 52),
+    )
   })
 })

@@ -9,6 +9,7 @@ interface HoldButtonProps {
   disabled?: boolean
   className?: string
   style?: React.CSSProperties
+  fillClassName?: string
   children: React.ReactNode
 }
 
@@ -18,6 +19,7 @@ export function HoldButton({
   disabled = false,
   className,
   style,
+  fillClassName,
   children,
 }: HoldButtonProps) {
   const holdingRef = useRef(false)
@@ -97,7 +99,10 @@ export function HoldButton({
       <span
         ref={fillRef}
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-0 bottom-0 w-full origin-left bg-dbd-yellow/30 opacity-0"
+        className={cn(
+          "pointer-events-none absolute left-0 top-0 bottom-0 w-full origin-left opacity-0",
+          fillClassName ?? "bg-dbd-yellow/30",
+        )}
         style={{ transform: "scaleX(0)" }}
       />
       <span className="relative z-10">{children}</span>

@@ -411,7 +411,13 @@ function isSlotSpinPlan(value: unknown): value is AceSlotSpinPlan {
     typeof plan.spinToken === "number" &&
     plan.spinToken >= 0 &&
     (plan.lockThomas === undefined || typeof plan.lockThomas === "boolean") &&
-    (plan.lockAda === undefined || typeof plan.lockAda === "boolean")
+    (plan.lockAda === undefined || typeof plan.lockAda === "boolean") &&
+    (plan.thomasSettleStyle === undefined ||
+      plan.thomasSettleStyle === "overshoot" ||
+      plan.thomasSettleStyle === "undershoot") &&
+    (plan.adaSettleStyle === undefined ||
+      plan.adaSettleStyle === "overshoot" ||
+      plan.adaSettleStyle === "undershoot")
   )
 }
 
@@ -436,6 +442,12 @@ function lockedTeamsToWire(teams: AceLockedTeams) {
   return wire
 }
 
+function normalizeSettleStyle(
+  value: AceSlotSpinPlan["thomasSettleStyle"] | undefined,
+): AceSlotSpinPlan["thomasSettleStyle"] {
+  return value === "overshoot" ? "overshoot" : "undershoot"
+}
+
 function normalizeSlotSpinPlan(
   plan: AceSlotSpinPlan | null,
 ): AceSlotSpinPlan | null {
@@ -444,6 +456,8 @@ function normalizeSlotSpinPlan(
     ...plan,
     lockThomas: plan.lockThomas === true,
     lockAda: plan.lockAda === true,
+    thomasSettleStyle: normalizeSettleStyle(plan.thomasSettleStyle),
+    adaSettleStyle: normalizeSettleStyle(plan.adaSettleStyle),
   }
 }
 

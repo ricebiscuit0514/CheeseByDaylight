@@ -1009,10 +1009,6 @@ export function Scoreboard() {
   const close = (!isGameOver || isTie) && Math.abs(diff) <= 2
   const orangeLit = isGameOver ? (isTie || diff > 0) : bothTeamsPlayed && (close || diff > 0)
   const blueLit = isGameOver ? (isTie || diff < 0) : bothTeamsPlayed && (close || diff < 0)
-  const isGameOverDisplay = isAceMatchMode ? false : isGameOver
-  const orangeLitDisplay = isAceMatchMode ? true : orangeLit
-  const blueLitDisplay = isAceMatchMode ? true : blueLit
-  const closeDisplay = isAceMatchMode ? true : close
 
   const bothAcePlayed = useMemo(() => {
     if (!isAceMatchMode || !aceThomasId || !aceAdaId) return false
@@ -1020,6 +1016,38 @@ export function Scoreboard() {
     const aAce = ada.find((p) => p.id === aceAdaId)
     return Boolean(tAce?.played && aAce?.played)
   }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada])
+
+  // Ace match: keep clutch FX until decided; then dim the loser like 4v4 defeat.
+  // After exiting ace match back to 4v4, keep dimming the ace-losing team.
+  const isAceResolved = isAceMatchMode && bothAcePlayed
+  const isAceTie = isAceResolved && diff === 0
+  const isAceWinnerDecided = isAceResolved && diff !== 0
+  const showAceOutcomeOnMain =
+    !isAceMatchMode && hasCompletedAceMatch && aceWinnerTeam !== null
+  const isGameOverDisplay = isAceMatchMode
+    ? isAceResolved
+    : showAceOutcomeOnMain
+      ? true
+      : isGameOver
+  const orangeLitDisplay = isAceMatchMode
+    ? isAceResolved
+      ? isAceTie || diff > 0
+      : true
+    : showAceOutcomeOnMain
+      ? aceWinnerTeam === "thomas"
+      : orangeLit
+  const blueLitDisplay = isAceMatchMode
+    ? isAceResolved
+      ? isAceTie || diff < 0
+      : true
+    : showAceOutcomeOnMain
+      ? aceWinnerTeam === "ada"
+      : blueLit
+  const closeDisplay = isAceMatchMode
+    ? !isAceWinnerDecided
+    : showAceOutcomeOnMain
+      ? false
+      : close
 
   const [showOverlay, setShowOverlay] = useState(false)
 
@@ -1172,10 +1200,18 @@ export function Scoreboard() {
     setHasCompletedAceMatch(true)
   }
 
-  const handleConfirmAceMatch = (selectedThomasId: string, selectedAdaId: string) => {
+  const handleConfirmAceMatch = (
+    selectedThomasId: string,
+    selectedAdaId: string,
+    excludedIds: string[] = [],
+  ) => {
     setShowAcePromptModal(false)
     setAceRematchExcludedIds((previous) =>
-      mergeAceDrawExcludedIds(previous, [selectedThomasId, selectedAdaId]),
+      mergeAceDrawExcludedIds(previous, [
+        ...excludedIds,
+        selectedThomasId,
+        selectedAdaId,
+      ]),
     )
     setShowAceProceedButton(false)
     setHasCompletedAceMatch(true)
@@ -1690,20 +1726,20 @@ export function Scoreboard() {
           <motion.span
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className={`absolute -top-3 z-20 flex items-center gap-1 whitespace-nowrap rounded border border-black/80 bg-dbd-yellow px-2.5 py-0.5 text-xs font-black text-black ${
+            className={`absolute -top-3 z-20 flex items-center gap-1 whitespace-nowrap rounded border border-black/80 bg-dbd-yellow px-1.5 py-px text-[13px] text-black ${
               isThomas ? "right-3" : "left-3"
             }`}
-            style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
+            style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
           >
             선공
           </motion.span>
         )}
         {active && !selgong && removeMode !== team && (
           <span
-            className={`absolute -top-2.5 z-10 whitespace-nowrap rounded-sm bg-neutral-950/95 px-2 text-xs text-neutral-200 ${
+            className={`absolute -top-3 z-10 flex items-center gap-1 whitespace-nowrap rounded bg-neutral-950 px-1.5 py-px text-[13px] text-neutral-200 ${
               isThomas ? "right-3" : "left-3"
             }`}
-            style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
+            style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
           >
             다음 플레이어
           </span>
@@ -1713,10 +1749,10 @@ export function Scoreboard() {
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className={cn(
-              "absolute -top-3 z-30 flex items-center gap-1 whitespace-nowrap rounded border border-amber-300 bg-dbd-yellow px-2.5 py-0.5 text-xs font-black text-black tracking-wider shadow-[0_0_12px_rgba(234,179,8,0.7)] select-none",
+              "absolute -top-3 z-30 flex items-center gap-1 whitespace-nowrap rounded border border-amber-300 bg-dbd-yellow px-1.5 py-px text-[13px] text-black tracking-wider shadow-[0_0_12px_rgba(234,179,8,0.7)] select-none",
               isThomas ? "right-3" : "left-3"
             )}
-            style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
+            style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
           >
             ACE
           </motion.span>
@@ -2017,8 +2053,8 @@ export function Scoreboard() {
                 <button
                   type="button"
                   onClick={openAuctionModal}
-                  className="rounded-full border border-violet-500/80 bg-black/85 px-4 py-1.5 text-xs font-black text-violet-400 backdrop-blur-md transition-all hover:border-violet-400 hover:text-violet-300 active:scale-95"
-                  style={{ fontFamily: "var(--font-godo)" }}
+                  className="rounded-full border border-violet-500/80 bg-black/85 px-4 py-1.5 text-xs font-normal text-violet-400 backdrop-blur-md transition-all hover:border-violet-400 hover:text-violet-300 active:scale-95"
+                  style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
                 >
                   경매 순서 결정
                 </button>
@@ -2903,7 +2939,9 @@ export function Scoreboard() {
             <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
               <HoldButton
                 onConfirm={handleExitAceMatch}
-                className="rounded border border-red-600/80 bg-black/90 px-6 py-2.5 text-xs font-bold text-red-400 hover:bg-red-950/80 transition-all uppercase tracking-wider"
+                fillClassName="bg-red-500/35"
+                className="rounded border border-red-600/80 bg-black/90 px-6 py-1.5 text-sm font-normal text-red-400 hover:bg-red-950/80 transition-all tracking-wider"
+                style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
               >
                 에이스 결정전 종료하기 (꾹 누르기)
               </HoldButton>
@@ -2919,7 +2957,8 @@ export function Scoreboard() {
                     setAceModalInitialStep("prompt")
                     setShowAcePromptModal(true)
                   }}
-                  className="rounded border border-dbd-yellow/90 bg-black/90 px-6 py-2.5 text-xs font-bold text-dbd-yellow hover:bg-dbd-yellow/20 shadow-[0_0_15px_rgba(234,179,8,0.3)] transition-all uppercase tracking-wider"
+                  className="rounded border border-dbd-yellow/90 bg-black/90 px-6 py-1.5 text-sm font-normal text-dbd-yellow hover:bg-dbd-yellow/20 shadow-[0_0_15px_rgba(234,179,8,0.3)] transition-all tracking-wider"
+                  style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
                 >
                   에이스 결정전 진행하기 (꾹 누르기)
                 </HoldButton>

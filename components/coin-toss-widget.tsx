@@ -113,7 +113,7 @@ export function CoinTossWidget({
           : "cursor-pointer border-dbd-yellow/70 bg-black/85 text-dbd-yellow hover:border-dbd-yellow hover:bg-black",
         className,
       )}
-      style={{ fontFamily: "var(--font-godo)" }}
+      style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
     >
       {tossing && (
         <>

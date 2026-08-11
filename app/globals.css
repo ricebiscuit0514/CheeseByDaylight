@@ -507,7 +507,7 @@
 .player-name-cell {
   max-width: 100%;
 }
-.player-name-input { width: 100%; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; color: var(--foreground); font-family: var(--font-godo); font-size: 1.05rem; font-weight: 700; letter-spacing: -.02em; outline: none; }
+.player-name-input { width: 100%; min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; color: var(--foreground); font-family: var(--font-s-core); font-size: 1.15rem; font-weight: 500; letter-spacing: -.02em; outline: none; }
 .player-name-input::placeholder { color: color-mix(in oklch, var(--muted-foreground), transparent 62%); }
 .pinball-command-input {
   font-family: var(--font-s-core);
@@ -1232,6 +1232,13 @@ input[type="number"] {
 }
 .fearless-picker-title-catalog {
   color: white;
+}
+/* 5인(monochrome) pick: nickname white, slot label gray */
+.fearless-picker-panel-catalog.fearless-picker-panel-pick .fearless-picker-title-name {
+  color: #fff;
+}
+.fearless-picker-panel-catalog.fearless-picker-panel-pick .fearless-picker-title-pick {
+  color: color-mix(in oklch, var(--foreground), transparent 42%);
 }
 .fearless-picker-hide-filters {
   display: flex;
@@ -2153,8 +2160,8 @@ input[type="number"] {
   margin-bottom: .7rem;
 }
 .ace-modal-panel--wide .ace-modal-player {
-  min-height: 3.55rem;
-  padding-block: 1.05rem;
+  min-height: 3.35rem;
+  padding-block: .9rem;
   font-size: 1.05rem;
 }
 .ace-modal-panel--wide .ace-modal-slot-col {
@@ -2163,7 +2170,28 @@ input[type="number"] {
 .ace-modal-roster {
   display: flex;
   flex-direction: column;
-  gap: .7rem;
+  gap: .45rem;
+  min-height: 0;
+}
+.ace-modal-panel--wide .ace-modal-roster > .ace-modal-player {
+  height: auto;
+  min-height: 3.35rem;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  padding-block: .9rem;
+}
+/* Slot column: same plate size/gap as direct-select; body height locks roster↔reel. */
+.ace-modal-slot-body .ace-modal-roster {
+  height: 100%;
+  gap: 7px;
+}
+.ace-modal-slot-body .ace-modal-roster > .ace-modal-player,
+.ace-modal-panel--wide .ace-modal-slot-body .ace-modal-roster > .ace-modal-player {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 54px;
+  padding-block: .9rem;
+  box-sizing: border-box;
 }
 .ace-modal-slot-header {
   display: flex;
@@ -2217,14 +2245,15 @@ input[type="number"] {
 }
 .ace-modal-body {
   margin: 0;
-  font-family: var(--font-godo);
+  font-family: var(--font-s-core);
   font-size: .875rem;
+  font-weight: 500;
   line-height: 1.65;
   color: color-mix(in oklch, var(--foreground), transparent 18%);
 }
 .ace-modal-body .ace-modal-em {
   color: var(--dbd-yellow);
-  font-weight: 700;
+  font-weight: 500;
 }
 .ace-modal-body + .ace-modal-actions {
   margin-top: 1.2rem;
@@ -2391,9 +2420,9 @@ input[type="number"] {
     linear-gradient(104deg, color-mix(in oklch, var(--team-muted), transparent 90%), transparent 40%),
     rgb(0 0 0 / 55%);
   clip-path: polygon(0 0, calc(100% - .4rem) 0, 100% .4rem, 100% 100%, .35rem 100%, 0 calc(100% - .35rem));
-  font-family: var(--font-godo);
+  font-family: var(--font-s-core);
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 400;
   color: color-mix(in oklch, var(--foreground), transparent 28%);
   text-align: center;
   transition:
@@ -2435,7 +2464,7 @@ input[type="number"] {
   border-left-color: var(--team);
   background: color-mix(in oklch, var(--team), transparent 86%);
   color: var(--team);
-  font-weight: 800;
+  font-weight: 400;
   transform: scale(1.015);
 }
 .ace-modal-player--ada.is-picked {
@@ -2505,6 +2534,125 @@ input[type="number"] {
 }
 .ace-modal-slot-col--ada.is-locked {
   background: transparent;
+}
+.ace-modal-slot-body {
+  /* Keep pitch in px so JS reel math (cellPx=61) matches CSS exactly. */
+  --ace-plate: 54px;
+  --ace-roster-gap: 7px;
+  --ace-reel-cell: 61px;
+  --ace-reel-rows: 4;
+  height: calc(var(--ace-reel-cell) * var(--ace-reel-rows));
+  min-height: calc(var(--ace-reel-cell) * var(--ace-reel-rows));
+}
+.ace-modal-reel {
+  --team: var(--dbd-yellow);
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 28%,
+    #000 72%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 28%,
+    #000 72%,
+    transparent 100%
+  );
+}
+.ace-modal-reel--thomas { --team: var(--dbd-orange); }
+.ace-modal-reel--ada { --team: var(--dbd-blue); }
+.ace-modal-reel::before,
+.ace-modal-reel::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: calc(var(--ace-reel-cell) * 1.35);
+  pointer-events: none;
+}
+.ace-modal-reel::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgb(8 8 9 / 98%), rgb(8 8 9 / 70%), transparent);
+}
+.ace-modal-reel::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgb(8 8 9 / 98%), rgb(8 8 9 / 70%), transparent);
+}
+.ace-modal-reel-focus {
+  position: absolute;
+  /* Slightly larger than the plate so the aim frame doesn't sit on the nameplate border. */
+  top: calc(
+    var(--ace-reel-cell) * ((var(--ace-reel-rows) - 1) / 2) +
+      (var(--ace-reel-cell) - var(--ace-plate) * 1.22) / 2
+  );
+  left: -.55rem;
+  right: -.55rem;
+  z-index: 2;
+  height: calc(var(--ace-plate) * 1.22);
+  pointer-events: none;
+  border: 1.5px solid color-mix(in oklch, var(--team), transparent 12%);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--team), transparent 48%),
+    0 0 18px color-mix(in oklch, var(--team), transparent 70%);
+  transition: opacity .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+.ace-modal-reel.is-landed .ace-modal-reel-focus {
+  opacity: 0;
+  border-color: transparent;
+  box-shadow: none;
+}
+.ace-modal-reel-strip {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+}
+.ace-modal-reel-cell {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: var(--ace-reel-cell);
+  padding: 0 .15rem;
+  box-sizing: border-box;
+  transition: opacity .28s ease;
+}
+.ace-modal-reel-cell.is-dimmed {
+  opacity: .22;
+}
+.ace-modal-reel-cell.is-winner .ace-modal-player {
+  animation: ace-reel-shine .38s ease-out;
+}
+.ace-modal-reel-cell .ace-modal-player {
+  width: 100%;
+  height: var(--ace-plate);
+  min-height: 0;
+  padding-block: .9rem;
+  pointer-events: none;
+}
+@keyframes ace-reel-shine {
+  0% {
+    filter: brightness(1);
+    box-shadow: none;
+  }
+  18% {
+    filter: brightness(1.6);
+    box-shadow:
+      0 0 22px color-mix(in oklch, var(--team), transparent 35%),
+      inset 0 0 18px color-mix(in oklch, var(--team), transparent 70%);
+  }
+  100% {
+    filter: brightness(1);
+    box-shadow: inset 0 0 12px color-mix(in oklch, var(--team), transparent 82%);
+  }
 }
 .ace-modal-slot-lock {
   width: auto;
