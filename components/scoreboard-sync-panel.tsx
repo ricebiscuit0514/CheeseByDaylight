@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Copy, Link2, Unplug, Wifi } from "lucide-react"
-import { motion } from "motion/react"
 import { useAutoDismiss } from "@/hooks/use-auto-dismiss"
 import { useDismissOnOutsideInteraction } from "@/hooks/use-dismiss-on-outside-interaction"
 import { cn } from "@/lib/utils"
@@ -19,9 +18,7 @@ const DISCORD_BUTTON_COPIED =
 const CHZZK_GREEN_BUTTON =
   "border-emerald-500/80 text-emerald-300 hover:bg-emerald-950/40"
 const CHZZK_GREEN_GUIDE =
-  "border-emerald-500/80 text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.45)]"
-const CHZZK_GREEN_PULSE =
-  "animate-pulse border-emerald-400 bg-emerald-500/15 shadow-[0_0_18px_rgba(16,185,129,0.55)]"
+  "border-emerald-500/80 text-emerald-300"
 const CHZZK_GREEN_PANEL =
   "border-emerald-500/50 bg-black/95 shadow-[0_0_24px_rgba(16,185,129,0.12)]"
 const CHZZK_GREEN_ACCENT = "text-emerald-300"
@@ -217,15 +214,9 @@ export function ScoreboardSyncPanel({
   return (
     <div className="relative flex w-full flex-col">
       {!hasSeenGuide && (
-        <motion.button
+        <button
           type="button"
           ref={guideTriggerRef}
-          initial={{ opacity: 0, x: 10 }}
-          animate={{ opacity: 1, x: [0, -6, 0] }}
-          transition={{
-            x: { repeat: Infinity, duration: 1.4 },
-            opacity: { duration: 0.3 },
-          }}
           onClick={openPanel}
           className={cn(
             "fixed bottom-36 left-4 right-4 z-50 rounded-md border bg-black/95 px-3.5 py-2.5 text-center text-sm backdrop-blur-md hover:brightness-125 sm:absolute sm:bottom-auto sm:left-auto sm:right-full sm:top-1/2 sm:mr-3 sm:w-max sm:-translate-y-1/2 sm:whitespace-nowrap sm:px-3.5 sm:py-2",
@@ -234,7 +225,7 @@ export function ScoreboardSyncPanel({
           style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
         >
           진행자의 점수판과 연동하여 같은 화면을 보며 플레이하세요!
-        </motion.button>
+        </button>
       )}
 
       <button
@@ -246,11 +237,7 @@ export function ScoreboardSyncPanel({
           "scoreboard-utility-btn flex items-center justify-center gap-2 shadow-lg",
           role === "host"
             ? "border border-emerald-500 bg-emerald-500 font-bold text-white shadow-[0_0_16px_rgba(16,185,129,0.45)] hover:border-emerald-400 hover:bg-emerald-400 hover:text-white"
-            : cn(
-                "border bg-black/85",
-                CHZZK_GREEN_BUTTON,
-                !hasSeenGuide && CHZZK_GREEN_PULSE,
-              ),
+            : cn("border bg-black/85", CHZZK_GREEN_BUTTON),
         )}
         style={{ fontFamily: "var(--font-godo)" }}
       >

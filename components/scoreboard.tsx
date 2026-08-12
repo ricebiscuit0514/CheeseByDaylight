@@ -2257,12 +2257,19 @@ export function Scoreboard() {
           >
             에이스 결정전 기능이 개선되었습니다.
           </h2>
-          <ul
-            className="space-y-1.5 text-sm leading-relaxed text-white"
-            style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
-          >
-            <li>맞밸런스 추첨 기능이 추가되었습니다.</li>
-            <li>멤버 선택 실수 시, 되돌아가기 기능이 추가되었습니다.</li>
+          <ul className="space-y-1.5 text-center text-white">
+            <li
+              className="text-base leading-snug md:text-lg"
+              style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
+            >
+              맞밸런스 추첨 기능이 추가되었습니다.
+            </li>
+            <li
+              className="text-sm leading-relaxed"
+              style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
+            >
+              멤버 선택 실수 시, 되돌아가기 기능이 추가되었습니다.
+            </li>
           </ul>
           <button
             type="button"
@@ -3006,7 +3013,7 @@ export function Scoreboard() {
               className={cn(
                 "scoreboard-utility-btn scoreboard-utility-btn-neutral",
                 !hasSeenGuide
-                  ? "border-red-700/90 bg-red-950/45 text-red-400 shadow-[0_0_18px_rgba(185,28,28,0.6)] animate-pulse font-bold"
+                  ? "border-red-700/90 bg-red-950/45 text-red-400 font-bold"
                   : "border-neutral-600 bg-black/50",
               )}
             >
@@ -3041,7 +3048,7 @@ export function Scoreboard() {
 
             {!hasSeenGuide && (
               <div
-                className="absolute left-full ml-3 z-50 flex cursor-pointer items-center gap-1.5 rounded-md border border-red-700/85 bg-black/95 px-3.5 py-2 text-sm shadow-[0_0_20px_rgba(185,28,28,0.55)] backdrop-blur-md whitespace-nowrap hover:brightness-125"
+                className="absolute left-full ml-3 z-50 flex cursor-pointer items-center gap-1.5 rounded-md border border-red-700/85 bg-black/95 px-3.5 py-2 text-sm backdrop-blur-md whitespace-nowrap hover:brightness-125"
                 onClick={handleOpenGuide}
                 style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
               >

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { Copy } from "lucide-react"
-import { motion, AnimatePresence } from "motion/react"
 import { useRouter } from "next/navigation"
 import { PlayerRow, type Player } from "@/components/player-row"
 import { KillerPickSlots } from "@/components/killer-pick-slots"
@@ -1232,7 +1231,8 @@ export function FivePlayerMode() {
               onClick={handleOpenGuide}
               className={cn(
                 "scoreboard-utility-btn scoreboard-utility-btn-neutral border-neutral-600 bg-black/50",
-                !hasSeenGuide && "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 shadow-[0_0_18px_rgba(234,179,8,0.7)] animate-pulse font-bold",
+                !hasSeenGuide &&
+                  "border-dbd-yellow/90 text-dbd-yellow bg-dbd-yellow/15 font-bold",
               )}
               style={{ fontFamily: "var(--font-godo)", fontWeight: 400 }}
             >
@@ -1240,17 +1240,14 @@ export function FivePlayerMode() {
             </button>
 
             {!hasSeenGuide && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: [0, 6, 0] }}
-                transition={{ x: { repeat: Infinity, duration: 1.4 }, opacity: { duration: 0.3 } }}
-                className="absolute left-full ml-3 z-50 flex items-center gap-1.5 rounded-md border border-dbd-yellow/80 bg-black/95 px-3.5 py-2 text-sm text-dbd-yellow shadow-[0_0_20px_rgba(234,179,8,0.5)] backdrop-blur-md whitespace-nowrap cursor-pointer hover:brightness-125"
+              <div
+                className="absolute left-full ml-3 z-50 flex cursor-pointer items-center gap-1.5 rounded-md border border-dbd-yellow/80 bg-black/95 px-3.5 py-2 text-sm text-dbd-yellow backdrop-blur-md whitespace-nowrap hover:brightness-125"
                 onClick={handleOpenGuide}
                 style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
               >
                 <span className="text-sm">👈</span>
                 <span>최초 접속! 사용설명서를 확인해 보세요</span>
-              </motion.div>
+              </div>
             )}
           </div>
           )}
