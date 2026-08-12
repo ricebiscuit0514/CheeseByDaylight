@@ -2362,8 +2362,8 @@ input[type="number"] {
 /* Ace match stage — soft vertical fade, content clustered low-center */
 .ace-match-stage {
   --ace-bar-shift: 4.75rem;
-  /* Lift stage + following score/etc. together. */
-  --ace-cluster-lift: 5.25rem;
+  /* Lift stage + following score/etc. together. Lower = cluster sits lower. */
+  --ace-cluster-lift: 1.5rem;
   /* Former toss row height+gap — keeps titles Y when toss overlays the title row. */
   --ace-toss-slot: 3.15rem;
   --ace-plate-nudge: 0.85rem;
