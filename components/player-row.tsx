@@ -303,7 +303,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
   player: Player; team: Team; active: boolean; isSelgong?: boolean; aceBadge?: "win" | "lose" | null; isGoldSkull?: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean; tabIndex?: number
   killerControl?: React.ReactNode
   onRemove?: () => void; onScore: (newKills: number) => void; onZeroKill: () => void; onCancel: () => void; onNameChange: (name: string) => void
-  onNameCommit: (name: string) => void; onKillerChange: (killer: string) => void; onDragStart: () => void; onDragEnter: () => void; onDragEnd: () => void
+  onNameCommit: (name: string, previousName: string) => void; onKillerChange: (killer: string) => void; onDragStart: () => void; onDragEnter: () => void; onDragEnd: () => void
   onNameKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void
 }) {
   const isThomas = team === "thomas"
@@ -314,6 +314,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
   useEffect(() => { setMounted(true) }, [])
   const reducedMotion = mounted ? reducedMotionRaw : false
   const [hover, setHover] = useState<{ index: number; half: boolean } | null>(null)
+  const nameAtFocusRef = useRef(player.name)
   const [isRevealed, setIsRevealed] = useState(false)
   const [isFlashReady, setIsFlashReady] = useState(false)
   const posForIndex = (i: number) => isThomas ? i : SKULLS_PER_PLAYER - 1 - i
@@ -376,11 +377,14 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
       readOnly={interactionsDisabled}
       tabIndex={tabIndex}
       onChange={(event) => onNameChange(event.target.value)}
-      onFocus={(event) => event.currentTarget.select()}
+      onFocus={(event) => {
+        nameAtFocusRef.current = player.name
+        event.currentTarget.select()
+      }}
       onBlur={(event) => {
         // Overflowed Hangul can leave scrollLeft > 0 and hide the first glyph.
         event.currentTarget.scrollLeft = 0
-        onNameCommit(event.target.value)
+        onNameCommit(event.target.value, nameAtFocusRef.current)
       }}
       onKeyDown={(event) => {
         onNameKeyDown?.(event)

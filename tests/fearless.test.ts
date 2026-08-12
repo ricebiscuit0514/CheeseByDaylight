@@ -250,6 +250,49 @@ describe("fearless pick and ban updates", () => {
     expect(migrated.find((entry) => entry.id === "slot-1")?.killerPicks).toEqual([])
   })
 
+  it("uses the pre-edit name as the displaced name during live typing", () => {
+    const roster = [
+      player("slot-1", "테스트A", [pick("nurse", "테스트A")]),
+      player("slot-2", "테스트A", [pick("ghost-face", "테스트B")]),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-2",
+      "테스트A",
+      "테스트B",
+    )
+
+    expect(migrated.find((entry) => entry.id === "slot-1")).toMatchObject({
+      name: "테스트B",
+      killerPicks: [pick("ghost-face", "테스트B")],
+    })
+    expect(migrated.find((entry) => entry.id === "slot-2")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+  })
+
+  it("swaps names and picks when overwriting an occupied nameplate with a duplicate name", () => {
+    const roster = [
+      player("slot-1", "테스트A", [pick("nurse", "테스트A")]),
+      player("slot-2", "테스트B", [pick("ghost-face", "테스트B")]),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-2",
+      "테스트A",
+    )
+
+    expect(migrated.find((entry) => entry.id === "slot-1")).toMatchObject({
+      name: "테스트B",
+      killerPicks: [pick("ghost-face", "테스트B")],
+    })
+    expect(migrated.find((entry) => entry.id === "slot-2")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+  })
+
   it("swaps displaced name and picks when overwriting an occupied nameplate", () => {
     const roster = [
       player("slot-a", "", [pick("nurse", "테스트A")]),
@@ -306,6 +349,28 @@ describe("fearless pick and ban updates", () => {
     ])
   })
 
+  it("does not move rename-history picks when clearing a newer name", () => {
+    const roster = [
+      player("slot-a", "테스트A3", [
+        pick("nurse", "테스트A"),
+        pick("artist", "테스트A2"),
+        pick("clown", "테스트A3"),
+      ]),
+      player("slot-b", "테스트A", [pick("doctor", "테스트A")]),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(roster, "slot-a", "", "테스트A3")
+
+    expect(migrated.find((entry) => entry.id === "slot-a")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+      pick("artist", "테스트A2"),
+      pick("clown", "테스트A3"),
+    ])
+    expect(migrated.find((entry) => entry.id === "slot-b")?.killerPicks).toEqual([
+      pick("doctor", "테스트A"),
+    ])
+  })
+
   it("moves mixed pick names when the original nameplate is cleared after duplicating the latest name elsewhere", () => {
     const roster = [
       player("slot-1", "테스트A2", [
@@ -330,6 +395,7 @@ describe("fearless pick and ban updates", () => {
       afterDuplicateName,
       "slot-1",
       "",
+      "테스트A2",
     )
     expect(afterClearOriginal.find((entry) => entry.id === "slot-1")?.killerPicks).toEqual([])
     expect(afterClearOriginal.find((entry) => entry.id === "slot-3")?.killerPicks).toEqual([

@@ -336,11 +336,13 @@ function swapPlayerKillerRecords<T extends FearlessPlayer>(
 }
 
 /**
- * When a name is cleared, move picks to another slot that already owns that name.
+ * When a name is cleared, move picks only to another slot that already has the
+ * same name as the slot being cleared (not older pick tags from rename history).
  */
 function migrateKillerPicksOnNameClear<T extends FearlessPlayer>(
   roster: readonly T[],
   clearedPlayerId: string,
+  previousTargetName?: string,
 ): T[] {
   const source = roster.find((player) => player.id === clearedPlayerId)
   if (!source) return [...roster]
@@ -348,11 +350,14 @@ function migrateKillerPicksOnNameClear<T extends FearlessPlayer>(
   const picks = source.killerPicks ?? []
   if (picks.length === 0) return [...roster]
 
+  const clearedName = (
+    previousTargetName !== undefined ? previousTargetName : source.name
+  ).trim()
+  if (!clearedName) return [...roster]
+
   const destination = roster.find(
     (player) =>
-      player.id !== clearedPlayerId &&
-      player.name.trim() &&
-      picks.some((pick) => pick.playerName.trim() === player.name.trim()),
+      player.id !== clearedPlayerId && player.name.trim() === clearedName,
   )
   if (!destination) return [...roster]
 
@@ -369,14 +374,22 @@ export function migrateKillerPicksOnNameCommit<T extends FearlessPlayer>(
   roster: readonly T[],
   targetPlayerId: string,
   committedName: string,
+  previousTargetName?: string,
 ): T[] {
   const trimmed = committedName.trim()
   if (!trimmed) {
-    return migrateKillerPicksOnNameClear(roster, targetPlayerId)
+    return migrateKillerPicksOnNameClear(
+      roster,
+      targetPlayerId,
+      previousTargetName,
+    )
   }
 
   const target = roster.find((player) => player.id === targetPlayerId)
   if (!target) return [...roster]
+
+  const displacedName =
+    previousTargetName !== undefined ? previousTargetName : target.name
 
   const orphan = roster.find(
     (player) =>
@@ -387,7 +400,7 @@ export function migrateKillerPicksOnNameCommit<T extends FearlessPlayer>(
       roster,
       targetPlayerId,
       orphan.id,
-      target.name,
+      displacedName,
     )
   }
 
@@ -400,7 +413,7 @@ export function migrateKillerPicksOnNameCommit<T extends FearlessPlayer>(
       roster,
       targetPlayerId,
       activeDuplicate.id,
-      "",
+      displacedName,
     )
   }
 

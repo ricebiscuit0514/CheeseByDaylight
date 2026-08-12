@@ -329,14 +329,19 @@ export function FivePlayerMode() {
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)))
   }
 
-  const commitPlayerNameWithMigration = (id: string, name: string) => {
+  const commitPlayerNameWithMigration = (
+    id: string,
+    name: string,
+    previousName: string,
+  ) => {
     setPlayers((prev) => {
-      const next = migrateKillerPicksOnNameCommit(
-        prev.map((player) => (player.id === id ? { ...player, name } : player)),
+      const migrated = migrateKillerPicksOnNameCommit(
+        prev,
         id,
         name.trim(),
+        previousName,
       )
-      return next.map((player) => (player.id === id ? { ...player, name } : player))
+      return migrated.map((player) => (player.id === id ? { ...player, name } : player))
     })
   }
 
@@ -799,7 +804,9 @@ export function FivePlayerMode() {
                       onZeroKill={() => handleZeroKill(p.id)}
                       onCancel={() => handleCancel(p.id)}
                       onNameChange={(name) => updatePlayerName(p.id, name)}
-                      onNameCommit={(name) => commitPlayerNameWithMigration(p.id, name)}
+                      onNameCommit={(name, previousName) =>
+                        commitPlayerNameWithMigration(p.id, name, previousName)
+                      }
                       onKillerChange={() => {}}
                       onDragStart={() => {
                         dragItem.current = p.id

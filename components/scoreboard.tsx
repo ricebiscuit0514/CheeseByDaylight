@@ -1929,7 +1929,9 @@ export function Scoreboard() {
           onZeroKill={() => handleZeroKill(team, p.id)}
           onCancel={() => handleCancel(team, p.id)}
           onNameChange={(name) => updatePlayerName(team, p.id, name)}
-          onNameCommit={(name) => commitPlayerNameWithMigration(team, p.id, name)}
+          onNameCommit={(name, previousName) =>
+            commitPlayerNameWithMigration(team, p.id, name, previousName)
+          }
           onKillerChange={killerChangeHandler}
           onDragStart={() => {
             dragItem.current = { team, id: p.id }
@@ -2024,7 +2026,12 @@ export function Scoreboard() {
     }
   }
 
-  function commitPlayerNameWithMigration(team: Team, playerId: string, name: string) {
+  function commitPlayerNameWithMigration(
+    team: Team,
+    playerId: string,
+    name: string,
+    previousName: string,
+  ) {
     if (isViewer) return
 
     const cleanName = name.trim()
@@ -2033,7 +2040,12 @@ export function Scoreboard() {
     if (fearlessEnabled) {
       const thomasIds = new Set(thomas.map((player) => player.id))
       const combined = [...thomas, ...ada]
-      const migrated = migrateKillerPicksOnNameCommit(combined, playerId, cleanName)
+      const migrated = migrateKillerPicksOnNameCommit(
+        combined,
+        playerId,
+        cleanName,
+        previousName,
+      )
       const withName = migrated.map((player) =>
         player.id === playerId ? { ...player, name } : player,
       )
