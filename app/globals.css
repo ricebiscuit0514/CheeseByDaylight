@@ -2358,6 +2358,10 @@ input[type="number"] {
   background: rgb(40 10 10 / 90%);
   color: #fca5a5;
 }
+.ace-dock-btn--solid {
+  opacity: 1;
+  background: rgb(0 0 0 / 82%);
+}
 
 /* Ace match stage — soft vertical fade, content clustered low-center */
 .ace-match-stage {

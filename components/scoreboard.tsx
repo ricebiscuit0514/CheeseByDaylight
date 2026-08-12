@@ -3269,7 +3269,10 @@ export function Scoreboard() {
                 <HoldButton
                   onConfirm={handleExitAceMatch}
                   fillClassName="bg-red-500/35"
-                  className="ace-dock-btn ace-dock-btn--danger"
+                  className={cn(
+                    "ace-dock-btn ace-dock-btn--danger",
+                    isAceWinnerDecided && "ace-dock-btn--solid",
+                  )}
                   style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
                 >
                   에이스 결정전 종료하기 (꾹 누르기)
