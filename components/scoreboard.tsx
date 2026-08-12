@@ -1283,6 +1283,10 @@ export function Scoreboard() {
 
     const isTie = thomasAce.kills === adaAce.kills
 
+    if (aceWinnerTeam !== null && !isTie) {
+      return
+    }
+
     if (isTie && showAceRematchPrompt) {
       return
     }
@@ -1378,7 +1382,7 @@ export function Scoreboard() {
     }, delayMs)
 
     return () => clearTimeout(timer)
-  }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada, thomasName, adaName, lastScoredKills, firstAttackerId, showAceRematchPrompt])
+  }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada, thomasName, adaName, lastScoredKills, firstAttackerId, showAceRematchPrompt, aceWinnerTeam])
 
   const handleAceVictoryDismiss = () => {
     setAceVictoryOverlay(null)
