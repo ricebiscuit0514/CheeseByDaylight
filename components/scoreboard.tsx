@@ -95,8 +95,6 @@ const INITIAL_ADA: Player[] = [
 ]
 const SCORE_BEAT_MS = 355
 const SCORE_BEAT_DOWN_MS = 40  // 점수 감소 시 빠르게 주르륵
-/** 에결 무승부 확정 후 리매치 선택창까지 추가 대기 (실수 수정 여유) */
-const ACE_TIE_REMATCH_EXTRA_DELAY_MS = 1000
 const MAX_PLAYERS_PER_TEAM = 4
 const LS_KEY = "dbd-scoreboard-v1"
 const GUIDE_SEEN_4V4_KEY = "dbd-fearless-guide-seen-4v4"
@@ -626,6 +624,10 @@ export function Scoreboard() {
   /** gameover 시 이전 winnerName — 점수 수정으로 무승부로 바뀌었는지 감지 */
   const prevGameoverWinnerRef = useRef<string | "tie" | null | undefined>(
     undefined,
+  )
+  const aceOutcomeAnnouncedKeyRef = useRef<string | null>(null)
+  const aceAnnouncedKillsRef = useRef<{ thomas: number; ada: number } | null>(
+    null,
   )
 
   useEffect(() => {
@@ -1272,6 +1274,8 @@ export function Scoreboard() {
     const bothPlayed = thomasAce.played && adaAce.played
 
     if (!bothPlayed) {
+      aceOutcomeAnnouncedKeyRef.current = null
+      aceAnnouncedKillsRef.current = null
       setAceWinnersMap((prev) =>
         prev[aceThomasId] || prev[aceAdaId] ? {} : prev,
       )
@@ -1282,12 +1286,25 @@ export function Scoreboard() {
     }
 
     const isTie = thomasAce.kills === adaAce.kills
+    const outcomeKey = buildAceRoundLogKey(
+      aceThomasId,
+      aceAdaId,
+      thomasAce.kills,
+      adaAce.kills,
+    )
 
-    if (aceWinnerTeam !== null && !isTie) {
-      return
+    const announcedKills = aceAnnouncedKillsRef.current
+    const killsUnchanged =
+      announcedKills !== null &&
+      announcedKills.thomas === thomasAce.kills &&
+      announcedKills.ada === adaAce.kills
+
+    if (killsUnchanged && aceOutcomeAnnouncedKeyRef.current === outcomeKey) {
+      if (isTie && showAceRematchPrompt) return
+      if (!isTie && aceWinnerTeam !== null) return
     }
 
-    if (isTie && showAceRematchPrompt) {
+    if (isTie && showAceRematchPrompt && killsUnchanged) {
       return
     }
 
@@ -1311,15 +1328,16 @@ export function Scoreboard() {
     else if (kills === 3) delayMs = 1650
     else if (kills === 3.5) delayMs = 2100
     else if (kills >= 4) delayMs = 2400
-    if (isTie) delayMs += ACE_TIE_REMATCH_EXTRA_DELAY_MS
 
     const timer = setTimeout(() => {
-      const roundKey = buildAceRoundLogKey(
-        aceThomasId,
-        aceAdaId,
-        thomasAce.kills,
-        adaAce.kills,
-      )
+      const roundKey = outcomeKey
+      const markAnnounced = () => {
+        aceOutcomeAnnouncedKeyRef.current = outcomeKey
+        aceAnnouncedKillsRef.current = {
+          thomas: thomasAce.kills,
+          ada: adaAce.kills,
+        }
+      }
       const firstAttackerTeam =
         firstAttackerId === aceThomasId
           ? "thomas"
@@ -1355,6 +1373,7 @@ export function Scoreboard() {
           acePlayerName: thomasAce.name || "에이스",
           teamColor: "thomas",
         })
+        markAnnounced()
         // Keep isAceMatchMode true while victory overlay is playing!
       } else if (adaAce.kills > thomasAce.kills) {
         logRound("ada")
@@ -1370,6 +1389,7 @@ export function Scoreboard() {
           acePlayerName: adaAce.name || "에이스",
           teamColor: "ada",
         })
+        markAnnounced()
         // Keep isAceMatchMode true while victory overlay is playing!
       } else {
         logRound("tie")
@@ -1378,6 +1398,7 @@ export function Scoreboard() {
         setAceVictoryOverlay(null)
         setHasCompletedAceMatch(false)
         setShowAceRematchPrompt(true)
+        markAnnounced()
       }
     }, delayMs)
 
@@ -1394,6 +1415,8 @@ export function Scoreboard() {
     selectedAdaId: string,
     excludedIds: string[] = [],
   ) => {
+    aceOutcomeAnnouncedKeyRef.current = null
+    aceAnnouncedKillsRef.current = null
     setShowAcePromptModal(false)
     // Replace (don't merge previous): manual re-includes must stick across rematches.
     setAceRematchExcludedIds(
@@ -1463,6 +1486,8 @@ export function Scoreboard() {
   }
 
   const handleRedoAceMemberSelection = () => {
+    aceOutcomeAnnouncedKeyRef.current = null
+    aceAnnouncedKillsRef.current = null
     const previousThomasId = aceThomasId
     const previousAdaId = aceAdaId
 
@@ -2195,6 +2220,8 @@ export function Scoreboard() {
   }
 
   function clearAceMatchFlowState() {
+    aceOutcomeAnnouncedKeyRef.current = null
+    aceAnnouncedKillsRef.current = null
     setOverlayDismissed(false)
     setIsAceMatchMode(false)
     setShowAcePromptModal(false)
