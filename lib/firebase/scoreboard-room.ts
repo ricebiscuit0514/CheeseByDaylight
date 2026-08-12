@@ -16,6 +16,7 @@ import type {
 import { DEFAULT_ACE_LOCKED_TEAMS } from "@/lib/ace-modal-sync"
 import {
   MAX_FOUR_V_FOUR_FEARLESS_PICKS,
+  normalizeKillerPicks,
 } from "@/lib/fearless"
 import {
   isKillerId,
@@ -296,6 +297,18 @@ function isPlayer(value: unknown): value is Player {
   )
 }
 
+function isKillerPickWireValue(value: unknown): boolean {
+  if (typeof value === "string") return isKillerId(value)
+  if (!value || typeof value !== "object") return false
+  const pick = value as { killerId?: unknown; playerName?: unknown }
+  return (
+    typeof pick.killerId === "string" &&
+    isKillerId(pick.killerId) &&
+    typeof pick.playerName === "string" &&
+    pick.playerName.length <= 40
+  )
+}
+
 function isFourVFourPlayer(value: unknown): value is Player {
   if (!isPlayer(value)) return false
   // Same-player duplicates are accepted on the wire and stripped in normalize.
@@ -303,9 +316,7 @@ function isFourVFourPlayer(value: unknown): value is Player {
     value.killerPicks === undefined ||
     (Array.isArray(value.killerPicks) &&
       value.killerPicks.length <= MAX_FOUR_V_FOUR_FEARLESS_PICKS &&
-      value.killerPicks.every(
-        (killerId) => typeof killerId === "string" && isKillerId(killerId),
-      ))
+      value.killerPicks.every(isKillerPickWireValue))
   )
 }
 
@@ -511,9 +522,7 @@ function isFivePlayerPlayer(value: unknown): value is Player {
     value.killerPicks === undefined ||
     (Array.isArray(value.killerPicks) &&
       value.killerPicks.length <= 4 &&
-      value.killerPicks.every(
-        (killerId) => typeof killerId === "string" && isKillerId(killerId),
-      ))
+      value.killerPicks.every(isKillerPickWireValue))
   )
 }
 
@@ -617,30 +626,21 @@ function normalizeBasePlayer(player: Player) {
 }
 
 export function normalizeFourVFourPlayer(player: Player): Player {
-  const seen = new Set<string>()
-  const requestedPicks: string[] = []
-  if (Array.isArray(player.killerPicks)) {
-    for (const killerId of player.killerPicks) {
-      if (
-        typeof killerId !== "string" ||
-        !isKillerId(killerId) ||
-        seen.has(killerId)
-      ) {
-        continue
-      }
-      seen.add(killerId)
-      requestedPicks.push(killerId)
-      if (requestedPicks.length === MAX_FOUR_V_FOUR_FEARLESS_PICKS) break
-    }
-  }
+  const base = normalizeBasePlayer(player)
+  const normalizedPicks = normalizeKillerPicks(
+    player.killerPicks,
+    player.name,
+  ).slice(0, MAX_FOUR_V_FOUR_FEARLESS_PICKS)
   const legacyPick =
-    requestedPicks.length === 0 && typeof player.killer === "string"
+    normalizedPicks.length === 0 && typeof player.killer === "string"
       ? resolveKillerId(player.killer)
       : undefined
-  const killerPicks = legacyPick ? [legacyPick] : requestedPicks
+  const killerPicks = legacyPick
+    ? [{ killerId: legacyPick, playerName: player.name.slice(0, 40) }]
+    : normalizedPicks
 
   return {
-    ...normalizeBasePlayer(player),
+    ...base,
     ...(killerPicks.length > 0 ? { killerPicks } : {}),
   }
 }

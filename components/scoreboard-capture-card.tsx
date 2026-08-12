@@ -9,6 +9,7 @@ import {
   type AceRoundLogEntry,
 } from "@/lib/ace-round-log"
 import { KILLER_BY_ID } from "@/lib/killer-catalog"
+import { killerIdsFromPicks } from "@/lib/fearless"
 
 type Team = "thomas" | "ada"
 
@@ -219,7 +220,7 @@ function CapturePlayerRow({
 }) {
   const isThomas = team === "thomas"
   const killer = player.killer?.trim() ?? ""
-  const fearlessKillers = (player.killerPicks ?? [])
+  const fearlessKillers = killerIdsFromPicks(player.killerPicks)
     .slice(0, 4)
     .map((killerId) => KILLER_BY_ID[killerId])
     .filter((entry) => entry !== undefined)

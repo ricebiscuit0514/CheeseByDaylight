@@ -187,6 +187,18 @@ describe("Realtime Database scoreboard room rules", () => {
     )
     await assertSucceeds(
       set(
+        ref(
+          ownerDatabase,
+          `scoreboardRooms/${ROOM_TOKEN}/scoreboard/thomas/0/killerPicks`,
+        ),
+        [
+          { killerId: "nurse", playerName: "테스트A" },
+          { killerId: "ghost-face", playerName: "테스트A" },
+        ],
+      ),
+    )
+    await assertSucceeds(
+      set(
         ref(ownerDatabase, `scoreboardRooms/${ROOM_TOKEN}/scoreboard/killerBans`),
         {
           "skull-merchant": true,
@@ -233,6 +245,9 @@ describe("Realtime Database scoreboard room rules", () => {
       set(playerRef, ["nurse", "wraith", "artist", "blight", "clown"]),
     )
     await assertFails(set(playerRef, ["Ghost Face"]))
+    await assertFails(
+      set(playerRef, [{ killerId: "nurse", playerName: "x".repeat(41) }]),
+    )
     await assertFails(set(bansRef, { "not_a_slug": true }))
     await assertFails(set(bansRef, { nurse: false }))
   })
@@ -385,6 +400,15 @@ describe("Realtime Database scoreboard room rules", () => {
           `scoreboardRooms/${token}/scoreboard/players/0/killerPicks`,
         ),
         ["nurse", "ghost-face"],
+      ),
+    )
+    await assertSucceeds(
+      set(
+        ref(
+          ownerDatabase,
+          `scoreboardRooms/${token}/scoreboard/players/0/killerPicks`,
+        ),
+        [{ killerId: "nurse", playerName: "Player" }],
       ),
     )
     await assertSucceeds(

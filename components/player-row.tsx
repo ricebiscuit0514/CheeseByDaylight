@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils"
 export const SKULLS_PER_PLAYER = 4
 export const MAX_KILLS = 4
 
+import type { KillerPick } from "@/lib/fearless"
+
 export type Player = {
   id: string
   name: string
@@ -16,7 +18,7 @@ export type Player = {
   /** 1v4 legacy/free-text killer field. */
   killer?: string
   /** Ordered 4v4 fearless picks. Unique per player; cross-player duplicates OK. */
-  killerPicks?: string[]
+  killerPicks?: KillerPick[]
 }
 type Team = "thomas" | "ada"
 const SKULL_URL = "/images/skull.webp"

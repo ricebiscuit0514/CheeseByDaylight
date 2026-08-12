@@ -11,6 +11,7 @@ import {
   playerOwnsKillerPick,
   searchKillers,
   type FearlessFilterMode,
+  type KillerPick,
   type PickEntry,
   type Team,
 } from "@/lib/fearless"
@@ -43,7 +44,7 @@ export type KillerPickerProps = {
   allPicks: readonly PickEntry[]
   killerBans: readonly string[]
   /** Current player's ordered picks; used to block same-player duplicates. */
-  playerKillerPicks: readonly string[]
+  playerKillerPicks: readonly KillerPick[]
   readOnly: boolean
   onPick: (killerId: string) => void
   onCancelPick: () => void

@@ -3,6 +3,7 @@
 import {
   formatFearlessPickSlotLabel,
   getFearlessRowSlots,
+  type KillerPick,
   type Team,
 } from "@/lib/fearless"
 import { KILLER_BY_ID } from "@/lib/killer-catalog"
@@ -11,7 +12,7 @@ import { cn } from "@/lib/utils"
 export type KillerPickSlotsProps = {
   playerName: string
   team: Team
-  killerPicks: readonly string[]
+  killerPicks: readonly KillerPick[]
   maxSlots?: number
   disabled?: boolean
   /** Spectator/read-only mode adjusts slot affordances and tooltips. */

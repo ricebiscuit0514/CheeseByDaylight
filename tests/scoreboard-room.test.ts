@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import type { Player } from "../components/player-row"
 import {
   createDefaultScoreboardState,
   fromWireState,
@@ -13,6 +14,14 @@ import {
   nextPickerFeedback,
   nextPickerSelection,
 } from "../lib/picker-ui-sync"
+
+function pick(killerId: string, playerName: string) {
+  return { killerId, playerName }
+}
+
+function legacyPicks(...killerIds: string[]) {
+  return killerIds as unknown as Player["killerPicks"]
+}
 
 function createFourVFourState(): FourVFourSyncState {
   return createDefaultScoreboardState("4v4") as FourVFourSyncState
@@ -35,8 +44,12 @@ describe("scoreboard room fearless normalization", () => {
 
     const normalized = normalizeFourVFourState(state)
 
-    expect(normalized.thomas[0].killerPicks).toEqual(["ghost-face"])
-    expect(normalized.ace.thomasBackup?.killerPicks).toEqual(["nurse"])
+    expect(normalized.thomas[0].killerPicks).toEqual([
+      pick("ghost-face", normalized.thomas[0].name),
+    ])
+    expect(normalized.ace.thomasBackup?.killerPicks).toEqual([
+      pick("nurse", normalized.ace.thomasBackup?.name ?? ""),
+    ])
     expect(normalized.thomas[0]).not.toHaveProperty("killer")
     expect(normalized.ace.thomasBackup).not.toHaveProperty("killer")
 
@@ -49,28 +62,33 @@ describe("scoreboard room fearless normalization", () => {
       killer: "Ghost Face",
     }
     const restored = fromWireState(legacyWire)
-    expect(restored?.mode === "4v4" ? restored.thomas[0].killerPicks : null).toEqual(
-      ["ghost-face"],
-    )
+    expect(restored?.mode === "4v4" ? restored.thomas[0].killerPicks : null).toEqual([
+      pick("ghost-face", restored?.mode === "4v4" ? restored.thomas[0].name : ""),
+    ])
   })
 
   it("round-trips unique picks, dedupes same-player duplicates, and serializes bans as a map", () => {
     const state = createFourVFourState()
     state.thomas[0] = {
       ...state.thomas[0],
-      killerPicks: ["nurse", "nurse", "ghost-face"],
+      killerPicks: legacyPicks("nurse", "nurse", "ghost-face"),
     }
     state.thomas[1] = {
       ...state.thomas[1],
-      killerPicks: ["nurse"],
+      killerPicks: legacyPicks("nurse"),
     }
     state.killerBans = ["artist", "xenomorph"]
 
     const wire = toWireState(state)
     expect(wire.mode).toBe("4v4")
     if (wire.mode !== "4v4") throw new Error("Expected 4v4 wire state")
-    expect(wire.thomas?.[0].killerPicks).toEqual(["nurse", "ghost-face"])
-    expect(wire.thomas?.[1].killerPicks).toEqual(["nurse"])
+    expect(wire.thomas?.[0].killerPicks).toEqual([
+      pick("nurse", state.thomas[0].name),
+      pick("ghost-face", state.thomas[0].name),
+    ])
+    expect(wire.thomas?.[1].killerPicks).toEqual([
+      pick("nurse", state.thomas[1].name),
+    ])
     expect(wire.thomas?.[0]).not.toHaveProperty("killer")
     expect(wire.killerBans).toEqual({ artist: true, xenomorph: true })
 
@@ -79,8 +97,13 @@ describe("scoreboard room fearless normalization", () => {
     if (!restored || restored.mode !== "4v4") {
       throw new Error("Expected restored 4v4 state")
     }
-    expect(restored.thomas[0].killerPicks).toEqual(["nurse", "ghost-face"])
-    expect(restored.thomas[1].killerPicks).toEqual(["nurse"])
+    expect(restored.thomas[0].killerPicks).toEqual([
+      pick("nurse", restored.thomas[0].name),
+      pick("ghost-face", restored.thomas[0].name),
+    ])
+    expect(restored.thomas[1].killerPicks).toEqual([
+      pick("nurse", restored.thomas[1].name),
+    ])
     expect(restored.killerBans).toEqual(["artist", "xenomorph"])
   })
 
@@ -146,7 +169,7 @@ describe("scoreboard room fearless normalization", () => {
           kills: 4,
           played: true,
           killer: "free text killer",
-          killerPicks: ["nurse"],
+          killerPicks: legacyPicks("nurse"),
         },
       ],
       receivingConfig: [5, 8, 10, 12, 15],
@@ -160,7 +183,9 @@ describe("scoreboard room fearless normalization", () => {
     }
 
     const normalized = normalizeFivePlayerState(state)
-    expect(normalized.players[0].killerPicks).toEqual(["nurse"])
+    expect(normalized.players[0].killerPicks).toEqual([
+      pick("nurse", normalized.players[0].name),
+    ])
     expect(normalized.players[0]).not.toHaveProperty("killer")
     expect(normalized.killerBans).toEqual(["ghost-face", "xenomorph"])
 
@@ -173,7 +198,9 @@ describe("scoreboard room fearless normalization", () => {
     const restored = fromWireState(wire)
     expect(
       restored?.mode === "5p" ? restored.players[0].killerPicks : null,
-    ).toEqual(["nurse"])
+    ).toEqual([
+      pick("nurse", restored?.mode === "5p" ? restored.players[0].name : ""),
+    ])
     expect(restored?.mode === "5p" ? restored.killerBans : null).toEqual([
       "ghost-face",
       "xenomorph",

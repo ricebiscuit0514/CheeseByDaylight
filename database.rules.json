@@ -109,7 +109,13 @@
               "killerPicks": {
                 ".validate": "newData.parent().parent().parent().child('mode').val() === '4v4'",
                 "$pickIndex": {
-                  ".validate": "$pickIndex.matches(/^[0-4]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  ".validate": "$pickIndex.matches(/^[0-4]$/) && ((newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)) || (newData.hasChildren(['killerId', 'playerName']) && newData.child('killerId').isString() && newData.child('killerId').val().length <= 30 && newData.child('killerId').val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/) && newData.child('playerName').isString() && newData.child('playerName').val().length <= 40 && newData.numChildren() == 2))",
+                  "killerId": {
+                    ".validate": "newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  },
+                  "playerName": {
+                    ".validate": "newData.isString() && newData.val().length <= 40"
+                  }
                 }
               },
               "$other": {
@@ -138,7 +144,13 @@
               "killerPicks": {
                 ".validate": "newData.parent().parent().parent().child('mode').val() === '4v4'",
                 "$pickIndex": {
-                  ".validate": "$pickIndex.matches(/^[0-4]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  ".validate": "$pickIndex.matches(/^[0-4]$/) && ((newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)) || (newData.hasChildren(['killerId', 'playerName']) && newData.child('killerId').isString() && newData.child('killerId').val().length <= 30 && newData.child('killerId').val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/) && newData.child('playerName').isString() && newData.child('playerName').val().length <= 40 && newData.numChildren() == 2))",
+                  "killerId": {
+                    ".validate": "newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  },
+                  "playerName": {
+                    ".validate": "newData.isString() && newData.val().length <= 40"
+                  }
                 }
               },
               "$other": {
@@ -220,7 +232,13 @@
               "killerPicks": {
                 ".validate": "newData.parent().parent().parent().child('mode').val() === '4v4'",
                 "$pickIndex": {
-                  ".validate": "$pickIndex.matches(/^[0-4]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  ".validate": "$pickIndex.matches(/^[0-4]$/) && ((newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)) || (newData.hasChildren(['killerId', 'playerName']) && newData.child('killerId').isString() && newData.child('killerId').val().length <= 30 && newData.child('killerId').val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/) && newData.child('playerName').isString() && newData.child('playerName').val().length <= 40 && newData.numChildren() == 2))",
+                  "killerId": {
+                    ".validate": "newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  },
+                  "playerName": {
+                    ".validate": "newData.isString() && newData.val().length <= 40"
+                  }
                 }
               },
               "$other": {
@@ -247,7 +265,13 @@
               "killerPicks": {
                 ".validate": "newData.parent().parent().parent().child('mode').val() === '4v4'",
                 "$pickIndex": {
-                  ".validate": "$pickIndex.matches(/^[0-4]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  ".validate": "$pickIndex.matches(/^[0-4]$/) && ((newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)) || (newData.hasChildren(['killerId', 'playerName']) && newData.child('killerId').isString() && newData.child('killerId').val().length <= 30 && newData.child('killerId').val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/) && newData.child('playerName').isString() && newData.child('playerName').val().length <= 40 && newData.numChildren() == 2))",
+                  "killerId": {
+                    ".validate": "newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  },
+                  "playerName": {
+                    ".validate": "newData.isString() && newData.val().length <= 40"
+                  }
                 }
               },
               "$other": {
@@ -367,7 +391,13 @@
               "killerPicks": {
                 ".validate": "newData.parent().parent().parent().child('mode').val() === '5p'",
                 "$pickIndex": {
-                  ".validate": "$pickIndex.matches(/^[0-3]$/) && newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  ".validate": "$pickIndex.matches(/^[0-3]$/) && ((newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)) || (newData.hasChildren(['killerId', 'playerName']) && newData.child('killerId').isString() && newData.child('killerId').val().length <= 30 && newData.child('killerId').val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/) && newData.child('playerName').isString() && newData.child('playerName').val().length <= 40 && newData.numChildren() == 2))",
+                  "killerId": {
+                    ".validate": "newData.isString() && newData.val().length <= 30 && newData.val().matches(/^[a-z0-9]+(-[a-z0-9]+)*$/)"
+                  },
+                  "playerName": {
+                    ".validate": "newData.isString() && newData.val().length <= 40"
+                  }
                 }
               },
               "$other": {

@@ -7,7 +7,9 @@ import {
   getFearlessRowSlots,
   getPickerCellState,
   hangulToSearchJamo,
+  migrateKillerPicksOnNameCommit,
   normalizeFearlessSearchText,
+  normalizeKillerPicks,
   playerOwnsKillerPick,
   searchKillers,
   setPlayerKillerPick,
@@ -15,15 +17,26 @@ import {
   toggleKillerBan,
   type FearlessKillerSearchItem,
   type FearlessPlayer,
+  type KillerPick,
 } from "../lib/fearless"
 import { KILLERS, resolveKillerId } from "../lib/killer-catalog"
+
+function pick(killerId: string, playerName: string): KillerPick {
+  return { killerId, playerName }
+}
 
 function player(
   id: string,
   name: string,
-  killerPicks: string[] = [],
+  killerPicks: Array<string | KillerPick> = [],
 ): FearlessPlayer {
-  return { id, name, killerPicks }
+  return {
+    id,
+    name,
+    killerPicks: killerPicks.map((entry) =>
+      typeof entry === "string" ? pick(entry, name) : entry,
+    ),
+  }
 }
 
 describe("fearless pick entries and visibility", () => {
@@ -129,19 +142,207 @@ describe("fearless pick and ban updates", () => {
     const replaceWithOwned = setPlayerKillerPick(appended, "nurse", 1)
 
     expect(samePlayerDuplicate).toBe(original)
-    expect(appended.killerPicks).toEqual(["nurse", "artist"])
-    expect(replaced.killerPicks).toEqual(["clown", "artist"])
+    expect(appended.killerPicks).toEqual([
+      pick("nurse", "Player"),
+      pick("artist", "Player"),
+    ])
+    expect(replaced.killerPicks).toEqual([
+      pick("clown", "Player"),
+      pick("artist", "Player"),
+    ])
     expect(replaceWithOwned).toBe(appended)
     expect(playerOwnsKillerPick(appended, "nurse")).toBe(true)
     expect(playerOwnsKillerPick(appended, "nurse", 0)).toBe(false)
-    expect(original.killerPicks).toEqual(["nurse"])
+    expect(original.killerPicks).toEqual([pick("nurse", "Player")])
+  })
+
+  it("stores the player name at pick time and keeps it after renames", () => {
+    const original = player("p1", "테스트A", [])
+    const withPick = setPlayerKillerPick(original, "nurse", null, 4, "테스트A")
+    const renamed = { ...withPick, name: "테스트B" }
+    const withSecondPick = setPlayerKillerPick(
+      renamed,
+      "artist",
+      null,
+      4,
+      "테스트B",
+    )
+
+    expect(flattenFearlessPicks([withSecondPick], [])).toEqual([
+      {
+        killerId: "nurse",
+        playerId: "p1",
+        playerName: "테스트A",
+        team: "thomas",
+        slotIndex: 0,
+      },
+      {
+        killerId: "artist",
+        playerId: "p1",
+        playerName: "테스트B",
+        team: "thomas",
+        slotIndex: 1,
+      },
+    ])
+  })
+
+  it("swaps orphan picks when a committed name reappears on another slot", () => {
+    const roster = [
+      player("slot-1", "", [pick("nurse", "테스트A")]),
+      player("slot-2", "", []),
+      player("slot-3", "", [pick("ghost-face", "테스트B")]),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-2",
+      "테스트A",
+    )
+
+    expect(migrated.find((entry) => entry.id === "slot-1")?.killerPicks).toEqual([])
+    expect(migrated.find((entry) => entry.id === "slot-2")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+    expect(migrated.find((entry) => entry.id === "slot-3")?.killerPicks).toEqual([
+      pick("ghost-face", "테스트B"),
+    ])
+  })
+
+  it("swaps picks when the target slot already has records", () => {
+    const roster = [
+      player("slot-1", "", [pick("nurse", "테스트A")]),
+      player("slot-2", "", [pick("ghost-face", "테스트B")]),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-2",
+      "테스트A",
+    )
+
+    expect(migrated.find((entry) => entry.id === "slot-1")?.killerPicks).toEqual([
+      pick("ghost-face", "테스트B"),
+    ])
+    expect(migrated.find((entry) => entry.id === "slot-2")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+  })
+
+  it("moves all picks when orphan slot has mixed pick names", () => {
+    const roster = [
+      player("slot-1", "", [
+        pick("nurse", "테스트A"),
+        pick("artist", "테스트A2"),
+      ]),
+      player("slot-2", "", []),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-2",
+      "테스트A2",
+    )
+
+    expect(migrated.find((entry) => entry.id === "slot-2")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+      pick("artist", "테스트A2"),
+    ])
+    expect(migrated.find((entry) => entry.id === "slot-1")?.killerPicks).toEqual([])
+  })
+
+  it("swaps displaced name and picks when overwriting an occupied nameplate", () => {
+    const roster = [
+      player("slot-a", "", [pick("nurse", "테스트A")]),
+      player("slot-b", "테스트B", [pick("ghost-face", "테스트B")]),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-b",
+      "테스트A",
+    )
+
+    expect(migrated.find((entry) => entry.id === "slot-b")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+    expect(migrated.find((entry) => entry.id === "slot-a")).toMatchObject({
+      name: "테스트B",
+      killerPicks: [pick("ghost-face", "테스트B")],
+    })
+  })
+
+  it("swaps with an active duplicate name when reclaiming a cleared slot", () => {
+    let roster = [
+      player("slot-1", "테스트A", [pick("nurse", "테스트A")]),
+      player("slot-2", "테스트B", [pick("ghost-face", "테스트B")]),
+    ]
+
+    roster = migrateKillerPicksOnNameCommit(roster, "slot-2", "")
+    roster = roster.map((entry) =>
+      entry.id === "slot-2" ? { ...entry, name: "" } : entry,
+    )
+
+    roster = migrateKillerPicksOnNameCommit(roster, "slot-2", "테스트A")
+    expect(roster.find((entry) => entry.id === "slot-1")).toMatchObject({
+      name: "",
+      killerPicks: [pick("ghost-face", "테스트B")],
+    })
+    expect(roster.find((entry) => entry.id === "slot-2")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+
+    roster = migrateKillerPicksOnNameCommit(roster, "slot-2", "")
+    roster = roster.map((entry) =>
+      entry.id === "slot-2" ? { ...entry, name: "" } : entry,
+    )
+
+    roster = migrateKillerPicksOnNameCommit(roster, "slot-2", "테스트B")
+    expect(roster.find((entry) => entry.id === "slot-1")).toMatchObject({
+      name: "",
+      killerPicks: [pick("nurse", "테스트A")],
+    })
+    expect(roster.find((entry) => entry.id === "slot-2")?.killerPicks).toEqual([
+      pick("ghost-face", "테스트B"),
+    ])
+  })
+
+  it("moves mixed pick names when the original nameplate is cleared after duplicating the latest name elsewhere", () => {
+    const roster = [
+      player("slot-1", "테스트A2", [
+        pick("nurse", "테스트A"),
+        pick("artist", "테스트A2"),
+      ]),
+      player("slot-2", "", []),
+      player("slot-3", "테스트A2", []),
+    ]
+
+    const afterDuplicateName = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-3",
+      "테스트A2",
+    )
+    expect(afterDuplicateName.find((entry) => entry.id === "slot-1")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+      pick("artist", "테스트A2"),
+    ])
+
+    const afterClearOriginal = migrateKillerPicksOnNameCommit(
+      afterDuplicateName,
+      "slot-1",
+      "",
+    )
+    expect(afterClearOriginal.find((entry) => entry.id === "slot-1")?.killerPicks).toEqual([])
+    expect(afterClearOriginal.find((entry) => entry.id === "slot-3")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+      pick("artist", "테스트A2"),
+    ])
   })
 
   it("cancels an indexed slot and enforces max picks", () => {
     const picks = player("p1", "Player", ["nurse", "artist", "clown"])
     expect(cancelPlayerKillerPick(picks, 1).killerPicks).toEqual([
-      "nurse",
-      "clown",
+      pick("nurse", "Player"),
+      pick("clown", "Player"),
     ])
 
     const full = player("p1", "Player", [
@@ -152,11 +353,11 @@ describe("fearless pick and ban updates", () => {
     ])
     expect(setPlayerKillerPick(full, "wraith", null)).toBe(full)
     expect(setPlayerKillerPick(full, "wraith", null, 5).killerPicks).toEqual([
-      "nurse",
-      "artist",
-      "clown",
-      "doctor",
-      "wraith",
+      pick("nurse", "Player"),
+      pick("artist", "Player"),
+      pick("clown", "Player"),
+      pick("doctor", "Player"),
+      pick("wraith", "Player"),
     ])
   })
 
@@ -167,8 +368,8 @@ describe("fearless pick and ban updates", () => {
     expect(setPlayerKillerPick(original, "artist", -1)).toBe(original)
     expect(setPlayerKillerPick(original, "artist", 2)).toBe(original)
     expect(setPlayerKillerPick(original, "artist", 1).killerPicks).toEqual([
-      "nurse",
-      "artist",
+      pick("nurse", "Player"),
+      pick("artist", "Player"),
     ])
     expect(cancelPlayerKillerPick(original, 2)).toBe(original)
     expect(toggleKillerBan(["nurse"], "not-in-catalog")).toEqual(["nurse"])
@@ -259,6 +460,15 @@ describe("fearless killer search", () => {
     expect(resolveKillerId("Ghost Face")).toBe("ghost-face")
     expect(resolveKillerId("ghostface")).toBe("ghost-face")
     expect(resolveKillerId("치즈상인")).toBe("skull-merchant")
+  })
+})
+
+describe("normalizeKillerPicks", () => {
+  it("migrates legacy string arrays using the fallback player name", () => {
+    expect(normalizeKillerPicks(["nurse", "artist"], "테스트A")).toEqual([
+      pick("nurse", "테스트A"),
+      pick("artist", "테스트A"),
+    ])
   })
 })
 

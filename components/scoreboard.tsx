@@ -56,6 +56,7 @@ import {
   cancelPlayerKillerPick,
   flattenFearlessPicks,
   MAX_FOUR_V_FOUR_FEARLESS_PICKS,
+  migrateKillerPicksOnNameCommit,
   setPlayerKillerPick,
   toggleKillerBan,
 } from "@/lib/fearless"
@@ -890,7 +891,7 @@ export function Scoreboard() {
       currentKillerId:
         pickerContext.slotIndex !== null &&
         pickerContext.slotIndex < picks.length
-          ? picks[pickerContext.slotIndex]
+          ? picks[pickerContext.slotIndex]?.killerId
           : undefined,
     }
   }, [ada, pickerContext, thomas])
@@ -1769,7 +1770,7 @@ export function Scoreboard() {
       playerName: player.name,
       slotIndex,
       currentKillerId:
-        slotIndex === null ? undefined : player.killerPicks?.[slotIndex],
+        slotIndex === null ? undefined : player.killerPicks?.[slotIndex]?.killerId,
     })
   }
 
@@ -1788,6 +1789,7 @@ export function Scoreboard() {
       killerId,
       slotIndex,
       MAX_FOUR_V_FOUR_FEARLESS_PICKS,
+      player.name,
     )
     if (nextPlayer === player) return
 
@@ -1800,6 +1802,7 @@ export function Scoreboard() {
               killerId,
               slotIndex,
               MAX_FOUR_V_FOUR_FEARLESS_PICKS,
+              candidate.name,
             )
           : candidate,
       ),
@@ -1926,7 +1929,7 @@ export function Scoreboard() {
           onZeroKill={() => handleZeroKill(team, p.id)}
           onCancel={() => handleCancel(team, p.id)}
           onNameChange={(name) => updatePlayerName(team, p.id, name)}
-          onNameCommit={(name) => updatePlayerName(team, p.id, name)}
+          onNameCommit={(name) => commitPlayerNameWithMigration(team, p.id, name)}
           onKillerChange={killerChangeHandler}
           onDragStart={() => {
             dragItem.current = { team, id: p.id }
@@ -2019,6 +2022,36 @@ export function Scoreboard() {
       if (team === "thomas") setThomasName(cleanName)
       else setAdaName(cleanName)
     }
+  }
+
+  function commitPlayerNameWithMigration(team: Team, playerId: string, name: string) {
+    if (isViewer) return
+
+    const cleanName = name.trim()
+    const roster = team === "thomas" ? thomas : ada
+
+    if (fearlessEnabled) {
+      const thomasIds = new Set(thomas.map((player) => player.id))
+      const combined = [...thomas, ...ada]
+      const migrated = migrateKillerPicksOnNameCommit(combined, playerId, cleanName)
+      const withName = migrated.map((player) =>
+        player.id === playerId ? { ...player, name } : player,
+      )
+      setThomas(withName.filter((player) => thomasIds.has(player.id)))
+      setAda(withName.filter((player) => !thomasIds.has(player.id)))
+    } else {
+      const setTeam = team === "thomas" ? setThomas : setAda
+      setTeam((prev) =>
+        prev.map((player) => (player.id === playerId ? { ...player, name } : player)),
+      )
+    }
+
+    if (!teamNameLinked.current[team] && roster[0]?.id === playerId && cleanName) {
+      if (team === "thomas") setThomasName(cleanName)
+      else setAdaName(cleanName)
+    }
+
+    commitPlayerName(team, playerId, name)
   }
 
   function commitPlayerName(team: Team, playerId: string, name: string) {

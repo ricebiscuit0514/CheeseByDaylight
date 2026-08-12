@@ -13,9 +13,10 @@ import type { FivePlayerSyncState } from "@/lib/firebase/scoreboard-room"
 import { MODE_SWITCH_SESSION_KEY, VIEWER_SESSION_KEY, loadRoomSession, normalizeFivePlayerState } from "@/lib/firebase/scoreboard-room"
 import {
   cancelPlayerKillerPick,
+  flattenFearlessPicks,
+  migrateKillerPicksOnNameCommit,
   setPlayerKillerPick,
   toggleKillerBan,
-  type PickEntry,
 } from "@/lib/fearless"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
@@ -328,6 +329,17 @@ export function FivePlayerMode() {
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)))
   }
 
+  const commitPlayerNameWithMigration = (id: string, name: string) => {
+    setPlayers((prev) => {
+      const next = migrateKillerPicksOnNameCommit(
+        prev.map((player) => (player.id === id ? { ...player, name } : player)),
+        id,
+        name.trim(),
+      )
+      return next.map((player) => (player.id === id ? { ...player, name } : player))
+    })
+  }
+
   const addPlayer = () => {
     if (players.length >= 5) return
     const newId = String(playerIdCounter.current++)
@@ -494,7 +506,7 @@ export function FivePlayerMode() {
       playerName: player.name,
       slotIndex,
       currentKillerId:
-        slotIndex === null ? undefined : player.killerPicks?.[slotIndex],
+        slotIndex === null ? undefined : player.killerPicks?.[slotIndex]?.killerId,
     })
   }
 
@@ -503,7 +515,13 @@ export function FivePlayerMode() {
     setPlayers((current) =>
       current.map((player) =>
         player.id === pickerContext.playerId
-          ? setPlayerKillerPick(player, killerId, pickerContext.slotIndex)
+          ? setPlayerKillerPick(
+              player,
+              killerId,
+              pickerContext.slotIndex,
+              undefined,
+              player.name,
+            )
           : player,
       ),
     )
@@ -546,17 +564,8 @@ export function FivePlayerMode() {
     setKillerBans((current) => toggleKillerBan(current, killerId))
   }
 
-  const allPicks = useMemo<PickEntry[]>(
-    () =>
-      players.flatMap((player) =>
-        (player.killerPicks ?? []).map((killerId, slotIndex) => ({
-          killerId,
-          playerId: player.id,
-          playerName: player.name,
-          team: "thomas" as const,
-          slotIndex,
-        })),
-      ),
+  const allPicks = useMemo(
+    () => flattenFearlessPicks(players, []),
     [players],
   )
 
@@ -583,7 +592,7 @@ export function FivePlayerMode() {
       currentKillerId:
         pickerContext.slotIndex !== null &&
         pickerContext.slotIndex < picks.length
-          ? picks[pickerContext.slotIndex]
+          ? picks[pickerContext.slotIndex]?.killerId
           : undefined,
     }
   }, [pickerContext, players])
@@ -790,7 +799,7 @@ export function FivePlayerMode() {
                       onZeroKill={() => handleZeroKill(p.id)}
                       onCancel={() => handleCancel(p.id)}
                       onNameChange={(name) => updatePlayerName(p.id, name)}
-                      onNameCommit={(name) => updatePlayerName(p.id, name)}
+                      onNameCommit={(name) => commitPlayerNameWithMigration(p.id, name)}
                       onKillerChange={() => {}}
                       onDragStart={() => {
                         dragItem.current = p.id

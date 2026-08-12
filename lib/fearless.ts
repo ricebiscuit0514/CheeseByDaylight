@@ -26,6 +26,11 @@ export function formatFearlessPickSlotLabel(slotIndex: number | null): string {
 export type FearlessFilterMode = "hard" | "soft" | "personal"
 export type Team = "thomas" | "ada"
 
+export type KillerPick = {
+  killerId: string
+  playerName: string
+}
+
 /**
  * The player fields used by fearless mode. Full scoreboard Player objects are
  * structurally compatible, while this module remains independent from the UI.
@@ -33,7 +38,7 @@ export type Team = "thomas" | "ada"
 export type FearlessPlayer = {
   id: string
   name: string
-  killerPicks?: string[]
+  killerPicks?: KillerPick[]
 }
 
 export type PickEntry = {
@@ -79,15 +84,63 @@ export type FearlessKillerSearchItem = Pick<
   "id" | "englishName" | "koreanName" | "aliases"
 >
 
+function isKillerPickRecord(value: unknown): value is KillerPick {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as KillerPick).killerId === "string" &&
+    typeof (value as KillerPick).playerName === "string"
+  )
+}
+
+/** Normalizes legacy string[] or object[] picks into KillerPick[]. */
+export function normalizeKillerPicks(
+  picks: unknown,
+  fallbackName: string,
+): KillerPick[] {
+  if (!Array.isArray(picks)) return []
+
+  const normalized: KillerPick[] = []
+  const seen = new Set<string>()
+
+  for (const entry of picks) {
+    if (typeof entry === "string" && isKillerId(entry) && !seen.has(entry)) {
+      seen.add(entry)
+      normalized.push({ killerId: entry, playerName: fallbackName })
+      continue
+    }
+    if (
+      isKillerPickRecord(entry) &&
+      isKillerId(entry.killerId) &&
+      !seen.has(entry.killerId)
+    ) {
+      seen.add(entry.killerId)
+      normalized.push({
+        killerId: entry.killerId,
+        playerName: entry.playerName.slice(0, 40),
+      })
+    }
+  }
+
+  return normalized
+}
+
+/** Extracts killer IDs from pick records for slot UI rendering. */
+export function killerIdsFromPicks(
+  picks: readonly KillerPick[] | undefined,
+): string[] {
+  return (picks ?? []).map((pick) => pick.killerId)
+}
+
 function entriesForTeam(
   players: readonly FearlessPlayer[],
   team: Team,
 ): PickEntry[] {
   return players.flatMap((player) =>
-    (player.killerPicks ?? []).map((killerId, slotIndex) => ({
-      killerId,
+    (player.killerPicks ?? []).map((pick, slotIndex) => ({
+      killerId: pick.killerId,
       playerId: player.id,
-      playerName: player.name,
+      playerName: pick.playerName,
       team,
       slotIndex,
     })),
@@ -152,8 +205,8 @@ export function playerOwnsKillerPick(
 ): boolean {
   const picks = player.killerPicks ?? []
   return picks.some(
-    (pickId, index) =>
-      pickId === killerId &&
+    (pick, index) =>
+      pick.killerId === killerId &&
       (exceptSlotIndex === null || index !== exceptSlotIndex),
   )
 }
@@ -168,15 +221,19 @@ export function setPlayerKillerPick<T extends FearlessPlayer>(
   killerId: string,
   slotIndex: number | null,
   maxPicks: number = MAX_FEARLESS_PICKS,
+  playerName: string = player.name,
 ): T {
   if (!isKillerId(killerId)) return player
 
   const picks = player.killerPicks ?? []
   const pickLimit = Math.max(1, maxPicks)
+  const storedName = playerName.slice(0, 40)
+  const newPick: KillerPick = { killerId, playerName: storedName }
+
   if (slotIndex === null || slotIndex === picks.length) {
     if (picks.length >= pickLimit) return player
     if (playerOwnsKillerPick(player, killerId)) return player
-    return { ...player, killerPicks: [...picks, killerId] }
+    return { ...player, killerPicks: [...picks, newPick] }
   }
 
   if (
@@ -187,11 +244,11 @@ export function setPlayerKillerPick<T extends FearlessPlayer>(
     return player
   }
 
-  if (picks[slotIndex] === killerId) return player
+  if (picks[slotIndex]?.killerId === killerId) return player
   if (playerOwnsKillerPick(player, killerId, slotIndex)) return player
 
   const nextPicks = [...picks]
-  nextPicks[slotIndex] = killerId
+  nextPicks[slotIndex] = newPick
   return { ...player, killerPicks: nextPicks }
 }
 
@@ -233,6 +290,121 @@ export function toggleKillerBan(
     return normalized.filter((id) => id !== killerId)
   }
   return [...normalized, killerId]
+}
+
+function isOrphanPickOwner(
+  player: FearlessPlayer,
+  committedName: string,
+): boolean {
+  const picks = player.killerPicks ?? []
+  if (picks.length === 0) return false
+  if (player.name.trim()) return false
+  return picks.some((pick) => pick.playerName.trim() === committedName)
+}
+
+function shouldSwapWithActiveDuplicate(
+  target: FearlessPlayer,
+  committedName: string,
+): boolean {
+  const picks = target.killerPicks ?? []
+  if (picks.length === 0) return false
+  return picks.some((pick) => pick.playerName.trim() !== committedName)
+}
+
+function swapPlayerKillerRecords<T extends FearlessPlayer>(
+  roster: readonly T[],
+  primaryPlayerId: string,
+  partnerPlayerId: string,
+  partnerName: string,
+): T[] {
+  const primary = roster.find((player) => player.id === primaryPlayerId)
+  const partner = roster.find((player) => player.id === partnerPlayerId)
+  if (!primary || !partner) return [...roster]
+
+  const primaryPicks = primary.killerPicks ?? []
+  const partnerPicks = partner.killerPicks ?? []
+
+  return roster.map((player) => {
+    if (player.id === primaryPlayerId) {
+      return { ...player, killerPicks: [...partnerPicks] }
+    }
+    if (player.id === partnerPlayerId) {
+      return { ...player, killerPicks: [...primaryPicks], name: partnerName }
+    }
+    return player
+  })
+}
+
+/**
+ * When a name is cleared, move picks to another slot that already owns that name.
+ */
+function migrateKillerPicksOnNameClear<T extends FearlessPlayer>(
+  roster: readonly T[],
+  clearedPlayerId: string,
+): T[] {
+  const source = roster.find((player) => player.id === clearedPlayerId)
+  if (!source) return [...roster]
+
+  const picks = source.killerPicks ?? []
+  if (picks.length === 0) return [...roster]
+
+  const destination = roster.find(
+    (player) =>
+      player.id !== clearedPlayerId &&
+      player.name.trim() &&
+      picks.some((pick) => pick.playerName.trim() === player.name.trim()),
+  )
+  if (!destination) return [...roster]
+
+  return swapPlayerKillerRecords(roster, destination.id, clearedPlayerId, "")
+}
+
+/**
+ * On name commit, swaps killer picks between the target slot and an orphan
+ * slot (empty name, picks tagged with the committed name) elsewhere in roster.
+ * Clearing a name moves picks to a slot that already has the same name.
+ * The displaced name on the target slot moves to the partner slot with its picks.
+ */
+export function migrateKillerPicksOnNameCommit<T extends FearlessPlayer>(
+  roster: readonly T[],
+  targetPlayerId: string,
+  committedName: string,
+): T[] {
+  const trimmed = committedName.trim()
+  if (!trimmed) {
+    return migrateKillerPicksOnNameClear(roster, targetPlayerId)
+  }
+
+  const target = roster.find((player) => player.id === targetPlayerId)
+  if (!target) return [...roster]
+
+  const orphan = roster.find(
+    (player) =>
+      player.id !== targetPlayerId && isOrphanPickOwner(player, trimmed),
+  )
+  if (orphan) {
+    return swapPlayerKillerRecords(
+      roster,
+      targetPlayerId,
+      orphan.id,
+      target.name,
+    )
+  }
+
+  const activeDuplicate = roster.find(
+    (player) =>
+      player.id !== targetPlayerId && player.name.trim() === trimmed,
+  )
+  if (activeDuplicate && shouldSwapWithActiveDuplicate(target, trimmed)) {
+    return swapPlayerKillerRecords(
+      roster,
+      targetPlayerId,
+      activeDuplicate.id,
+      "",
+    )
+  }
+
+  return [...roster]
 }
 
 const KOREAN_INITIALS = [
@@ -419,8 +591,8 @@ export function searchKillers(
 }
 
 function isPickArray(
-  value: FearlessPlayer | readonly string[],
-): value is readonly string[] {
+  value: FearlessPlayer | readonly KillerPick[] | readonly string[],
+): value is readonly KillerPick[] | readonly string[] {
   return Array.isArray(value)
 }
 
@@ -429,12 +601,14 @@ function isPickArray(
  * until the previous slot is filled, then the next empty slot is revealed.
  */
 export function getFearlessRowSlots(
-  playerOrPicks: FearlessPlayer | readonly string[],
+  playerOrPicks: FearlessPlayer | readonly KillerPick[] | readonly string[],
   maxSlots: number = MAX_FEARLESS_PICKS,
 ): FearlessRowSlot[] {
   const picks: readonly string[] = isPickArray(playerOrPicks)
-    ? playerOrPicks
-    : (playerOrPicks.killerPicks ?? [])
+    ? playerOrPicks.map((entry) =>
+        typeof entry === "string" ? entry : entry.killerId,
+      )
+    : killerIdsFromPicks(playerOrPicks.killerPicks)
   const slotCount = Math.max(1, maxSlots)
 
   return Array.from({ length: slotCount }, (_, slotIndex) => {
