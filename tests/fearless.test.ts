@@ -250,6 +250,42 @@ describe("fearless pick and ban updates", () => {
     expect(migrated.find((entry) => entry.id === "slot-1")?.killerPicks).toEqual([])
   })
 
+  it("matches migration names case-insensitively", () => {
+    const roster = [
+      player("slot-1", "Test", [pick("nurse", "Test")]),
+      player("slot-2", "other", [pick("ghost-face", "other")]),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-2",
+      "test",
+      "other",
+    )
+
+    expect(migrated.find((entry) => entry.id === "slot-1")).toMatchObject({
+      name: "other",
+      killerPicks: [pick("ghost-face", "other")],
+    })
+    expect(migrated.find((entry) => entry.id === "slot-2")?.killerPicks).toEqual([
+      pick("nurse", "Test"),
+    ])
+  })
+
+  it("matches orphan pick tags case-insensitively", () => {
+    const roster = [
+      player("slot-1", "", [pick("nurse", "T1EST")]),
+      player("slot-2", "", []),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(roster, "slot-2", "t1est")
+
+    expect(migrated.find((entry) => entry.id === "slot-2")?.killerPicks).toEqual([
+      pick("nurse", "T1EST"),
+    ])
+    expect(migrated.find((entry) => entry.id === "slot-1")?.killerPicks).toEqual([])
+  })
+
   it("uses the pre-edit name as the displaced name during live typing", () => {
     const roster = [
       player("slot-1", "테스트A", [pick("nurse", "테스트A")]),

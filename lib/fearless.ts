@@ -292,6 +292,16 @@ export function toggleKillerBan(
   return [...normalized, killerId]
 }
 
+function migrationNameKey(name: string): string {
+  return name.trim().toLowerCase().normalize("NFC")
+}
+
+function migrationNamesMatch(a: string, b: string): boolean {
+  const left = migrationNameKey(a)
+  const right = migrationNameKey(b)
+  return left.length > 0 && left === right
+}
+
 function isOrphanPickOwner(
   player: FearlessPlayer,
   committedName: string,
@@ -299,7 +309,9 @@ function isOrphanPickOwner(
   const picks = player.killerPicks ?? []
   if (picks.length === 0) return false
   if (player.name.trim()) return false
-  return picks.some((pick) => pick.playerName.trim() === committedName)
+  return picks.some((pick) =>
+    migrationNamesMatch(pick.playerName, committedName),
+  )
 }
 
 function shouldSwapWithActiveDuplicate(
@@ -308,7 +320,9 @@ function shouldSwapWithActiveDuplicate(
 ): boolean {
   const picks = target.killerPicks ?? []
   if (picks.length === 0) return false
-  return picks.some((pick) => pick.playerName.trim() !== committedName)
+  return picks.some(
+    (pick) => !migrationNamesMatch(pick.playerName, committedName),
+  )
 }
 
 function swapPlayerKillerRecords<T extends FearlessPlayer>(
@@ -357,7 +371,8 @@ function migrateKillerPicksOnNameClear<T extends FearlessPlayer>(
 
   const destination = roster.find(
     (player) =>
-      player.id !== clearedPlayerId && player.name.trim() === clearedName,
+      player.id !== clearedPlayerId &&
+      migrationNamesMatch(player.name, clearedName),
   )
   if (!destination) return [...roster]
 
@@ -406,7 +421,7 @@ export function migrateKillerPicksOnNameCommit<T extends FearlessPlayer>(
 
   const activeDuplicate = roster.find(
     (player) =>
-      player.id !== targetPlayerId && player.name.trim() === trimmed,
+      player.id !== targetPlayerId && migrationNamesMatch(player.name, trimmed),
   )
   if (activeDuplicate && shouldSwapWithActiveDuplicate(target, trimmed)) {
     return swapPlayerKillerRecords(
