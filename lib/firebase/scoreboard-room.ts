@@ -11,6 +11,7 @@ import type {
   AceLockedTeams,
   AceModalStep,
   AceSlotSpinPlan,
+  AceSpinTeam,
 } from "@/lib/ace-modal-sync"
 import { DEFAULT_ACE_LOCKED_TEAMS } from "@/lib/ace-modal-sync"
 import {
@@ -46,8 +47,8 @@ import {
 } from "firebase/database"
 import { getAnonymousUser } from "@/lib/firebase/client"
 
-export const ROOM_TTL_MS = 40 * 60 * 1000
-export const HOST_DISCONNECT_GRACE_MS = 40 * 60 * 1000
+export const ROOM_TTL_MS = 3 * 60 * 60 * 1000
+export const HOST_DISCONNECT_GRACE_MS = 3 * 60 * 60 * 1000
 export const HOST_SESSION_KEY = "dbd-scoreboard-host-room-v1"
 export const VIEWER_SESSION_KEY = "dbd-scoreboard-viewer-room-v1"
 export const MODE_SWITCH_SESSION_KEY = "dbd-sync-mode-switch"
@@ -76,6 +77,7 @@ export type AceSyncState = {
   setupSlotLockedTeams: AceLockedTeams
   setupSlotSpinToken: number
   setupSlotSpinPlan: AceSlotSpinPlan | null
+  setupSpinTeam: AceSpinTeam | null
 }
 
 export const CLOSED_ACE_SETUP: Pick<
@@ -91,6 +93,7 @@ export const CLOSED_ACE_SETUP: Pick<
   | "setupSlotLockedTeams"
   | "setupSlotSpinToken"
   | "setupSlotSpinPlan"
+  | "setupSpinTeam"
 > = {
   setupStep: null,
   setupSelectedThomasId: null,
@@ -103,6 +106,7 @@ export const CLOSED_ACE_SETUP: Pick<
   setupSlotLockedTeams: DEFAULT_ACE_LOCKED_TEAMS,
   setupSlotSpinToken: 0,
   setupSlotSpinPlan: null,
+  setupSpinTeam: null,
 }
 
 export type ScoreboardGameMode = "4v4" | "5p"
@@ -223,6 +227,7 @@ type WireAceState = {
   setupSlotLockedTeams?: Record<"thomas" | "ada", true>
   setupSlotSpinToken?: number
   setupSlotSpinPlan?: AceSlotSpinPlan
+  setupSpinTeam?: AceSpinTeam
   thomasId?: string
   adaId?: string
   firstAttackerBackup?: string
@@ -351,7 +356,9 @@ function isAceState(value: unknown): value is AceSyncState {
       ace.setupStep === "prompt" ||
       ace.setupStep === "method_select" ||
       ace.setupStep === "manual_select" ||
-      ace.setupStep === "random_slot") &&
+      ace.setupStep === "random_slot" ||
+      ace.setupStep === "matched_balance_team_pick" ||
+      ace.setupStep === "matched_balance_slot") &&
     isNullableString(ace.setupSelectedThomasId) &&
     isNullableString(ace.setupSelectedAdaId) &&
     (ace.setupSlotThomasIdx === undefined ||
@@ -382,7 +389,11 @@ function isAceState(value: unknown): value is AceSyncState {
         ace.setupSlotSpinToken >= 0)) &&
     (ace.setupSlotSpinPlan === undefined ||
       ace.setupSlotSpinPlan === null ||
-      isSlotSpinPlan(ace.setupSlotSpinPlan))
+      isSlotSpinPlan(ace.setupSlotSpinPlan)) &&
+    (ace.setupSpinTeam === undefined ||
+      ace.setupSpinTeam === null ||
+      ace.setupSpinTeam === "thomas" ||
+      ace.setupSpinTeam === "ada")
   )
 }
 
@@ -744,6 +755,9 @@ function toWireAce(ace: AceSyncState): WireAceState {
     if (ace.setupSlotSpinPlan) {
       wire.setupSlotSpinPlan = normalizeSlotSpinPlan(ace.setupSlotSpinPlan)!
     }
+    if (ace.setupSpinTeam) {
+      wire.setupSpinTeam = ace.setupSpinTeam
+    }
   }
 
   if (ace.thomasId) wire.thomasId = ace.thomasId
@@ -855,6 +869,7 @@ function fromWireFourVFourState(
             setupSlotSpinPlan: normalizeSlotSpinPlan(
               wire.ace.setupSlotSpinPlan ?? null,
             ),
+            setupSpinTeam: wire.ace.setupSpinTeam ?? null,
           }
         : {}),
     },

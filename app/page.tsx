@@ -24,9 +24,9 @@ export default function LandingPage() {
       const lastMode = localStorage.getItem("dbd-last-mode")
       const lastTimeRaw = localStorage.getItem("dbd-last-mode-time")
       const lastTime = lastTimeRaw ? parseInt(lastTimeRaw, 10) : 0
-      const EXPIRATION_TIME_MS = 60 * 60 * 1000 // 1시간 만료 쿨타임
+      const EXPIRATION_TIME_MS = 3 * 60 * 60 * 1000 // 3시간 만료 쿨타임
 
-      // 1시간 이내에 방문/조작 이력이 있을 때만 이전 개임 모드로 자동 연결
+      // 3시간 이내에 방문/조작 이력이 있을 때만 이전 게임 모드로 자동 연결
       if (lastMode && lastTime && Date.now() - lastTime < EXPIRATION_TIME_MS) {
         if (lastMode === "4v4") {
           router.replace("/4v4")

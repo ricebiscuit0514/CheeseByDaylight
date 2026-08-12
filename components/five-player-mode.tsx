@@ -172,7 +172,7 @@ export function FivePlayerMode() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        const EXPIRATION_TIME_MS = 60 * 60 * 1000 // 1시간 만료
+        const EXPIRATION_TIME_MS = 3 * 60 * 60 * 1000 // 3시간 만료
         if (parsed.updatedAt && Date.now() - parsed.updatedAt > EXPIRATION_TIME_MS) {
           localStorage.removeItem("dbd-5p-state-v2")
         } else {

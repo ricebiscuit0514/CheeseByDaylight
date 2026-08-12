@@ -1,10 +1,14 @@
 import type { Player } from "@/components/player-row"
 
+export type AceSpinTeam = "thomas" | "ada"
+
 export type AceModalStep =
   | "prompt"
   | "method_select"
   | "manual_select"
   | "random_slot"
+  | "matched_balance_team_pick"
+  | "matched_balance_slot"
   | null
 
 export type AceLockedTeams = {
@@ -42,6 +46,8 @@ export type AceModalSyncState = {
   slotLockedTeams: AceLockedTeams
   slotSpinToken: number
   slotSpinPlan: AceSlotSpinPlan | null
+  /** Which team uses the slot machine in matched-balance draw (null otherwise). */
+  spinTeam: AceSpinTeam | null
 }
 
 export const DEFAULT_ACE_LOCKED_TEAMS: AceLockedTeams = {
@@ -61,6 +67,98 @@ export const DEFAULT_ACE_MODAL_SYNC: AceModalSyncState = {
   slotLockedTeams: DEFAULT_ACE_LOCKED_TEAMS,
   slotSpinToken: 0,
   slotSpinPlan: null,
+  spinTeam: null,
+}
+
+export function buildMatchedBalanceLockedTeams(
+  spinTeam: AceSpinTeam,
+): AceLockedTeams {
+  return {
+    thomas: spinTeam === "ada",
+    ada: spinTeam === "thomas",
+  }
+}
+
+/** Eligible players only (no fallback to full roster). */
+export function getEligiblePlayers(
+  roster: Player[],
+  excludedIds: Record<string, boolean>,
+) {
+  return roster.filter((player) => !excludedIds[player.id])
+}
+
+export function canProceedRandomSlot(
+  slotFinished: boolean,
+  thomas: Player[],
+  ada: Player[],
+  excludedIds: Record<string, boolean>,
+): boolean {
+  if (slotFinished) return true
+  return (
+    getEligiblePlayers(thomas, excludedIds).length === 1 &&
+    getEligiblePlayers(ada, excludedIds).length === 1
+  )
+}
+
+export function resolveRandomSlotAceIds(
+  thomas: Player[],
+  ada: Player[],
+  excludedIds: Record<string, boolean>,
+  slotThomasIdx: number,
+  slotAdaIdx: number,
+): { thomasId: string; adaId: string } | null {
+  const eligibleThomas = getEligiblePlayers(thomas, excludedIds)
+  const eligibleAda = getEligiblePlayers(ada, excludedIds)
+  if (eligibleThomas.length === 1 && eligibleAda.length === 1) {
+    return {
+      thomasId: eligibleThomas[0].id,
+      adaId: eligibleAda[0].id,
+    }
+  }
+  const pickedThomas = thomas[slotThomasIdx]
+  const pickedAda = ada[slotAdaIdx]
+  if (!pickedThomas || !pickedAda) return null
+  return { thomasId: pickedThomas.id, adaId: pickedAda.id }
+}
+
+export function canProceedMatchedBalance(
+  spinTeam: AceSpinTeam,
+  slotFinished: boolean,
+  selectedThomasId: string | null,
+  selectedAdaId: string | null,
+  spinRoster: Player[] = [],
+  excludedIds: Record<string, boolean> = {},
+): boolean {
+  const manualId = spinTeam === "thomas" ? selectedAdaId : selectedThomasId
+  if (!manualId) return false
+  if (slotFinished) return true
+  return getEligiblePlayers(spinRoster, excludedIds).length === 1
+}
+
+export function resolveMatchedBalanceAceIds(
+  spinTeam: AceSpinTeam,
+  thomas: Player[],
+  ada: Player[],
+  excludedIds: Record<string, boolean>,
+  slotThomasIdx: number,
+  slotAdaIdx: number,
+  selectedThomasId: string | null,
+  selectedAdaId: string | null,
+): { thomasId: string; adaId: string } | null {
+  const spinRoster = spinTeam === "thomas" ? thomas : ada
+  const eligibleSpin = getEligiblePlayers(spinRoster, excludedIds)
+  const spinId =
+    eligibleSpin.length === 1
+      ? eligibleSpin[0].id
+      : spinTeam === "thomas"
+        ? thomas[slotThomasIdx]?.id
+        : ada[slotAdaIdx]?.id
+  const manualId = spinTeam === "thomas" ? selectedAdaId : selectedThomasId
+  if (!spinId || !manualId) return null
+  return {
+    thomasId: spinTeam === "thomas" ? spinId : manualId,
+    adaId: spinTeam === "ada" ? spinId : manualId,
+  }
 }
 
 export function buildExcludedIdsFromList(ids: readonly string[]) {
@@ -145,6 +243,7 @@ export function aceSetupToModalSync(
     setupSlotLockedTeams: AceLockedTeams
     setupSlotSpinToken: number
     setupSlotSpinPlan: AceSlotSpinPlan | null
+    setupSpinTeam?: AceSpinTeam | null
   },
 ): AceModalSyncState | null {
   if (!ace.setupStep) return null
@@ -162,6 +261,7 @@ export function aceSetupToModalSync(
     slotLockedTeams: ace.setupSlotLockedTeams,
     slotSpinToken: ace.setupSlotSpinToken,
     slotSpinPlan: ace.setupSlotSpinPlan,
+    spinTeam: ace.setupSpinTeam ?? null,
   }
 }
 
@@ -179,6 +279,7 @@ export function aceModalSyncToSetup(
   setupSlotLockedTeams: AceLockedTeams
   setupSlotSpinToken: number
   setupSlotSpinPlan: AceSlotSpinPlan | null
+  setupSpinTeam: AceSpinTeam | null
 } {
   return {
     setupStep: modal.step,
@@ -194,6 +295,7 @@ export function aceModalSyncToSetup(
     setupSlotLockedTeams: modal.slotLockedTeams,
     setupSlotSpinToken: modal.slotSpinToken,
     setupSlotSpinPlan: modal.slotSpinPlan,
+    setupSpinTeam: modal.spinTeam,
   }
 }
 
