@@ -639,7 +639,6 @@ export function AceMatchModal({
                     teamName={adaName}
                     roster={ada}
                     selectedId={selectedAdaId}
-                    isRolling={isRolling}
                     readOnly={readOnly}
                     onSelect={(id) => patchLocalState({ selectedAdaId: id })}
                   />
@@ -651,7 +650,6 @@ export function AceMatchModal({
                     teamName={thomasName}
                     roster={thomas}
                     selectedId={selectedThomasId}
-                    isRolling={isRolling}
                     readOnly={readOnly}
                     onSelect={(id) => patchLocalState({ selectedThomasId: id })}
                   />
@@ -893,7 +891,6 @@ function ManualPickColumn({
   teamName,
   roster,
   selectedId,
-  isRolling,
   readOnly,
   onSelect,
 }: {
@@ -901,7 +898,6 @@ function ManualPickColumn({
   teamName: string
   roster: Player[]
   selectedId: string | null
-  isRolling: boolean
   readOnly: boolean
   onSelect: (id: string) => void
 }) {
@@ -948,7 +944,7 @@ function ManualPickColumn({
               label={player.name || "이름 없음"}
               team={team}
               isSelected={selectedId === player.id}
-              readOnly={readOnly || isRolling}
+              readOnly={readOnly}
               onClick={() => onSelect(player.id)}
             />
           ))}

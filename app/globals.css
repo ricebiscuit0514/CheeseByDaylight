@@ -2147,6 +2147,17 @@ input[type="number"] {
   pointer-events: auto;
 }
 
+/* Ace rematch tie prompt: dock at bottom so skull score inputs stay reachable. */
+.ace-modal-backdrop--rematch {
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: clamp(1rem, 4vh, 2rem);
+  pointer-events: none;
+}
+.ace-modal-backdrop--rematch .ace-modal-panel {
+  pointer-events: auto;
+}
+
 .ace-modal-panel {
   --ace-accent: var(--dbd-yellow);
   position: relative;

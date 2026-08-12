@@ -1282,6 +1282,15 @@ export function Scoreboard() {
     }
 
     const isTie = thomasAce.kills === adaAce.kills
+
+    if (isTie && showAceRematchPrompt) {
+      return
+    }
+
+    if (!isTie && showAceRematchPrompt) {
+      setShowAceRematchPrompt(false)
+    }
+
     if (isTie) {
       setAceWinnersMap((prev) =>
         prev[aceThomasId] || prev[aceAdaId] ? {} : prev,
@@ -1330,6 +1339,7 @@ export function Scoreboard() {
 
       if (thomasAce.kills > adaAce.kills) {
         logRound("thomas")
+        setShowAceRematchPrompt(false)
         setAceWinnersMap((prev) => ({
           ...prev,
           [thomasAce.id]: "win",
@@ -1344,6 +1354,7 @@ export function Scoreboard() {
         // Keep isAceMatchMode true while victory overlay is playing!
       } else if (adaAce.kills > thomasAce.kills) {
         logRound("ada")
+        setShowAceRematchPrompt(false)
         setAceWinnersMap((prev) => ({
           ...prev,
           [adaAce.id]: "win",
@@ -1367,7 +1378,7 @@ export function Scoreboard() {
     }, delayMs)
 
     return () => clearTimeout(timer)
-  }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada, thomasName, adaName, lastScoredKills, firstAttackerId])
+  }, [isAceMatchMode, aceThomasId, aceAdaId, thomas, ada, thomasName, adaName, lastScoredKills, firstAttackerId, showAceRematchPrompt])
 
   const handleAceVictoryDismiss = () => {
     setAceVictoryOverlay(null)
@@ -3175,7 +3186,7 @@ export function Scoreboard() {
         )}
 
         {showAceRematchPrompt && isViewer && (
-          <div className="ace-modal-backdrop ace-modal-backdrop--passthrough">
+          <div className="ace-modal-backdrop ace-modal-backdrop--passthrough ace-modal-backdrop--rematch">
             <div className="ace-modal-panel">
               <h2 className="ace-modal-title">에이스 결정전 무승부</h2>
               <p className="ace-modal-body">
@@ -3199,7 +3210,7 @@ export function Scoreboard() {
 
         {/* 에이스 결정전 2차 무승부 리매치 팝업 */}
         {showAceRematchPrompt && !isViewer && (
-          <div className="ace-modal-backdrop">
+          <div className="ace-modal-backdrop ace-modal-backdrop--rematch">
             <div className="ace-modal-panel ace-modal-panel--rematch">
               <h2 className="ace-modal-title">에이스 결정전 무승부</h2>
               <p className="ace-modal-body ace-modal-body--rematch">
