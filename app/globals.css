@@ -235,79 +235,79 @@
 
 /* Landing Fearless art — shrink early; full size only on very wide screens */
 .landing-fearless-art-frame {
-  --landing-art-cap: 570px;
+  --landing-art-cap: 485px;
   width: clamp(
-    4rem,
-    min(32vw, calc(50vw - 14rem), var(--landing-art-cap)),
+    3.4rem,
+    min(27vw, calc(50vw - 14rem), var(--landing-art-cap)),
     var(--landing-art-cap)
   );
 }
 .landing-fearless-art-image {
-  max-height: min(58vh, 520px);
+  max-height: min(49vh, 442px);
 }
 
 @media (min-width: 1680px) {
   .landing-fearless-art-frame {
     width: clamp(
-      5rem,
-      min(43.5vw, calc(50vw - 11rem), var(--landing-art-cap)),
+      4.25rem,
+      min(37vw, calc(50vw - 11rem), var(--landing-art-cap)),
       var(--landing-art-cap)
     );
   }
   .landing-fearless-art-image {
-    max-height: min(66vh, 615px);
+    max-height: min(56vh, 523px);
   }
 }
 
 @media (max-width: 1535px) {
   .landing-fearless-art-frame {
     width: clamp(
-      4rem,
-      min(28vw, calc(50vw - 16rem), 440px),
-      440px
+      3.4rem,
+      min(24vw, calc(50vw - 16rem), 374px),
+      374px
     );
   }
   .landing-fearless-art-image {
-    max-height: min(52vh, 440px);
+    max-height: min(44vh, 374px);
   }
 }
 
 @media (max-width: 1279px) {
   .landing-fearless-art-frame {
     width: clamp(
-      3.75rem,
-      min(26vw, calc(50vw - 17rem), 340px),
-      340px
+      3.2rem,
+      min(22vw, calc(50vw - 17rem), 289px),
+      289px
     );
   }
   .landing-fearless-art-image {
-    max-height: min(46vh, 340px);
+    max-height: min(39vh, 289px);
   }
 }
 
 @media (max-width: 1023px) {
   .landing-fearless-art-frame {
     width: clamp(
-      3.5rem,
-      min(24vw, calc(50vw - 18rem), 260px),
-      260px
+      3rem,
+      min(20vw, calc(50vw - 18rem), 221px),
+      221px
     );
   }
   .landing-fearless-art-image {
-    max-height: min(40vh, 260px);
+    max-height: min(34vh, 221px);
   }
 }
 
 @media (max-width: 767px) {
   .landing-fearless-art-frame {
     width: clamp(
-      3rem,
-      min(22vw, calc(50vw - 19rem), 200px),
-      200px
+      2.55rem,
+      min(19vw, calc(50vw - 19rem), 170px),
+      170px
     );
   }
   .landing-fearless-art-image {
-    max-height: min(36vh, 200px);
+    max-height: min(31vh, 170px);
   }
 }
 

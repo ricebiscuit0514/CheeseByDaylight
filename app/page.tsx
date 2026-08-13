@@ -150,14 +150,33 @@ export default function LandingPage() {
 
         {/* Mode Selection Buttons */}
         <div className="flex flex-col items-center space-y-4 w-full">
-          <button
-            type="button"
-            onClick={() => handleSelectMode("4v4")}
-            className="w-56 sm:w-64 md:w-72 py-3 px-6 bg-black/60 hover:bg-black/85 border border-white/40 hover:border-white text-white rounded-none font-bold text-base sm:text-lg tracking-wider shadow-2xl backdrop-blur-md transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center"
-            style={{ fontFamily: "var(--font-godo)" }}
-          >
-            4 vs 4 모드
-          </button>
+          <div className="relative flex w-full items-center justify-center">
+            <aside
+              className="mb-2 w-full max-w-64 text-center sm:absolute sm:right-[calc(50%+9.5rem)] sm:mb-0 sm:w-max sm:max-w-[17.5rem] sm:text-right md:right-[calc(50%+10.5rem)]"
+              aria-label="4대4 모드 안내"
+            >
+              <p
+                className="text-[14px] leading-snug text-dbd-yellow sm:text-[16px] drop-shadow-[0_0_10px_rgba(234,179,8,0.35)]"
+                style={{ fontFamily: "var(--font-s-core)", fontWeight: 700 }}
+              >
+                에이스 결정전 기능이 개선되었습니다
+              </p>
+              <p
+                className="mt-1 text-[12px] leading-snug text-neutral-200/90 sm:text-[14px]"
+                style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
+              >
+                맞밸런스 추첨 기능이 추가되었습니다
+              </p>
+            </aside>
+            <button
+              type="button"
+              onClick={() => handleSelectMode("4v4")}
+              className="w-56 sm:w-64 md:w-72 py-3 px-6 bg-black/60 hover:bg-black/85 border border-white/40 hover:border-white text-white rounded-none font-bold text-base sm:text-lg tracking-wider shadow-2xl backdrop-blur-md transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center"
+              style={{ fontFamily: "var(--font-godo)" }}
+            >
+              4 vs 4 모드
+            </button>
+          </div>
 
           {/* 5-Player Mode Button */}
           <button
