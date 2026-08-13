@@ -20,6 +20,11 @@ import {
   type KillerPick,
 } from "../lib/fearless"
 import { KILLERS, resolveKillerId } from "../lib/killer-catalog"
+import {
+  applyFourVFourNameCommit,
+  applyFivePlayerNameCommit,
+  clearPlayerRosterField,
+} from "../lib/roster-name-commit"
 
 function pick(killerId: string, playerName: string): KillerPick {
   return { killerId, playerName }
@@ -538,6 +543,87 @@ describe("fearless pick and ban updates", () => {
       name: "테스트B",
       killerPicks: [pick("ghost-face", "테스트B")],
     })
+  })
+
+  it("reclaims orphan picks after a roster-style name clear", () => {
+    let roster = [
+      player("slot-a", "테스트A", [pick("nurse", "테스트A")]),
+      player("slot-b", "테스트B", [pick("ghost-face", "테스트B")]),
+    ]
+
+    roster = roster.map((entry) => clearPlayerRosterField({
+      ...entry,
+      kills: 0,
+      played: false,
+    }))
+
+    roster = migrateKillerPicksOnNameCommit(roster, "slot-b", "테스트A", "")
+
+    expect(roster.find((entry) => entry.id === "slot-a")?.killerPicks).toEqual([
+      pick("ghost-face", "테스트B"),
+    ])
+    expect(roster.find((entry) => entry.id === "slot-b")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+  })
+
+  it("reclaims orphan picks after a 4v4 roster reset and cross-slot commit", () => {
+    const thomas = [
+      clearPlayerRosterField({
+        id: "thomas-1",
+        name: "테스트A",
+        kills: 0,
+        played: false,
+        killerPicks: [pick("nurse", "테스트A")],
+      }),
+    ]
+    const ada = [
+      clearPlayerRosterField({
+        id: "ada-1",
+        name: "",
+        kills: 0,
+        played: false,
+      }),
+    ]
+
+    const next = applyFourVFourNameCommit(
+      thomas,
+      ada,
+      "ada-1",
+      "테스트A",
+      "",
+    )
+
+    expect(next.thomas[0].killerPicks).toEqual([])
+    expect(next.ada[0]).toMatchObject({
+      name: "테스트A",
+      killerPicks: [pick("nurse", "테스트A")],
+    })
+  })
+
+  it("reclaims orphan picks after a 5p roster reset and cross-slot commit", () => {
+    const players = [
+      clearPlayerRosterField({
+        id: "slot-a",
+        name: "테스트A",
+        kills: 0,
+        played: false,
+        killerPicks: [pick("nurse", "테스트A")],
+      }),
+      clearPlayerRosterField({
+        id: "slot-b",
+        name: "",
+        kills: 0,
+        played: false,
+      }),
+    ]
+
+    const next = applyFivePlayerNameCommit(players, "slot-b", "테스트A", "")
+
+    expect(next.find((entry) => entry.id === "slot-a")?.killerPicks).toEqual([])
+    expect(next.find((entry) => entry.id === "slot-b")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
   })
 
   it("cancels an indexed slot and enforces max picks", () => {

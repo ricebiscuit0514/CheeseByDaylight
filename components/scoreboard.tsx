@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { AceMatchModal } from "@/components/ace-match-modal"
 import { AuctionOrderModal } from "@/components/auction-order-modal"
 import { CoinTossWidget } from "@/components/coin-toss-widget"
@@ -56,10 +56,13 @@ import {
   cancelPlayerKillerPick,
   flattenFearlessPicks,
   MAX_FOUR_V_FOUR_FEARLESS_PICKS,
-  migrateKillerPicksOnNameCommit,
   setPlayerKillerPick,
   toggleKillerBan,
 } from "@/lib/fearless"
+import {
+  applyFourVFourNameCommit,
+  clearPlayerRosterField,
+} from "@/lib/roster-name-commit"
 import {
   clearPickerSelection,
   createInitialPickerUi,
@@ -559,6 +562,7 @@ function loadFromStorage() {
     }
     return {
       ...parsed,
+      fearlessEnabled: true,
       thomas: Array.isArray(parsed.thomas)
         ? parsed.thomas.map(normalizeFourVFourPlayer)
         : parsed.thomas,
@@ -618,6 +622,8 @@ export function Scoreboard() {
   const [prevKillsMap, setPrevKillsMap] = useState<Record<string, number>>({})
   const animRef = useRef(anim)
   const prevKillsRef = useRef(prevKillsMap)
+  const thomasRef = useRef(thomas)
+  const adaRef = useRef(ada)
   const remotePlayersRef = useRef<{ thomas: Player[]; ada: Player[] } | null>(
     null,
   )
@@ -637,6 +643,11 @@ export function Scoreboard() {
   useEffect(() => {
     prevKillsRef.current = prevKillsMap
   }, [prevKillsMap])
+
+  useLayoutEffect(() => {
+    thomasRef.current = thomas
+    adaRef.current = ada
+  }, [thomas, ada])
 
   const [leftBump, setLeftBump] = useState(0)
   const [rightBump, setRightBump] = useState(0)
@@ -1041,9 +1052,7 @@ export function Scoreboard() {
       if (Array.isArray(saved.thomas)) setThomas(saved.thomas)
       if (Array.isArray(saved.ada)) setAda(saved.ada)
       setKillerBans(saved.killerBans)
-      if (typeof saved.fearlessEnabled === "boolean") {
-        setFearlessEnabled(saved.fearlessEnabled)
-      }
+      setFearlessEnabled(true)
       if (saved.thomasName) setThomasName(saved.thomasName)
       if (saved.adaName) setAdaName(saved.adaName)
       if (saved.firstAttackerId !== undefined) setFirstAttackerId(saved.firstAttackerId)
@@ -2078,23 +2087,23 @@ export function Scoreboard() {
     const roster = team === "thomas" ? thomas : ada
 
     if (fearlessEnabled) {
-      const thomasIds = new Set(thomas.map((player) => player.id))
-      const combined = [...thomas, ...ada]
-      const migrated = migrateKillerPicksOnNameCommit(
-        combined,
+      const next = applyFourVFourNameCommit(
+        thomasRef.current,
+        adaRef.current,
         playerId,
-        cleanName,
+        name,
         previousName,
       )
-      const withName = migrated.map((player) =>
-        player.id === playerId ? { ...player, name } : player,
-      )
-      setThomas(withName.filter((player) => thomasIds.has(player.id)))
-      setAda(withName.filter((player) => !thomasIds.has(player.id)))
+      thomasRef.current = next.thomas
+      adaRef.current = next.ada
+      setThomas(next.thomas)
+      setAda(next.ada)
     } else {
       const setTeam = team === "thomas" ? setThomas : setAda
       setTeam((prev) =>
-        prev.map((player) => (player.id === playerId ? { ...player, name } : player)),
+        prev.map((player) =>
+          player.id === playerId ? { ...player, name: cleanName } : player,
+        ),
       )
     }
 
@@ -2242,12 +2251,8 @@ export function Scoreboard() {
 
   function resetRoster() {
     if (isViewer) return
-    setThomas((prev) =>
-      prev.map((p) => ({ ...p, name: "", kills: 0, played: false })),
-    )
-    setAda((prev) =>
-      prev.map((p) => ({ ...p, name: "", kills: 0, played: false })),
-    )
+    setThomas((prev) => prev.map((player) => clearPlayerRosterField(player)))
+    setAda((prev) => prev.map((player) => clearPlayerRosterField(player)))
     setAnim({})
     setPrevKillsMap({})
     setFirstAttackerId(null)

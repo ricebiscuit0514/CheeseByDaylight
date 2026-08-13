@@ -53,6 +53,7 @@ export const HOST_DISCONNECT_GRACE_MS = 3 * 60 * 60 * 1000
 export const HOST_SESSION_KEY = "dbd-scoreboard-host-room-v1"
 export const VIEWER_SESSION_KEY = "dbd-scoreboard-viewer-room-v1"
 export const MODE_SWITCH_SESSION_KEY = "dbd-sync-mode-switch"
+export const MODE_SWITCH_SKIP_RESUME_KEY = "dbd-sync-host-skip-resume"
 
 export type AceSyncState = {
   isActive: boolean
@@ -153,7 +154,7 @@ export function createDefaultScoreboardState(
     thomas: DEFAULT_FOUR_V_FOUR_PLAYERS("thomas"),
     ada: DEFAULT_FOUR_V_FOUR_PLAYERS("ada"),
     killerBans: [],
-    fearlessEnabled: false,
+    fearlessEnabled: true,
     thomasName: "",
     adaName: "",
     firstAttackerId: null,
@@ -314,6 +315,7 @@ function isFourVFourPlayer(value: unknown): value is Player {
   // Same-player duplicates are accepted on the wire and stripped in normalize.
   return (
     value.killerPicks === undefined ||
+    value.killerPicks === null ||
     (Array.isArray(value.killerPicks) &&
       value.killerPicks.length <= MAX_FOUR_V_FOUR_FEARLESS_PICKS &&
       value.killerPicks.every(isKillerPickWireValue))
@@ -520,6 +522,7 @@ function isFivePlayerPlayer(value: unknown): value is Player {
   if (!VALID_INTEGER_KILLS.has(value.kills)) return false
   return (
     value.killerPicks === undefined ||
+    value.killerPicks === null ||
     (Array.isArray(value.killerPicks) &&
       value.killerPicks.length <= 4 &&
       value.killerPicks.every(isKillerPickWireValue))
@@ -645,6 +648,15 @@ export function normalizeFourVFourPlayer(player: Player): Player {
   }
 }
 
+/** RTDB update() merges children; null clears killerPicks after a swap/clear. */
+export function toWirePlayer(player: Player): Player {
+  const normalized = normalizeFourVFourPlayer(player)
+  if (normalized.killerPicks && normalized.killerPicks.length > 0) {
+    return normalized
+  }
+  return { ...normalized, killerPicks: null as unknown as Player["killerPicks"] }
+}
+
 export function normalizeKillerBans(value: unknown): string[] {
   if (!Array.isArray(value)) return []
 
@@ -673,7 +685,7 @@ export function normalizeFourVFourState(
     thomas: state.thomas.slice(0, 4).map(normalizeFourVFourPlayer),
     ada: state.ada.slice(0, 4).map(normalizeFourVFourPlayer),
     killerBans: normalizeKillerBans(state.killerBans),
-    fearlessEnabled: state.fearlessEnabled === true,
+    fearlessEnabled: true,
     thomasName: state.thomasName.slice(0, 24),
     adaName: state.adaName.slice(0, 24),
     firstAttackerId: state.firstAttackerId,
@@ -692,10 +704,15 @@ export function normalizeFourVFourState(
 }
 
 export function normalizeFivePlayerPlayer(player: Player): Player {
-  return normalizeFourVFourPlayer({
+  const normalized = normalizeFourVFourPlayer({
     ...player,
     kills: VALID_INTEGER_KILLS.has(player.kills) ? player.kills : 0,
   })
+  if (!normalized.killerPicks) return normalized
+  return {
+    ...normalized,
+    killerPicks: normalized.killerPicks.slice(0, 4),
+  }
 }
 
 export function normalizeFivePlayerState(
@@ -782,8 +799,11 @@ function toWireFourVFourState(state: FourVFourSyncState): FourVFourWireState {
     mode: "4v4",
     thomasName: normalized.thomasName,
     adaName: normalized.adaName,
-    thomas: normalized.thomas.length > 0 ? normalized.thomas : null,
-    ada: normalized.ada.length > 0 ? normalized.ada : null,
+    thomas:
+      normalized.thomas.length > 0
+        ? normalized.thomas.map(toWirePlayer)
+        : null,
+    ada: normalized.ada.length > 0 ? normalized.ada.map(toWirePlayer) : null,
     thomasCount: normalized.thomas.length,
     adaCount: normalized.ada.length,
     ace: toWireAce(normalized.ace),
@@ -791,7 +811,7 @@ function toWireFourVFourState(state: FourVFourSyncState): FourVFourWireState {
 
   const killerBansWire = killerBansToWire(normalized.killerBans)
   if (killerBansWire) wire.killerBans = killerBansWire
-  if (normalized.fearlessEnabled) wire.fearlessEnabled = true
+  wire.fearlessEnabled = true
   if (normalized.firstAttackerId) {
     wire.firstAttackerId = normalized.firstAttackerId
   }
@@ -807,7 +827,10 @@ function toWireFivePlayerState(state: FivePlayerSyncState): FivePlayerWireState 
   const wire: FivePlayerWireState = {
     mode: "5p",
     playerCount: normalized.players.length,
-    players: normalized.players.length > 0 ? normalized.players : null,
+    players:
+      normalized.players.length > 0
+        ? normalized.players.map(toWirePlayer)
+        : null,
     receivingConfig: normalized.receivingConfig,
     givingConfig: normalized.givingConfig,
   }
@@ -831,7 +854,7 @@ function fromWireFourVFourState(
     thomas: Array.isArray(wire.thomas) ? wire.thomas : [],
     ada: Array.isArray(wire.ada) ? wire.ada : [],
     killerBans: killerBansFromWire(wire.killerBans),
-    fearlessEnabled: wire.fearlessEnabled === true,
+    fearlessEnabled: true,
     thomasName: wire.thomasName ?? "",
     adaName: wire.adaName ?? "",
     firstAttackerId: wire.firstAttackerId ?? null,
@@ -1197,6 +1220,28 @@ export async function resumeScoreboardRoom(
     expiresAt,
   })
   return expiresAt
+}
+
+export async function hydrateHostRoomAfterModeSwitch(
+  database: Database,
+  token: string,
+): Promise<{ expiresAt: number; scoreboard: ScoreboardSyncState } | null> {
+  const roomRef = ref(database, roomPath(token))
+  const snapshot = await get(roomRef)
+  const room = snapshot.val() as Partial<ScoreboardRoom> | null
+  if (!room?.scoreboard) return null
+
+  const scoreboard = fromWireState(room.scoreboard)
+  if (!scoreboard) return null
+
+  const serverNow = await getServerNow(database)
+  const expiresAt = serverNow + ROOM_TTL_MS
+  await update(roomRef, {
+    updatedAt: serverNow,
+    expiresAt,
+  })
+
+  return { expiresAt, scoreboard }
 }
 
 export async function writeScoreboardState(

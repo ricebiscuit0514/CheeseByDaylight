@@ -1,12 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react"
 import { goOffline, goOnline, type Database } from "firebase/database"
 import { getAnonymousUser } from "@/lib/firebase/client"
 import {
   HOST_DISCONNECT_GRACE_MS,
   HOST_SESSION_KEY,
   MODE_SWITCH_SESSION_KEY,
+  MODE_SWITCH_SKIP_RESUME_KEY,
   VIEWER_SESSION_KEY,
   SCOREBOARD_GAME_PATHS,
   abandonHostRoomIfNeeded,
@@ -17,6 +18,7 @@ import {
   createDefaultScoreboardState,
   deleteScoreboardRoom,
   generateRoomToken,
+  hydrateHostRoomAfterModeSwitch,
   loadRoomSession,
   prepareFirebaseSession,
   purgeExpiredHostRoomFromStorage,
@@ -60,6 +62,69 @@ function isHostWithinDisconnectGrace(room: ScoreboardRoom, now = Date.now()) {
   return hostDisconnectGraceRemainingMs(room, now) > 0
 }
 
+function toErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message
+  return "Firebase 연결 중 알 수 없는 오류가 발생했습니다."
+}
+
+function isPermissionDenied(error: unknown) {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String(error.code).toLowerCase()
+      : ""
+  const message = toErrorMessage(error).toLowerCase()
+  return (
+    code.includes("permission_denied") ||
+    code.includes("permission-denied") ||
+    message.includes("permission_denied") ||
+    message.includes("permission denied")
+  )
+}
+
+function isTransientFirebaseError(error: unknown) {
+  const message = toErrorMessage(error).toLowerCase()
+  return (
+    message.includes("database is closing") ||
+    message.includes("connection is closing")
+  )
+}
+
+async function prepareSyncDatabase(
+  databaseRef: RefObject<Database | null>,
+): Promise<Database> {
+  const database =
+    databaseRef.current ?? (await getAnonymousUser()).database
+  goOnline(database)
+  return database
+}
+
+async function withTransientRetry<T>(operation: () => Promise<T>): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      return await operation()
+    } catch (error) {
+      lastError = error
+      if (!isTransientFirebaseError(error) || attempt === 3) break
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, 120 * (attempt + 1)),
+      )
+    }
+  }
+  throw lastError
+}
+
+async function publishScoreboardWithRetry(
+  databaseRef: RefObject<Database | null>,
+  token: string,
+  scoreboard: ScoreboardSyncState,
+): Promise<number> {
+  return withTransientRetry(async () => {
+    const database = await prepareSyncDatabase(databaseRef)
+    return writeScoreboardState(database, token, scoreboard)
+  })
+}
+
 type UseScoreboardRoomOptions<T extends ScoreboardSyncState> = {
   gameMode: ScoreboardGameMode
   enabled: boolean
@@ -101,6 +166,17 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
   >(undefined)
   const databaseRef = useRef<Database | null>(null)
   const tokenRef = useRef<string | null>(null)
+  const hostHydrateGuardRef = useRef<string | null>(null)
+
+  const shouldPublishState = useCallback((snapshot: string) => {
+    const hydrateGuard = hostHydrateGuardRef.current
+    if (!hydrateGuard) return true
+    if (snapshot === hydrateGuard) {
+      hostHydrateGuardRef.current = null
+      return true
+    }
+    return false
+  }, [])
 
   useEffect(() => {
     tokenRef.current = token
@@ -294,7 +370,9 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
 
     const connect = async () => {
       try {
-        const { user, database } = await getAnonymousUser()
+        const { user, database } = await withTransientRetry(() =>
+          getAnonymousUser(),
+        )
         if (disposed || wasSuperseded) {
           goOffline(database)
           return
@@ -315,7 +393,9 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
 
           presenceStarting = true
           try {
-            const cleanup = await registerHostPresence(database, token)
+            const cleanup = await withTransientRetry(() =>
+              registerHostPresence(database, token),
+            )
             if (disposed) {
               void cleanup().catch(() => undefined)
               return
@@ -328,11 +408,16 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
 
         const ensureHostPresence = () => {
           void establishHostPresence().catch((error: unknown) => {
-            if (!disposed) {
-              goOffline(database)
-              setTerminalStatus("error")
-              setErrorMessage(toErrorMessage(error))
+            if (disposed) return
+            if (isTransientFirebaseError(error)) {
+              window.setTimeout(() => {
+                if (!disposed) ensureHostPresence()
+              }, 200)
+              return
             }
+            goOffline(database)
+            setTerminalStatus("error")
+            setErrorMessage(toErrorMessage(error))
           })
         }
 
@@ -521,6 +606,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
 
         const currentState = stateRef.current
         let expiresAt: number | null
+        let publishedSnapshot = JSON.stringify(currentState)
         if (shouldCreateRef.current) {
           expiresAt = await createScoreboardRoom(
               database,
@@ -536,12 +622,34 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
           // 먼저 원자적인 presence update로 방을 점유한 뒤 상태를 복원한다.
           hostCanRegisterPresence = true
           await establishHostPresence(true)
-          expiresAt = await resumeScoreboardRoom(
-              database,
-              user.uid,
-              token,
-              currentState,
+          let skipResume = false
+          try {
+            skipResume =
+              sessionStorage.getItem(MODE_SWITCH_SKIP_RESUME_KEY) === "1"
+            sessionStorage.removeItem(MODE_SWITCH_SKIP_RESUME_KEY)
+          } catch {
+            // ignore
+          }
+
+          if (skipResume) {
+            const attached = await withTransientRetry(() =>
+              hydrateHostRoomAfterModeSwitch(database, token),
             )
+            if (attached) {
+              expiresAt = attached.expiresAt
+              publishedSnapshot = JSON.stringify(attached.scoreboard)
+              hostHydrateGuardRef.current = publishedSnapshot
+              remoteStateRef.current(attached.scoreboard as T)
+            } else {
+              expiresAt = await withTransientRetry(() =>
+                resumeScoreboardRoom(database, user.uid, token, currentState),
+              )
+            }
+          } else {
+            expiresAt = await withTransientRetry(() =>
+              resumeScoreboardRoom(database, user.uid, token, currentState),
+            )
+          }
         }
 
         if (disposed) return
@@ -561,7 +669,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
           expiresAt,
           gameMode,
         })
-        lastPublishedRef.current = JSON.stringify(currentState)
+        lastPublishedRef.current = publishedSnapshot
         ensureHostPresence()
         setRoomExpiresAt(expiresAt)
         setRoomReady(true)
@@ -678,18 +786,19 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       role !== "host" ||
       !token ||
       !roomReady ||
-      terminalStatus
+      terminalStatus ||
+      busy
     ) {
       return
     }
 
     const serialized = JSON.stringify(state)
     if (serialized === lastPublishedRef.current) return
+    if (!shouldPublishState(serialized)) return
 
     const timeout = window.setTimeout(async () => {
       try {
-        const { database } = await getAnonymousUser()
-        const expiresAt = await writeScoreboardState(database, token, state)
+        const expiresAt = await publishScoreboardWithRetry(databaseRef, token, state)
         lastPublishedRef.current = serialized
         saveRoomSession(localStorage, HOST_SESSION_KEY, {
           token,
@@ -698,14 +807,13 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
         })
         setRoomExpiresAt(expiresAt)
       } catch (error) {
-        if (databaseRef.current) goOffline(databaseRef.current)
         setTerminalStatus("error")
         setErrorMessage(toErrorMessage(error))
       }
     }, 120)
 
     return () => window.clearTimeout(timeout)
-  }, [enabled, gameMode, role, roomReady, state, terminalStatus, token])
+  }, [busy, enabled, gameMode, role, roomReady, shouldPublishState, state, terminalStatus, token])
 
   // 선공 결정(firstAttackerId)은 시청자 UI에 바로 반영되어야 하므로 디바운스 없이 즉시 동기화한다.
   useEffect(() => {
@@ -715,7 +823,8 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       role !== "host" ||
       !token ||
       !roomReady ||
-      terminalStatus
+      terminalStatus ||
+      busy
     ) {
       return
     }
@@ -729,8 +838,12 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       try {
         const currentState = stateRef.current
         const serialized = JSON.stringify(currentState)
-        const { database } = await getAnonymousUser()
-        const expiresAt = await writeScoreboardState(database, token, currentState)
+        if (!shouldPublishState(serialized)) return
+        const expiresAt = await publishScoreboardWithRetry(
+          databaseRef,
+          token,
+          currentState,
+        )
         lastPublishedRef.current = serialized
         saveRoomSession(localStorage, HOST_SESSION_KEY, {
           token,
@@ -739,12 +852,12 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
         })
         setRoomExpiresAt(expiresAt)
       } catch (error) {
-        if (databaseRef.current) goOffline(databaseRef.current)
         setTerminalStatus("error")
         setErrorMessage(toErrorMessage(error))
       }
     })()
   }, [
+    busy,
     enabled,
     gameMode,
     role,
@@ -753,6 +866,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     state.mode === "4v4" ? state.firstAttackerId : null,
     terminalStatus,
     token,
+    shouldPublishState,
   ])
 
   // 피어리스 picker 하이라이트/피드백은 관전자 화면에 즉시 반영되어야 한다.
@@ -763,7 +877,8 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       role !== "host" ||
       !token ||
       !roomReady ||
-      terminalStatus
+      terminalStatus ||
+      busy
     ) {
       return
     }
@@ -786,8 +901,12 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       try {
         const currentState = stateRef.current
         const serialized = JSON.stringify(currentState)
-        const { database } = await getAnonymousUser()
-        const expiresAt = await writeScoreboardState(database, token, currentState)
+        if (!shouldPublishState(serialized)) return
+        const expiresAt = await publishScoreboardWithRetry(
+          databaseRef,
+          token,
+          currentState,
+        )
         lastPublishedRef.current = serialized
         saveRoomSession(localStorage, HOST_SESSION_KEY, {
           token,
@@ -796,12 +915,12 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
         })
         setRoomExpiresAt(expiresAt)
       } catch (error) {
-        if (databaseRef.current) goOffline(databaseRef.current)
         setTerminalStatus("error")
         setErrorMessage(toErrorMessage(error))
       }
     })()
   }, [
+    busy,
     enabled,
     gameMode,
     role,
@@ -815,6 +934,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       : 0,
     terminalStatus,
     token,
+    shouldPublishState,
   ])
 
   useEffect(() => {
@@ -853,11 +973,23 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
   const stopSharing = useCallback(async () => {
     if (busy || role !== "host" || !token) return
     setBusy(true)
+    const roomToken = token
     try {
-      const { database } = await getAnonymousUser()
-      goOnline(database)
-      await deleteScoreboardRoom(database, token)
-      goOffline(database)
+      await withTransientRetry(async () => {
+        const database = await prepareSyncDatabase(databaseRef)
+        await deleteScoreboardRoom(database, roomToken)
+      })
+    } catch {
+      if (databaseRef.current) {
+        await tryDeleteScoreboardRoom(databaseRef.current, roomToken)
+      }
+    } finally {
+      if (databaseRef.current) goOffline(databaseRef.current)
+      try {
+        sessionStorage.removeItem(MODE_SWITCH_SKIP_RESUME_KEY)
+      } catch {
+        // ignore
+      }
       localStorage.removeItem(HOST_SESSION_KEY)
       setRole("local")
       setToken(null)
@@ -866,13 +998,6 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       setFirebaseConnected(null)
       setTerminalStatus(null)
       setErrorMessage(null)
-    } catch (error) {
-      if (databaseRef.current) goOffline(databaseRef.current)
-      setTerminalStatus("error")
-      setErrorMessage(
-        `연동 종료에 실패했습니다. 다시 시도해 주세요. ${toErrorMessage(error)}`,
-      )
-    } finally {
       setBusy(false)
     }
   }, [busy, role, token])
@@ -888,10 +1013,8 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       setTerminalStatus(null)
       setErrorMessage(null)
       try {
-        const { database } = await getAnonymousUser()
-        goOnline(database)
-        const expiresAt = await writeScoreboardState(
-          database,
+        const expiresAt = await publishScoreboardWithRetry(
+          databaseRef,
           token,
           createDefaultScoreboardState(targetMode),
         )
@@ -901,9 +1024,10 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
           gameMode: targetMode,
         })
         sessionStorage.setItem(MODE_SWITCH_SESSION_KEY, "1")
+        sessionStorage.setItem(MODE_SWITCH_SKIP_RESUME_KEY, "1")
+        await new Promise((resolve) => window.setTimeout(resolve, 50))
         window.location.replace(SCOREBOARD_GAME_PATHS[targetMode])
       } catch (error) {
-        if (databaseRef.current) goOffline(databaseRef.current)
         setTerminalStatus("error")
         setErrorMessage(
           `모드 전환에 실패했습니다. 다시 시도해 주세요. ${toErrorMessage(error)}`,
@@ -940,23 +1064,4 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
     stopViewing,
     switchGameMode,
   }
-}
-
-function toErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message
-  return "Firebase 연결 중 알 수 없는 오류가 발생했습니다."
-}
-
-function isPermissionDenied(error: unknown) {
-  const code =
-    error && typeof error === "object" && "code" in error
-      ? String(error.code).toLowerCase()
-      : ""
-  const message = toErrorMessage(error).toLowerCase()
-  return (
-    code.includes("permission_denied") ||
-    code.includes("permission-denied") ||
-    message.includes("permission_denied") ||
-    message.includes("permission denied")
-  )
 }
