@@ -302,6 +302,15 @@ function migrationNamesMatch(a: string, b: string): boolean {
   return left.length > 0 && left === right
 }
 
+function slotHoldsIdentity(
+  player: FearlessPlayer,
+  identity: string,
+): boolean {
+  return (player.killerPicks ?? []).some((pick) =>
+    migrationNamesMatch(pick.playerName, identity),
+  )
+}
+
 function isOrphanPickOwner(
   player: FearlessPlayer,
   committedName: string,
@@ -309,9 +318,18 @@ function isOrphanPickOwner(
   const picks = player.killerPicks ?? []
   if (picks.length === 0) return false
   if (player.name.trim()) return false
-  return picks.some((pick) =>
-    migrationNamesMatch(pick.playerName, committedName),
-  )
+  return slotHoldsIdentity(player, committedName)
+}
+
+function isMisalignedPickOwner(
+  player: FearlessPlayer,
+  committedName: string,
+): boolean {
+  const picks = player.killerPicks ?? []
+  if (picks.length === 0) return false
+  if (!player.name.trim()) return false
+  if (migrationNamesMatch(player.name, committedName)) return false
+  return slotHoldsIdentity(player, committedName)
 }
 
 function shouldSwapWithActiveDuplicate(
@@ -323,6 +341,42 @@ function shouldSwapWithActiveDuplicate(
   return picks.some(
     (pick) => !migrationNamesMatch(pick.playerName, committedName),
   )
+}
+
+type IdentityPickHolderKind = "orphan" | "misaligned" | "activeDuplicate"
+
+type IdentityPickHolder<T extends FearlessPlayer> = {
+  kind: IdentityPickHolderKind
+  player: T
+}
+
+function findIdentityPickHolder<T extends FearlessPlayer>(
+  roster: readonly T[],
+  targetPlayerId: string,
+  identity: string,
+  target: FearlessPlayer,
+): IdentityPickHolder<T> | null {
+  const orphan = roster.find(
+    (player) =>
+      player.id !== targetPlayerId && isOrphanPickOwner(player, identity),
+  )
+  if (orphan) return { kind: "orphan", player: orphan }
+
+  const misaligned = roster.find(
+    (player) =>
+      player.id !== targetPlayerId && isMisalignedPickOwner(player, identity),
+  )
+  if (misaligned) return { kind: "misaligned", player: misaligned }
+
+  const activeDuplicate = roster.find(
+    (player) =>
+      player.id !== targetPlayerId && migrationNamesMatch(player.name, identity),
+  )
+  if (activeDuplicate && shouldSwapWithActiveDuplicate(target, identity)) {
+    return { kind: "activeDuplicate", player: activeDuplicate }
+  }
+
+  return null
 }
 
 function swapPlayerKillerRecords<T extends FearlessPlayer>(
@@ -406,33 +460,23 @@ export function migrateKillerPicksOnNameCommit<T extends FearlessPlayer>(
   const displacedName =
     previousTargetName !== undefined ? previousTargetName : target.name
 
-  const orphan = roster.find(
-    (player) =>
-      player.id !== targetPlayerId && isOrphanPickOwner(player, trimmed),
+  const holder = findIdentityPickHolder(
+    roster,
+    targetPlayerId,
+    trimmed,
+    target,
   )
-  if (orphan) {
-    return swapPlayerKillerRecords(
-      roster,
-      targetPlayerId,
-      orphan.id,
-      displacedName,
-    )
-  }
+  if (!holder) return [...roster]
 
-  const activeDuplicate = roster.find(
-    (player) =>
-      player.id !== targetPlayerId && migrationNamesMatch(player.name, trimmed),
+  const partnerName =
+    holder.kind === "misaligned" ? holder.player.name : displacedName
+
+  return swapPlayerKillerRecords(
+    roster,
+    targetPlayerId,
+    holder.player.id,
+    partnerName,
   )
-  if (activeDuplicate && shouldSwapWithActiveDuplicate(target, trimmed)) {
-    return swapPlayerKillerRecords(
-      roster,
-      targetPlayerId,
-      activeDuplicate.id,
-      displacedName,
-    )
-  }
-
-  return [...roster]
 }
 
 const KOREAN_INITIALS = [
