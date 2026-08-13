@@ -314,7 +314,13 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
   useEffect(() => { setMounted(true) }, [])
   const reducedMotion = mounted ? reducedMotionRaw : false
   const [hover, setHover] = useState<{ index: number; half: boolean } | null>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const nameAtFocusRef = useRef(player.name)
+  useEffect(() => {
+    const input = nameInputRef.current
+    if (input && document.activeElement === input) return
+    nameAtFocusRef.current = player.name
+  }, [player.name])
   const [isRevealed, setIsRevealed] = useState(false)
   const [isFlashReady, setIsFlashReady] = useState(false)
   const posForIndex = (i: number) => isThomas ? i : SKULLS_PER_PLAYER - 1 - i
@@ -372,6 +378,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
 
   const nameInput = (
     <input
+      ref={nameInputRef}
       value={player.name}
       placeholder="이름 입력"
       readOnly={interactionsDisabled}
@@ -384,7 +391,9 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
       onBlur={(event) => {
         // Overflowed Hangul can leave scrollLeft > 0 and hide the first glyph.
         event.currentTarget.scrollLeft = 0
-        onNameCommit(event.target.value, nameAtFocusRef.current)
+        const committedName = event.target.value
+        const previousName = nameAtFocusRef.current
+        queueMicrotask(() => onNameCommit(committedName, previousName))
       }}
       onKeyDown={(event) => {
         onNameKeyDown?.(event)

@@ -14,10 +14,13 @@ import { MODE_SWITCH_SESSION_KEY, VIEWER_SESSION_KEY, loadRoomSession, normalize
 import {
   cancelPlayerKillerPick,
   flattenFearlessPicks,
-  migrateKillerPicksOnNameCommit,
   setPlayerKillerPick,
   toggleKillerBan,
 } from "@/lib/fearless"
+import {
+  applyFivePlayerNameCommit,
+  clearPlayerRosterField,
+} from "@/lib/roster-name-commit"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { ZoomCompensated } from "@/components/zoom-compensated"
@@ -334,15 +337,9 @@ export function FivePlayerMode() {
     name: string,
     previousName: string,
   ) => {
-    setPlayers((prev) => {
-      const migrated = migrateKillerPicksOnNameCommit(
-        prev,
-        id,
-        name.trim(),
-        previousName,
-      )
-      return migrated.map((player) => (player.id === id ? { ...player, name } : player))
-    })
+    setPlayers((prev) =>
+      applyFivePlayerNameCommit(prev, id, name, previousName),
+    )
   }
 
   const addPlayer = () => {
@@ -379,14 +376,7 @@ export function FivePlayerMode() {
   }
 
   const resetRoster = () => {
-    setPlayers((prev) =>
-      prev.map((p) => ({
-        ...p,
-        name: "",
-        kills: 0,
-        played: false,
-      })),
-    )
+    setPlayers((prev) => prev.map((player) => clearPlayerRosterField(player)))
     setAnim({})
     setPrevKillsMap({})
     setRemoveMode(false)

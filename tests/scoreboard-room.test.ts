@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Player } from "../components/player-row"
+import { migrateKillerPicksOnNameCommit } from "../lib/fearless"
 import {
   createDefaultScoreboardState,
   fromWireState,
@@ -237,5 +238,78 @@ describe("scoreboard room fearless normalization", () => {
     expect(restored?.mode === "5p" ? restored.pickerUi : null).toEqual(
       state.pickerUi,
     )
+  })
+
+  it("writes null killerPicks after a 5p name swap clears a slot", () => {
+    const roster: Player[] = [
+      {
+        id: "slot-a",
+        name: "",
+        kills: 0,
+        played: false,
+        killerPicks: [pick("nurse", "테스트A")],
+      },
+      {
+        id: "slot-b",
+        name: "",
+        kills: 0,
+        played: false,
+        killerPicks: [],
+      },
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-b",
+      "테스트A",
+      "",
+    ).map((player) =>
+      player.id === "slot-b" ? { ...player, name: "테스트A" } : player,
+    )
+
+    const wire = toWireState({
+      mode: "5p",
+      players: migrated,
+      receivingConfig: [5, 8, 10, 12, 15],
+      givingConfig: [15, 12, 10, 8, 5],
+      killerBans: [],
+      pickerUi: createInitialPickerUi(),
+    })
+
+    expect(wire.mode === "5p" ? wire.players?.[0]?.killerPicks ?? null : null).toBeNull()
+    expect(wire.mode === "5p" ? wire.players?.[1]?.killerPicks : null).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+
+    const restored = fromWireState(wire)
+    expect(
+      restored?.mode === "5p" ? restored.players[0].killerPicks : undefined,
+    ).toBeUndefined()
+    expect(restored?.mode === "5p" ? restored.players[1].killerPicks : null).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+  })
+})
+
+describe("scoreboard room fearless mode flag", () => {
+  it("defaults 4v4 fearless mode to enabled", () => {
+    const state = createDefaultScoreboardState("4v4")
+    expect(state.mode === "4v4" ? state.fearlessEnabled : null).toBe(true)
+  })
+
+  it("keeps fearless enabled after wire roundtrip even when the field is omitted", () => {
+    const wire = toWireState(createFourVFourState())
+    delete (wire as { fearlessEnabled?: boolean }).fearlessEnabled
+
+    const restored = fromWireState(wire)
+    expect(restored?.mode === "4v4" ? restored.fearlessEnabled : null).toBe(true)
+  })
+
+  it("normalizes legacy fearlessEnabled=false to enabled", () => {
+    const state = createFourVFourState()
+    state.fearlessEnabled = false
+
+    const normalized = normalizeFourVFourState(state)
+    expect(normalized.fearlessEnabled).toBe(true)
   })
 })
