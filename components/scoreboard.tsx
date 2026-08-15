@@ -108,7 +108,6 @@ const MAX_PLAYERS_PER_TEAM = 4
 const LS_KEY = "dbd-scoreboard-v1"
 const GUIDE_SEEN_4V4_KEY = "dbd-fearless-guide-seen-4v4"
 const ACE_REDO_HINT_SEEN_KEY = "dbd-ace-redo-hint-seen"
-const ACE_IMPROVEMENT_NOTICE_SEEN_KEY = "dbd-ace-improvement-notice-seen"
 const EXPIRATION_TIME_MS = 3 * 60 * 60 * 1000 // 마지막 조작 기준 3시간 만료
 
 const teamScore = (players: Player[]) => players.reduce((s, p) => s + p.kills, 0)
@@ -794,32 +793,6 @@ export function Scoreboard() {
       // ignore
     }
   }
-
-  const [hasSeenAceImprovementNotice, setHasSeenAceImprovementNotice] =
-    useState(true)
-
-  useEffect(() => {
-    try {
-      const seen = localStorage.getItem(ACE_IMPROVEMENT_NOTICE_SEEN_KEY)
-      if (!seen) setHasSeenAceImprovementNotice(false)
-    } catch {
-      // ignore
-    }
-  }, [])
-
-  function dismissAceImprovementNotice() {
-    setHasSeenAceImprovementNotice(true)
-    try {
-      localStorage.setItem(ACE_IMPROVEMENT_NOTICE_SEEN_KEY, "true")
-    } catch {
-      // ignore
-    }
-  }
-
-  useEffect(() => {
-    if (!isAceMatchMode || hasSeenAceImprovementNotice) return
-    dismissAceImprovementNotice()
-  }, [isAceMatchMode, hasSeenAceImprovementNotice])
 
   function closeAllGuideUI() {
     setShowGuideMenu(false)
@@ -2156,39 +2129,6 @@ export function Scoreboard() {
       }}
     >
       {!utilityUiHidden && <AppVersionCorner />}
-
-      {!isViewer && !hasSeenAceImprovementNotice && (
-        <div className="fixed left-3 top-1/2 z-40 flex w-[min(22rem,calc(100vw-1.5rem))] -translate-y-1/2 flex-col items-center gap-3 text-center select-none md:left-6 md:w-[24rem]">
-          <h2
-            className="whitespace-nowrap text-base leading-snug text-dbd-yellow md:text-lg"
-            style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
-          >
-            에이스 결정전 기능이 개선되었습니다.
-          </h2>
-          <ul className="space-y-1.5 text-center text-white">
-            <li
-              className="text-base leading-snug md:text-lg"
-              style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
-            >
-              맞밸런스 추첨 기능이 추가되었습니다.
-            </li>
-            <li
-              className="text-sm leading-relaxed"
-              style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
-            >
-              멤버 선택 실수 시, 되돌아가기 기능이 추가되었습니다.
-            </li>
-          </ul>
-          <button
-            type="button"
-            onClick={dismissAceImprovementNotice}
-            className="rounded border border-white/50 bg-white/10 px-2.5 py-1 text-xs text-white transition-colors hover:bg-white/20"
-            style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
-          >
-            닫기
-          </button>
-        </div>
-      )}
 
       <AuctionOrderModal
         open={showAuctionModal}
