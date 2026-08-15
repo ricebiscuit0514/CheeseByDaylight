@@ -114,7 +114,29 @@ describe("computeCold secondary conditions", () => {
     }
   })
 
-  it("Scenario 4: Opponent must survive notice with follow-up killer need", () => {
+  it("Scenario 4: Opponent must survive notice with follow-up killer need (7th match 1 vs 1)", () => {
+    const thomas = makePlayers("thomas", [
+      { kills: 4, played: true },
+      { kills: 4, played: true },
+      { kills: 4, played: true },
+      { kills: 0, played: false },
+    ])
+    const ada = makePlayers("ada", [
+      { kills: 2, played: true },
+      { kills: 3, played: true },
+      { kills: 3, played: true },
+      { kills: 0, played: false },
+    ])
+
+    const result = computeCold(thomas, ada, "thomas", "토마스", "에이다")
+    expect(result.status).toBe("warning")
+    if (result.status === "warning") {
+      expect(result.opponentMustSurviveName).toBe("에이다")
+      expect(result.opponentMustSurviveNextNeed).toBe(4)
+    }
+  })
+
+  it("Scenario 5: Early cold game win notice in 5th match (8:0, 2 vs 2) -> Thomas 1+ kill to clinch", () => {
     const thomas = makePlayers("thomas", [
       { kills: 4, played: true },
       { kills: 4, played: true },
@@ -131,12 +153,14 @@ describe("computeCold secondary conditions", () => {
     const result = computeCold(thomas, ada, "thomas", "토마스", "에이다")
     expect(result.status).toBe("warning")
     if (result.status === "warning") {
-      expect(result.opponentMustSurviveName).toBe("에이다")
-      expect(result.opponentMustSurviveNextNeed).toBe(4)
+      expect(result.opponentMustSurviveName).toBeUndefined()
+      expect(result.name).toBe("토마스")
+      expect(result.isEarlyWinNotice).toBe(true)
+      expect(result.need).toBe(1) // 8 + 1 = 9 > 8 (Ada max)
     }
   })
 
-  it("Scenario 5: Early cold game win notice when team can clinch victory this match", () => {
+  it("Scenario 6: Early cold game win notice when team can clinch victory this match (8:1)", () => {
     const thomas = makePlayers("thomas", [
       { kills: 4, played: true },
       { kills: 4, played: true },

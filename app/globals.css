@@ -2079,10 +2079,10 @@ input[type="number"] {
 }
 
 .cold-warning-title { 
-  font-family: var(--font-s-core), 'S-Core Dream', sans-serif; 
+  font-family: var(--font-godo); 
   font-size: clamp(1.25rem, 3.8vw, 1.55rem); 
   font-style: italic;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: .08em;
   color: var(--dbd-red); 
   text-shadow: 1px 1px 0 var(--background);
@@ -2090,10 +2090,10 @@ input[type="number"] {
 }
 
 .cold-game-title {
-  font-family: var(--font-s-core), 'S-Core Dream', sans-serif;
+  font-family: var(--font-godo);
   font-size: clamp(1.2rem, 3.6vw, 1.5rem);
   font-style: italic;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: .08em;
   color: var(--dbd-red);
   text-shadow: 1px 1px 0 var(--background);
@@ -2109,9 +2109,9 @@ input[type="number"] {
 
 .cold-warning-text,
 .cold-game-text {
-  font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+  font-size: clamp(0.95rem, 2.1vw, 1.1rem);
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.4;
   color: color-mix(in oklch, var(--foreground), transparent 8%);
 }
 

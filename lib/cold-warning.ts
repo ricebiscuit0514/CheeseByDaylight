@@ -148,12 +148,13 @@ export function computeCold(
 
       // ── 상대팀 생존 경고 ──────────────────────────────────────────
       // 현재 차례 팀이 이번 경기에서 1킬이라도 하면 상대가 콜드게임 확정되는지 확인.
-      // 즉, (opp + 1) + (oppRem - 1)*MAX_KILLS < my + 1 이면 상대는 이번 경기 전부 생존해야 함.
-      // 동등한 조건: 상대의 현재 최대 가능 점수 == 현재 내 점수
-      //   → oppMax(현재) == my 이면, 내가 1킬이라도 추가하는 순간 상대 콜드.
+      // 양 팀 모두 1경기씩만 남은 7세트(1 vs 1) 벼랑 끝 상황에서만 표시한다.
+      // (남은 경기가 4경기 이상인 중간 세트에서는 여러 경기를 건너뛰어 혼란을 주므로 표시하지 않음)
       const oppMaxNow = opp + oppRem * MAX_KILLS
-      const opponentMustSurviveName = (oppMaxNow === my) ? oppName : undefined
-      const opponentMustSurviveNextNeed = opponentMustSurviveName && oppRem > 0 ? 4 : undefined
+      const opponentMustSurviveName =
+        myRem === 1 && oppRem === 1 && oppMaxNow === my ? oppName : undefined
+      const opponentMustSurviveNextNeed =
+        opponentMustSurviveName && oppRem > 0 ? 4 : undefined
 
       // ── 현재 차례 팀 경고 ─────────────────────────────────────────
       // 이번 선수가 최소 need킬, 나머지 내 선수들이 모두 MAX_KILLS를 해야 동점
