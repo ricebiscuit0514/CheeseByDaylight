@@ -44,20 +44,16 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
     whole === 11
       ? "-0.1em"
       : String(whole).endsWith("7")
-        ? "-0.22em"
+        ? "-0.24em"
         : undefined
 
   const leftWholeNudgeX =
     side === "left" && hasHalf
       ? whole === 12
         ? -4
-        : whole === 11
-          ? 4
-          : whole === 8
-            ? -4
-            : whole === 7
-              ? 11
-              : 0
+        : whole === 8
+          ? -4
+          : 0
       : 0
 
   return (
@@ -208,7 +204,14 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
       <span
         className="score-value-wrap"
         style={{
-          transform: side === "left" ? "translateX(-22px)" : undefined,
+          transform:
+            side === "left"
+              ? hasHalf
+                ? "translateX(-5px)"
+                : "translateX(-22px)"
+              : whole >= 10
+                ? "translateX(-26px)"
+                : undefined,
           opacity: isGameOver && !lit ? 0.35 : 1,
           filter: isGameOver && !lit ? "brightness(0.5) saturate(0.3)" : undefined,
           transition: "all 0.4s ease-out",
@@ -221,7 +224,14 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
           animate={{ y: 0, x: leftWholeNudgeX, opacity: 1, filter: "blur(0px)", scale: 1 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
-          {whole}
+          {whole === 11 ? (
+            <>
+              <span style={{ marginRight: "-0.07em" }}>1</span>
+              <span>1</span>
+            </>
+          ) : (
+            whole
+          )}
         </motion.span>
         <AnimatePresence mode="wait">
           {hasHalf && (
@@ -230,6 +240,7 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
               className="score-half"
               style={{
                 marginLeft: halfMarginLeft,
+                marginBottom: "-0.03em",
               }}
               initial={reducedMotion ? false : { y: -20, opacity: 0, filter: "blur(8px)", scale: 0.8 }}
               animate={{ y: 0, opacity: 1, filter: "blur(0px)", scale: 1 }}
