@@ -38,10 +38,10 @@ export function buildAceMatchNotice(opponentKills: number): AceMatchNotice {
 
   const tieNeed = minAceKillsToTie(opponentKills)
   if (tieNeed >= ACE_MAX_KILLS) {
-    return { killText: "올킬", suffix: "을 하면 동점입니다" }
+    return { killText: "올킬", suffix: "을 하면 무승부입니다" }
   }
   return {
     killText: `${formatKillStep(tieNeed)}킬`,
-    suffix: " 이상 하면 동점입니다",
+    suffix: " 이상 하면 무승부입니다",
   }
 }

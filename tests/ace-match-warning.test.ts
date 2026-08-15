@@ -37,7 +37,7 @@ describe("ace match warning", () => {
   it("shows tie-only notice when the opponent already has 4 kills", () => {
     expect(buildAceMatchNotice(4)).toEqual({
       killText: "올킬",
-      suffix: "을 하면 동점입니다",
+      suffix: "을 하면 무승부입니다",
     })
   })
 })

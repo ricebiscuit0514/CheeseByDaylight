@@ -2067,7 +2067,7 @@ input[type="number"] {
 .cold-game-box { 
   position: relative; 
   min-height: 3.5rem;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
   padding: 0.5rem 1rem; 
   text-align: center;
   display: flex;
@@ -2097,7 +2097,7 @@ input[type="number"] {
   letter-spacing: .08em;
   color: var(--dbd-red);
   text-shadow: 1px 1px 0 var(--background);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.2rem;
 }
 
 .cold-warning-text,
@@ -2139,7 +2139,7 @@ input[type="number"] {
   letter-spacing: .06em;
   color: white;
   text-shadow: 0 2px 8px rgba(0,0,0,0.6);
-  margin-top: 0.75rem;
+  margin-top: 0.15rem;
   display: flex;
   align-items: center;
   justify-content: center;

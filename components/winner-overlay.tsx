@@ -204,7 +204,7 @@ export function WinnerOverlay({
             {isTie ? (
                <span 
                   className="text-6xl md:text-8xl font-black italic text-neutral-300 drop-shadow-[0_0_20px_rgba(200,200,200,0.5)]"
-                  style={{ fontFamily: "var(--font-s-core), 'S-Core Dream', sans-serif", whiteSpace: "nowrap" }}
+                  style={{ fontFamily: "var(--font-godo)", whiteSpace: "nowrap" }}
                 >
                   무승부!
                 </span>
@@ -213,7 +213,7 @@ export function WinnerOverlay({
                 {isColdGame && (
                   <span
                     className="mb-1 text-xl md:text-3xl font-black italic text-dbd-red tracking-widest drop-shadow-[0_0_12px_color-mix(in_oklch,var(--dbd-red),transparent_35%)]"
-                    style={{ fontFamily: "var(--font-s-core), 'S-Core Dream', sans-serif", fontWeight: 700 }}
+                    style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
                   >
                     콜드게임!
                   </span>
@@ -221,14 +221,14 @@ export function WinnerOverlay({
                 {isComeback && (
                   <span
                     className="mb-1 text-xl md:text-3xl font-black italic text-dbd-yellow tracking-widest drop-shadow-[0_0_12px_color-mix(in_oklch,var(--dbd-yellow),transparent_35%)]"
-                    style={{ fontFamily: "var(--font-s-core), 'S-Core Dream', sans-serif", fontWeight: 700 }}
+                    style={{ fontFamily: "var(--font-godo)", fontWeight: 900 }}
                   >
                     역전!
                   </span>
                 )}
                 <span 
                   className="text-6xl md:text-[8rem] font-black italic drop-shadow-[0_0_40px_rgba(0,0,0,0.5)]"
-                  style={{ fontFamily: "var(--font-s-core), 'S-Core Dream', sans-serif", whiteSpace: "nowrap", letterSpacing: "-0.02em" }}
+                  style={{ fontFamily: "var(--font-godo)", whiteSpace: "nowrap", letterSpacing: "-0.02em" }}
                 >
                   <span className={teamColor === "thomas" ? "text-dbd-orange" : "text-dbd-blue"}>
                     {winnerName}

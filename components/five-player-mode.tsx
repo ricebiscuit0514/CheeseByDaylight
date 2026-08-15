@@ -849,7 +849,7 @@ export function FivePlayerMode() {
             <div className="grid grid-cols-2 gap-3 max-w-[310px] w-full mx-auto pt-1 select-none">
               {/* Receiving Config */}
               <div className="flex flex-col space-y-3.5">
-                <div className="text-center font-bold text-neutral-300 text-sm border-b border-neutral-600/40 pb-1 w-full max-w-[145px] mx-auto" style={{ fontFamily: "var(--font-godo)" }}>
+                <div className="text-center font-bold text-emerald-400 text-sm border-b border-emerald-500/40 pb-1 w-full max-w-[145px] mx-auto" style={{ fontFamily: "var(--font-godo)" }}>
                   받는 사람
                 </div>
                 {[0, 1, 2, 3, 4].map((k) => (
@@ -888,7 +888,7 @@ export function FivePlayerMode() {
 
               {/* Giving Config */}
               <div className="flex flex-col space-y-3.5">
-                <div className="text-center font-bold text-neutral-300 text-sm border-b border-neutral-600/40 pb-1 w-full max-w-[145px] mx-auto" style={{ fontFamily: "var(--font-godo)" }}>
+                <div className="text-center font-bold text-dbd-orange text-sm border-b border-dbd-orange/40 pb-1 w-full max-w-[145px] mx-auto" style={{ fontFamily: "var(--font-godo)" }}>
                   주는 사람
                 </div>
                 {[0, 1, 2, 3, 4].map((k) => (
@@ -937,7 +937,7 @@ export function FivePlayerMode() {
             style={{ "--team": "#a3a3a3" } as React.CSSProperties}
           >
             <span className="plate-grain rounded-md" aria-hidden="true" />
-            <span className="font-bold text-neutral-300 text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
+            <span className="font-bold text-emerald-400 text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
               받는 사람:
             </span>
             <input
@@ -968,7 +968,7 @@ export function FivePlayerMode() {
             style={{ "--team": "#a3a3a3" } as React.CSSProperties}
           >
             <span className="plate-grain rounded-md" aria-hidden="true" />
-            <span className="font-bold text-neutral-300 text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
+            <span className="font-bold text-dbd-orange text-sm whitespace-nowrap z-10 select-none" style={{ fontFamily: "var(--font-godo)" }}>
               주는 사람:
             </span>
             <input

@@ -1812,7 +1812,7 @@ export function Scoreboard() {
           <motion.span
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className={`absolute -top-3 z-20 flex items-center gap-1 whitespace-nowrap rounded border border-black/80 bg-dbd-yellow px-1.5 py-px text-[13px] text-black ${
+            className={`absolute -top-3 z-20 flex items-center gap-1 whitespace-nowrap rounded border border-black/80 bg-dbd-yellow px-1.5 py-px text-[13px] text-black select-none pointer-events-none ${
               isThomas ? "right-3" : "left-3"
             }`}
             style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
@@ -1822,7 +1822,7 @@ export function Scoreboard() {
         )}
         {active && !selgong && removeMode !== team && (
           <span
-            className={`absolute -top-3 z-10 flex items-center gap-1 whitespace-nowrap rounded bg-neutral-950 px-1.5 py-px text-[13px] text-neutral-200 ${
+            className={`absolute -top-3 z-10 flex items-center gap-1 whitespace-nowrap rounded bg-neutral-950 px-1.5 py-px text-[13px] text-neutral-200 select-none pointer-events-none ${
               isThomas ? "right-3" : "left-3"
             }`}
             style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
@@ -1835,7 +1835,7 @@ export function Scoreboard() {
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className={cn(
-              "absolute -top-3 z-30 flex items-center gap-1 whitespace-nowrap rounded border border-amber-300 bg-dbd-yellow px-1.5 py-px text-[13px] text-black tracking-wider shadow-[0_0_12px_rgba(234,179,8,0.7)] select-none",
+              "absolute -top-3 z-30 flex items-center gap-1 whitespace-nowrap rounded border border-amber-300 bg-dbd-yellow px-1.5 py-px text-[13px] text-black tracking-wider shadow-[0_0_12px_rgba(234,179,8,0.7)] select-none pointer-events-none",
               isThomas ? "right-3" : "left-3"
             )}
             style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
@@ -2495,7 +2495,7 @@ export function Scoreboard() {
         </div>
 
         {/* cold game warning / result */}
-        <div className="cold-game-box mt-6 md:mt-8 mb-2">
+        <div className="cold-game-box mt-9 md:mt-12 mb-3">
           {isAceMatchMode ? (
             aceMatchWarning && (
               <>
