@@ -28,20 +28,20 @@ export function buildAceMatchNotice(opponentKills: number): AceMatchNotice {
 
   if (winNeed !== null) {
     if (winNeed >= ACE_MAX_KILLS) {
-      return { killText: "올킬", suffix: "을 해야 우승입니다" }
+      return { killText: "올킬", suffix: "을 하면 우승입니다" }
     }
     return {
       killText: `${formatKillStep(winNeed)}킬`,
-      suffix: " 이상 해야 우승입니다",
+      suffix: " 이상 하면 우승입니다",
     }
   }
 
   const tieNeed = minAceKillsToTie(opponentKills)
   if (tieNeed >= ACE_MAX_KILLS) {
-    return { killText: "올킬", suffix: "을 해야 동점입니다" }
+    return { killText: "올킬", suffix: "을 하면 동점입니다" }
   }
   return {
     killText: `${formatKillStep(tieNeed)}킬`,
-    suffix: " 이상 해야 동점입니다",
+    suffix: " 이상 하면 동점입니다",
   }
 }

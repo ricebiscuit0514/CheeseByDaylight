@@ -23,21 +23,21 @@ describe("ace match warning", () => {
   it("shows 3.5 kills to win after a 3:0 ace score", () => {
     expect(buildAceMatchNotice(3)).toEqual({
       killText: "3.5킬",
-      suffix: " 이상 해야 우승입니다",
+      suffix: " 이상 하면 우승입니다",
     })
   })
 
   it("shows all-kill to win after a 3.5:0 ace score", () => {
     expect(buildAceMatchNotice(3.5)).toEqual({
       killText: "올킬",
-      suffix: "을 해야 우승입니다",
+      suffix: "을 하면 우승입니다",
     })
   })
 
   it("shows tie-only notice when the opponent already has 4 kills", () => {
     expect(buildAceMatchNotice(4)).toEqual({
       killText: "올킬",
-      suffix: "을 해야 동점입니다",
+      suffix: "을 하면 동점입니다",
     })
   })
 })

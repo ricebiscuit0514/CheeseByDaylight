@@ -19,6 +19,14 @@
 
 @font-face {
   font-family: 'S-Core Dream';
+  src: url('/fonts/S-CoreDream-2ExtraLight.woff') format('woff');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'S-Core Dream';
   src: url('/fonts/S-CoreDream-3Light.woff') format('woff');
   font-weight: 300;
   font-style: normal;
@@ -2071,26 +2079,24 @@ input[type="number"] {
 }
 
 .cold-warning-title { 
-  font-family: var(--font-aldrich); 
-  font-size: clamp(1.25rem, 4vw, 1.65rem); 
+  font-family: var(--font-s-core), 'S-Core Dream', sans-serif; 
+  font-size: clamp(1.25rem, 3.8vw, 1.55rem); 
   font-style: italic;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-weight: 500;
   letter-spacing: .08em;
   color: var(--dbd-red); 
-  text-shadow: 2px 2px 0 var(--background);
-  margin-bottom: 0.35rem;
+  text-shadow: 1px 1px 0 var(--background);
+  margin-bottom: 0.4rem;
 }
 
 .cold-game-title {
-  font-family: var(--font-aldrich);
-  font-size: clamp(1.1rem, 3.5vw, 1.45rem);
+  font-family: var(--font-s-core), 'S-Core Dream', sans-serif;
+  font-size: clamp(1.2rem, 3.6vw, 1.5rem);
   font-style: italic;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-weight: 500;
   letter-spacing: .08em;
   color: var(--dbd-red);
-  text-shadow: 2px 2px 0 var(--background);
+  text-shadow: 1px 1px 0 var(--background);
   margin-bottom: 0.5rem;
 }
 
@@ -2098,33 +2104,51 @@ input[type="number"] {
 .cold-game-text,
 .cold-team-name,
 .cold-kill-count {
-  font-family: var(--font-godo);
-  font-weight: 700;
+  font-family: var(--font-s-core), 'S-Core Dream', sans-serif;
 }
 
 .cold-warning-text,
 .cold-game-text {
-  font-size: clamp(0.875rem, 2vw, 1.05rem);
-  line-height: 1.6;
-  color: color-mix(in oklch, var(--foreground), transparent 5%);
+  font-size: clamp(1.05rem, 2.4vw, 1.25rem);
+  font-weight: 400;
+  line-height: 1.65;
+  color: color-mix(in oklch, var(--foreground), transparent 8%);
 }
 
 .cold-team-name {
-  font-weight: 900;
+  font-weight: 500;
   font-size: 1.15em;
   letter-spacing: .02em;
   text-transform: uppercase;
 }
 
-.cold-team-thomas { color: var(--dbd-orange); text-shadow: 0 0 8px color-mix(in oklch, var(--dbd-orange), transparent 35%); }
-.cold-team-ada { color: var(--dbd-blue); text-shadow: 0 0 8px color-mix(in oklch, var(--dbd-blue), transparent 35%); }
+.cold-team-thomas { color: var(--dbd-orange); }
+.cold-team-ada { color: var(--dbd-blue); }
 
 .cold-kill-count {
-  font-weight: 900;
-  font-size: 1.25em;
-  letter-spacing: .04em;
+  font-weight: 500;
+  font-size: 1.2em;
+  letter-spacing: .03em;
   color: var(--dbd-yellow);
-  text-shadow: 0 0 12px color-mix(in oklch, var(--dbd-yellow), transparent 40%);
+}
+
+.cold-game-result {
+  font-family: var(--font-s-core), 'S-Core Dream', sans-serif;
+  font-size: clamp(1.4rem, 4vw, 1.85rem);
+  font-weight: 500;
+  letter-spacing: .06em;
+  color: white;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.cold-game-result .cold-team-name {
+  font-size: 1em;
+  font-weight: 500;
 }
 
 /* Ace match modal — plate / fearless-picker hybrid shell */

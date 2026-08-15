@@ -184,13 +184,13 @@ export function AceMatchOverlay({
                 "text-2xl md:text-4xl font-black italic drop-shadow-[0_0_30px_rgba(0,0,0,0.6)] mb-1",
                 teamColor === "thomas" ? "text-dbd-orange" : "text-dbd-blue"
               )}
-              style={{ fontFamily: "var(--font-godo)" }}
+              style={{ fontFamily: "var(--font-s-core), 'S-Core Dream', sans-serif", fontWeight: 700 }}
             >
               {winnerTeamName} 팀의
             </span>
             <span
               className="text-5xl md:text-[6.5rem] font-black italic text-neutral-100 drop-shadow-[0_0_40px_rgba(0,0,0,0.8)]"
-              style={{ fontFamily: "var(--font-godo)", whiteSpace: "nowrap" }}
+              style={{ fontFamily: "var(--font-s-core), 'S-Core Dream', sans-serif", fontWeight: 700, whiteSpace: "nowrap" }}
             >
               {acePlayerName} 우승!
             </span>
