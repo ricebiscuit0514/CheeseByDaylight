@@ -232,7 +232,17 @@ function KillerTag({ value, isThomas, disabled, onChange }: {
   )
 }
 
-function DragHandle({ disabled, onDragStart, onDragEnd }: { disabled: boolean; onDragStart?: (e: React.DragEvent) => void; onDragEnd?: (e: React.DragEvent) => void }) {
+function DragHandle({
+  disabled,
+  highlighted = false,
+  onDragStart,
+  onDragEnd,
+}: {
+  disabled: boolean
+  highlighted?: boolean
+  onDragStart?: (e: React.DragEvent) => void
+  onDragEnd?: (e: React.DragEvent) => void
+}) {
   return (
     <span
       aria-hidden
@@ -247,9 +257,21 @@ function DragHandle({ disabled, onDragStart, onDragEnd }: { disabled: boolean; o
         onDragStart?.(e)
       }}
       onDragEnd={onDragEnd}
-      className={cn("drag-handle", !disabled && "cursor-grab active:cursor-grabbing")}
+      className={cn(
+        "drag-handle relative z-10",
+        !disabled && "cursor-grab active:cursor-grabbing",
+        highlighted && "text-dbd-yellow"
+      )}
     >
-      {Array.from({ length: 6 }).map((_, i) => <i key={i} />)}
+      {Array.from({ length: 6 }).map((_, i) => (
+        <i key={i} />
+      ))}
+      {highlighted && (
+        <span
+          className="pointer-events-none absolute -inset-1 rounded border-2 border-dbd-yellow bg-dbd-yellow/20 shadow-[0_0_10px_rgba(234,179,8,0.75)] animate-pulse"
+          aria-hidden="true"
+        />
+      )}
     </span>
   )
 }
@@ -299,8 +321,8 @@ function buildPlateMotion(prevKills: number, kills: number, fourKill: boolean, i
   }
 }
 
-export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, isGoldSkull = false, animId, prevKills, dragging, readOnly = false, removeMode = false, allowHalf = true, tabIndex, killerControl, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd, onNameKeyDown }: {
-  player: Player; team: Team; active: boolean; isSelgong?: boolean; aceBadge?: "win" | "lose" | null; isGoldSkull?: boolean; animId: number; prevKills: number; dragging: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean; tabIndex?: number
+export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, isGoldSkull = false, animId, prevKills, dragging, isDragHighlighted = false, readOnly = false, removeMode = false, allowHalf = true, tabIndex, killerControl, onRemove, onScore, onZeroKill, onCancel, onNameChange, onNameCommit, onKillerChange, onDragStart, onDragEnter, onDragEnd, onNameKeyDown }: {
+  player: Player; team: Team; active: boolean; isSelgong?: boolean; aceBadge?: "win" | "lose" | null; isGoldSkull?: boolean; animId: number; prevKills: number; dragging: boolean; isDragHighlighted?: boolean; readOnly?: boolean; removeMode?: boolean; allowHalf?: boolean; tabIndex?: number
   killerControl?: React.ReactNode
   onRemove?: () => void; onScore: (newKills: number) => void; onZeroKill: () => void; onCancel: () => void; onNameChange: (name: string) => void
   onNameCommit: (name: string, previousName: string) => void; onKillerChange: (killer: string) => void; onDragStart: () => void; onDragEnter: () => void; onDragEnd: () => void
@@ -474,7 +496,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
           {isThomas ? (
             <>
               <div className="player-plate-leading flex min-w-0 flex-1 items-center gap-[inherit]">
-                <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+                <DragHandle disabled={interactionsDisabled} highlighted={isDragHighlighted} onDragStart={onDragStart} onDragEnd={onDragEnd} />
                 <div className="flex min-w-0 flex-1 items-center overflow-hidden gap-[inherit]">
                   <div className="player-name-cell flex w-[8.75rem] max-w-[8.75rem] shrink-0 items-center sm:w-[9.5rem] sm:max-w-[9.5rem]">
                     {nameInput}
@@ -496,7 +518,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
                     {nameInput}
                   </div>
                 </div>
-                <DragHandle disabled={interactionsDisabled} onDragStart={onDragStart} onDragEnd={onDragEnd} />
+                <DragHandle disabled={interactionsDisabled} highlighted={isDragHighlighted} onDragStart={onDragStart} onDragEnd={onDragEnd} />
               </div>
             </>
           )}

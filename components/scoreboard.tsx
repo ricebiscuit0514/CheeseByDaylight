@@ -33,6 +33,12 @@ import { SyncStatusCompactLabel } from "@/components/sync-status-compact-label"
 import { TeamScore } from "@/components/team-score"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { WinnerOverlay } from "@/components/winner-overlay"
+import { X } from "lucide-react"
+import {
+  isPlayerEnteredOutOfOrder,
+  getFirstOutOfOrderPlayerId,
+  DRAG_HINT_SEEN_4V4_KEY,
+} from "@/lib/scoreboard-order-hint"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
 import { useAutoDismiss, RESET_MENU_IDLE_MS } from "@/hooks/use-auto-dismiss"
 import { useDismissOnOutsideInteraction } from "@/hooks/use-dismiss-on-outside-interaction"
@@ -794,6 +800,28 @@ export function Scoreboard() {
     }
   }
 
+  const [hasSeenDragHint, setHasSeenDragHint] = useState(true)
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem(DRAG_HINT_SEEN_4V4_KEY)
+      if (!seen) setHasSeenDragHint(false)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  function dismissDragHint() {
+    if (!hasSeenDragHint) {
+      setHasSeenDragHint(true)
+      try {
+        localStorage.setItem(DRAG_HINT_SEEN_4V4_KEY, "true")
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   function closeAllGuideUI() {
     setShowGuideMenu(false)
     setShowGuide(null)
@@ -1525,6 +1553,7 @@ export function Scoreboard() {
   function handleDragEnter(team: Team, targetId: string) {
     const item = dragItem.current
     if (!item || item.team !== team) return
+    dismissDragHint()
     reorder(team, item.id, targetId)
   }
 
@@ -1740,6 +1769,30 @@ export function Scoreboard() {
       )
     }
 
+    const isOutOfOrder =
+      !hasSeenDragHint &&
+      !isViewer &&
+      !isAceMatchMode &&
+      removeMode !== team &&
+      isPlayerEnteredOutOfOrder(team === "thomas" ? thomas : ada, index)
+
+    const firstOutOfOrderThomas =
+      !hasSeenDragHint && !isViewer && !isAceMatchMode && removeMode !== "thomas"
+        ? getFirstOutOfOrderPlayerId(thomas)
+        : null
+
+    const firstOutOfOrderAda =
+      !hasSeenDragHint && !isViewer && !isAceMatchMode && removeMode !== "ada"
+        ? getFirstOutOfOrderPlayerId(ada)
+        : null
+
+    const showDragNotice =
+      !hasSeenDragHint &&
+      !isViewer &&
+      !isAceMatchMode &&
+      ((team === "thomas" && removeMode !== "thomas" && p.id === firstOutOfOrderThomas) ||
+        (team === "ada" && removeMode !== "ada" && p.id === firstOutOfOrderAda))
+
     return (
       <div key={p.id} className={cn("relative transition-all duration-300", isAcePlayer && "z-20 scale-[1.02] rounded-lg")}>
         <PlayerRow
@@ -1750,6 +1803,7 @@ export function Scoreboard() {
           isGoldSkull={isAceMatchMode}
           aceBadge={aceWinnersMap[p.id] ?? null}
           tabIndex={tabIdx}
+          isDragHighlighted={isOutOfOrder}
           onNameKeyDown={(e) => {
             if (isLastPlayerOverall && e.key === "Tab" && !e.shiftKey) {
               e.preventDefault()
@@ -1772,6 +1826,7 @@ export function Scoreboard() {
           }
           onKillerChange={killerChangeHandler}
           onDragStart={() => {
+            dismissDragHint()
             dragItem.current = { team, id: p.id }
             setDraggingId(p.id)
           }}
@@ -1781,6 +1836,44 @@ export function Scoreboard() {
             setDraggingId(null)
           }}
         />
+        {showDragNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              "absolute -top-[35px] z-40 flex items-center gap-2 rounded-md border border-dbd-yellow/90 bg-neutral-950/95 px-2.5 py-1.5 text-sm text-dbd-yellow shadow-lg shadow-black/80 backdrop-blur-md whitespace-nowrap select-none",
+              isThomas ? "left-0" : "right-0"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute -bottom-1.5 size-3 rotate-45 border-b border-r border-dbd-yellow/90 bg-neutral-950",
+                isThomas ? "right-[41.5px]" : "left-[41.5px]"
+              )}
+              aria-hidden="true"
+            />
+            <span
+              className="leading-none"
+              style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
+            >
+              드래그해서 위 아래로 움직일 수 있습니다.
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                dismissDragHint()
+              }}
+              className="ml-0.5 -mr-0.5 flex size-5 items-center justify-center rounded hover:bg-dbd-yellow/20 text-dbd-yellow/80 hover:text-dbd-yellow transition-colors cursor-pointer"
+              aria-label="안내 닫기"
+              title="닫기"
+            >
+              <X className="size-3.5" />
+            </button>
+          </motion.div>
+        )}
         {selgong && removeMode !== team && (
           <motion.span
             initial={{ scale: 0.7, opacity: 0 }}

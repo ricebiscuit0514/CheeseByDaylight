@@ -60,7 +60,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-aldrich: '', sans-serif;
+  --font-aldrich: 'Malgun Gothic', '맑은 고딕', 'Segoe UI', sans-serif;
   --font-godo: 'Godo', sans-serif;
   --font-s-core: 'S-Core Dream', sans-serif;
   --font-display: 'Aldrich', sans-serif;
