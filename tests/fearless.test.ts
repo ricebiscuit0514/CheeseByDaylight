@@ -355,6 +355,212 @@ describe("fearless pick and ban updates", () => {
     })
   })
 
+  it("relocates an active identity holder to an empty target slot", () => {
+    const roster = [
+      player("slot-a", "테스트A", [pick("nurse", "테스트A")]),
+      player("slot-b", "", []),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(roster, "slot-b", "테스트A", "")
+
+    expect(migrated.find((entry) => entry.id === "slot-a")).toMatchObject({
+      name: "",
+      killerPicks: [],
+    })
+    expect(migrated.find((entry) => entry.id === "slot-b")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+  })
+
+  it("relocates a name-only holder to an empty target slot", () => {
+    const thomas = [player("slot-a", "테스트A", [])]
+    const ada = [player("slot-b", "", [])]
+
+    const next = applyFourVFourNameCommit(thomas, ada, "slot-b", "테스트A", "")
+
+    expect(next.thomas[0]).toMatchObject({
+      name: "",
+      killerPicks: [],
+    })
+    expect(next.ada[0]).toMatchObject({
+      name: "테스트A",
+      killerPicks: [],
+    })
+  })
+
+  it("relocates when onChange already applied the committed name before migrate", () => {
+    const roster = [
+      player("slot-a", "테스트A", [pick("nurse", "테스트A")]),
+      player("slot-b", "테스트A", []),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(roster, "slot-b", "테스트A", "")
+
+    expect(migrated.find((entry) => entry.id === "slot-a")).toMatchObject({
+      name: "",
+      killerPicks: [],
+    })
+    expect(migrated.find((entry) => entry.id === "slot-b")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+  })
+
+  it("relocates after clearing a different name in the same focus session", () => {
+    const roster = [
+      player("slot-a", "테스트A", [pick("nurse", "테스트A")]),
+      player("slot-b", "테스트B", []),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(roster, "slot-b", "테스트A", "")
+
+    expect(migrated.find((entry) => entry.id === "slot-a")).toMatchObject({
+      name: "",
+      killerPicks: [],
+    })
+    expect(migrated.find((entry) => entry.id === "slot-b")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+  })
+
+  it("swaps names when both slots only have different names and no picks", () => {
+    const thomas = [
+      player("slot-a", "테스트A", []),
+      player("slot-b", "테스트B", []),
+    ]
+
+    const next = applyFourVFourNameCommit(
+      thomas,
+      [],
+      "slot-b",
+      "테스트A",
+      "테스트B",
+    )
+
+    expect(next.thomas[0]).toMatchObject({
+      name: "테스트B",
+      killerPicks: [],
+    })
+    expect(next.thomas[1]).toMatchObject({
+      name: "테스트A",
+      killerPicks: [],
+    })
+  })
+
+  it("swaps picks and names across thomas and ada teams", () => {
+    const thomas = [player("thomas-a", "테스트A", [pick("nurse", "테스트A")])]
+    const ada = [player("ada-a", "테스트B", [pick("ghost-face", "테스트B")])]
+
+    const next = applyFourVFourNameCommit(
+      thomas,
+      ada,
+      "thomas-a",
+      "테스트B",
+      "테스트A",
+    )
+
+    expect(next.thomas[0]).toMatchObject({
+      name: "테스트B",
+      killerPicks: [pick("ghost-face", "테스트B")],
+    })
+    expect(next.ada[0]).toMatchObject({
+      name: "테스트A",
+      killerPicks: [pick("nurse", "테스트A")],
+    })
+  })
+
+  it("swaps when reclaiming an identity name on the opposing team slot", () => {
+    const thomas = [player("thomas-a", "테스트A", [pick("nurse", "테스트A")])]
+    const ada = [player("ada-a", "테스트B", [pick("ghost-face", "테스트B")])]
+
+    const next = applyFourVFourNameCommit(
+      thomas,
+      ada,
+      "ada-a",
+      "테스트A",
+      "테스트B",
+    )
+
+    expect(next.thomas[0]).toMatchObject({
+      name: "테스트B",
+      killerPicks: [pick("ghost-face", "테스트B")],
+    })
+    expect(next.ada[0]).toMatchObject({
+      name: "테스트A",
+      killerPicks: [pick("nurse", "테스트A")],
+    })
+  })
+
+  it("swaps numeric names and picks within a team", () => {
+    const thomas = [
+      player("slot-a", "1", [pick("nurse", "1")]),
+      player("slot-b", "2", []),
+    ]
+
+    const next = applyFourVFourNameCommit(thomas, [], "slot-b", "1", "2")
+
+    expect(next.thomas[0]).toMatchObject({
+      name: "2",
+      killerPicks: [],
+    })
+    expect(next.thomas[1]).toMatchObject({
+      name: "1",
+      killerPicks: [pick("nurse", "1")],
+    })
+  })
+
+  it("swaps numeric names and picks across teams", () => {
+    const thomas = [player("thomas-a", "1", [pick("nurse", "1")])]
+    const ada = [player("ada-a", "2", [pick("ghost-face", "2")])]
+
+    const next = applyFourVFourNameCommit(
+      thomas,
+      ada,
+      "thomas-a",
+      "2",
+      "1",
+    )
+
+    expect(next.thomas[0]).toMatchObject({
+      name: "2",
+      killerPicks: [pick("ghost-face", "2")],
+    })
+    expect(next.ada[0]).toMatchObject({
+      name: "1",
+      killerPicks: [pick("nurse", "1")],
+    })
+  })
+
+  it("normalizes numeric playerName tags on killer picks", () => {
+    expect(
+      normalizeKillerPicks(
+        [{ killerId: "nurse", playerName: 1 }],
+        "fallback",
+      ),
+    ).toEqual([pick("nurse", "1")])
+  })
+
+  it("swaps with an active duplicate when the target only has a different name", () => {
+    const roster = [
+      player("slot-a", "테스트A", [pick("nurse", "테스트A")]),
+      player("slot-b", "테스트B", []),
+    ]
+
+    const migrated = migrateKillerPicksOnNameCommit(
+      roster,
+      "slot-b",
+      "테스트A",
+      "테스트B",
+    )
+
+    expect(migrated.find((entry) => entry.id === "slot-a")).toMatchObject({
+      name: "테스트B",
+      killerPicks: [],
+    })
+    expect(migrated.find((entry) => entry.id === "slot-b")?.killerPicks).toEqual([
+      pick("nurse", "테스트A"),
+    ])
+  })
+
   it("swaps with an active duplicate name when reclaiming a cleared slot", () => {
     let roster = [
       player("slot-1", "테스트A", [pick("nurse", "테스트A")]),
@@ -541,6 +747,68 @@ describe("fearless pick and ban updates", () => {
     })
     expect(roster.find((entry) => entry.id === "slot-c")).toMatchObject({
       name: "테스트B",
+      killerPicks: [pick("ghost-face", "테스트B")],
+    })
+  })
+
+  it("swaps picks across teams after reset with an intermediate rename", () => {
+    const thomas = [
+      clearPlayerRosterField({
+        id: "thomas-a",
+        name: "테스트A",
+        kills: 0,
+        played: false,
+        killerPicks: [pick("nurse", "테스트A")],
+      }),
+    ]
+    const ada = [
+      clearPlayerRosterField({
+        id: "ada-a",
+        name: "테스트B",
+        kills: 0,
+        played: false,
+        killerPicks: [pick("ghost-face", "테스트B")],
+      }),
+    ]
+
+    const afterRename = applyFourVFourNameCommit(
+      thomas,
+      ada,
+      "thomas-a",
+      "테스트C",
+      "",
+    )
+    const afterReclaim = applyFourVFourNameCommit(
+      afterRename.thomas,
+      afterRename.ada,
+      "ada-a",
+      "테스트A",
+      "",
+    )
+
+    expect(afterReclaim.thomas[0]).toMatchObject({
+      name: "테스트C",
+      killerPicks: [pick("ghost-face", "테스트B")],
+    })
+    expect(afterReclaim.ada[0]).toMatchObject({
+      name: "테스트A",
+      killerPicks: [pick("nurse", "테스트A")],
+    })
+
+    const afterSwapBack = applyFourVFourNameCommit(
+      afterReclaim.thomas,
+      afterReclaim.ada,
+      "thomas-a",
+      "테스트A",
+      "테스트C",
+    )
+
+    expect(afterSwapBack.thomas[0]).toMatchObject({
+      name: "테스트A",
+      killerPicks: [pick("nurse", "테스트A")],
+    })
+    expect(afterSwapBack.ada[0]).toMatchObject({
+      name: "테스트C",
       killerPicks: [pick("ghost-face", "테스트B")],
     })
   })

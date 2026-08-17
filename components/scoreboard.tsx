@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
+import { flushSync } from "react-dom"
 import { AceMatchModal } from "@/components/ace-match-modal"
 import { AuctionOrderModal } from "@/components/auction-order-modal"
 import { CoinTossWidget } from "@/components/coin-toss-widget"
@@ -1664,20 +1665,39 @@ export function Scoreboard() {
     )
     if (nextPlayer === player) return
 
-    const setTeam = team === "thomas" ? setThomas : setAda
-    setTeam((current) =>
-      current.map((candidate) =>
-        candidate.id === playerId
-          ? setPlayerKillerPick(
-              candidate,
-              killerId,
-              slotIndex,
-              MAX_FOUR_V_FOUR_FEARLESS_PICKS,
-              candidate.name,
-            )
-          : candidate,
-      ),
-    )
+    if (team === "thomas") {
+      setThomas((current) => {
+        const next = current.map((candidate) =>
+          candidate.id === playerId
+            ? setPlayerKillerPick(
+                candidate,
+                killerId,
+                slotIndex,
+                MAX_FOUR_V_FOUR_FEARLESS_PICKS,
+                candidate.name,
+              )
+            : candidate,
+        )
+        thomasRef.current = next
+        return next
+      })
+    } else {
+      setAda((current) => {
+        const next = current.map((candidate) =>
+          candidate.id === playerId
+            ? setPlayerKillerPick(
+                candidate,
+                killerId,
+                slotIndex,
+                MAX_FOUR_V_FOUR_FEARLESS_PICKS,
+                candidate.name,
+              )
+            : candidate,
+        )
+        adaRef.current = next
+        return next
+      })
+    }
     setPickerContext({
       ...activePickerContext,
       slotIndex: slotIndex ?? (player.killerPicks?.length ?? 0),
@@ -1950,9 +1970,24 @@ export function Scoreboard() {
 
   function updatePlayerName(team: Team, playerId: string, name: string) {
     if (isViewer) return
-    const setTeam = team === "thomas" ? setThomas : setAda
     const roster = team === "thomas" ? thomas : ada
-    setTeam((prev) => prev.map((player) => player.id === playerId ? { ...player, name } : player))
+    if (team === "thomas") {
+      setThomas((prev) => {
+        const next = prev.map((player) =>
+          player.id === playerId ? { ...player, name } : player,
+        )
+        thomasRef.current = next
+        return next
+      })
+    } else {
+      setAda((prev) => {
+        const next = prev.map((player) =>
+          player.id === playerId ? { ...player, name } : player,
+        )
+        adaRef.current = next
+        return next
+      })
+    }
 
     const cleanName = name.trim()
     if (!teamNameLinked.current[team] && roster[0]?.id === playerId && cleanName) {
@@ -1973,17 +2008,31 @@ export function Scoreboard() {
     const roster = team === "thomas" ? thomas : ada
 
     if (fearlessEnabled) {
+      const snapshotThomas =
+        team === "thomas"
+          ? thomasRef.current.map((player) =>
+              player.id === playerId ? { ...player, name } : player,
+            )
+          : thomasRef.current
+      const snapshotAda =
+        team === "ada"
+          ? adaRef.current.map((player) =>
+              player.id === playerId ? { ...player, name } : player,
+            )
+          : adaRef.current
       const next = applyFourVFourNameCommit(
-        thomasRef.current,
-        adaRef.current,
+        snapshotThomas,
+        snapshotAda,
         playerId,
         name,
         previousName,
       )
       thomasRef.current = next.thomas
       adaRef.current = next.ada
-      setThomas(next.thomas)
-      setAda(next.ada)
+      flushSync(() => {
+        setThomas(next.thomas)
+        setAda(next.ada)
+      })
     } else {
       const setTeam = team === "thomas" ? setThomas : setAda
       setTeam((prev) =>

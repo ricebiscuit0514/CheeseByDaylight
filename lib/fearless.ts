@@ -84,12 +84,23 @@ export type FearlessKillerSearchItem = Pick<
   "id" | "englishName" | "koreanName" | "aliases"
 >
 
+function readMigrationPickPlayerName(
+  value: unknown,
+  fallbackName: string,
+): string {
+  if (typeof value === "string") return value.slice(0, 40)
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value).slice(0, 40)
+  }
+  return fallbackName
+}
+
 function isKillerPickRecord(value: unknown): value is KillerPick {
+  if (typeof value !== "object" || value === null) return false
+  const pick = value as { killerId?: unknown; playerName?: unknown }
   return (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as KillerPick).killerId === "string" &&
-    typeof (value as KillerPick).playerName === "string"
+    typeof pick.killerId === "string" &&
+    (typeof pick.playerName === "string" || typeof pick.playerName === "number")
   )
 }
 
@@ -117,7 +128,7 @@ export function normalizeKillerPicks(
       seen.add(entry.killerId)
       normalized.push({
         killerId: entry.killerId,
-        playerName: entry.playerName.slice(0, 40),
+        playerName: readMigrationPickPlayerName(entry.playerName, fallbackName),
       })
     }
   }
@@ -293,7 +304,7 @@ export function toggleKillerBan(
 }
 
 function migrationNameKey(name: string): string {
-  return name.trim().toLowerCase().normalize("NFC")
+  return String(name).trim().toLowerCase().normalize("NFC")
 }
 
 function migrationNamesMatch(a: string, b: string): boolean {
@@ -332,18 +343,83 @@ function isMisalignedPickOwner(
   return slotHoldsIdentity(player, committedName)
 }
 
+function wasEmptyBeforeCommit(
+  target: FearlessPlayer,
+  previousTargetName?: string,
+): boolean {
+  if (previousTargetName !== undefined) {
+    return previousTargetName.trim().length === 0
+  }
+  return target.name.trim().length === 0
+}
+
+function hadDifferentNameBeforeCommit(
+  target: FearlessPlayer,
+  committedName: string,
+  previousTargetName?: string,
+): boolean {
+  const nameBeforeCommit = (
+    previousTargetName !== undefined ? previousTargetName : target.name
+  ).trim()
+  if (!nameBeforeCommit) return false
+  return !migrationNamesMatch(nameBeforeCommit, committedName)
+}
+
 function shouldSwapWithActiveDuplicate(
   target: FearlessPlayer,
   committedName: string,
+  previousTargetName?: string,
 ): boolean {
   const picks = target.killerPicks ?? []
-  if (picks.length === 0) return false
-  return picks.some(
-    (pick) => !migrationNamesMatch(pick.playerName, committedName),
+  if (picks.length > 0) {
+    return picks.some(
+      (pick) => !migrationNamesMatch(pick.playerName, committedName),
+    )
+  }
+  return hadDifferentNameBeforeCommit(
+    target,
+    committedName,
+    previousTargetName,
   )
 }
 
-type IdentityPickHolderKind = "orphan" | "misaligned" | "activeDuplicate"
+function shouldClaimFromActiveIdentityHolder(
+  target: FearlessPlayer,
+  committedName: string,
+  previousTargetName?: string,
+): boolean {
+  if ((target.killerPicks ?? []).length > 0) return false
+  return (
+    wasEmptyBeforeCommit(target, previousTargetName) ||
+    hadDifferentNameBeforeCommit(target, committedName, previousTargetName)
+  )
+}
+
+function isActiveNameHolder(
+  player: FearlessPlayer,
+  committedName: string,
+): boolean {
+  if (!player.name.trim()) return false
+  return migrationNamesMatch(player.name, committedName)
+}
+
+function shouldRelocateFromActiveHolder(
+  target: FearlessPlayer,
+  committedName: string,
+  previousTargetName?: string,
+): boolean {
+  return shouldClaimFromActiveIdentityHolder(
+    target,
+    committedName,
+    previousTargetName,
+  )
+}
+
+type IdentityPickHolderKind =
+  | "orphan"
+  | "misaligned"
+  | "activeRelocate"
+  | "activeDuplicate"
 
 type IdentityPickHolder<T extends FearlessPlayer> = {
   kind: IdentityPickHolderKind
@@ -355,6 +431,7 @@ function findIdentityPickHolder<T extends FearlessPlayer>(
   targetPlayerId: string,
   identity: string,
   target: FearlessPlayer,
+  previousTargetName?: string,
 ): IdentityPickHolder<T> | null {
   const orphan = roster.find(
     (player) =>
@@ -368,11 +445,25 @@ function findIdentityPickHolder<T extends FearlessPlayer>(
   )
   if (misaligned) return { kind: "misaligned", player: misaligned }
 
+  const activeRelocate = roster.find(
+    (player) =>
+      player.id !== targetPlayerId && isActiveNameHolder(player, identity),
+  )
+  if (
+    activeRelocate &&
+    shouldRelocateFromActiveHolder(target, identity, previousTargetName)
+  ) {
+    return { kind: "activeRelocate", player: activeRelocate }
+  }
+
   const activeDuplicate = roster.find(
     (player) =>
       player.id !== targetPlayerId && migrationNamesMatch(player.name, identity),
   )
-  if (activeDuplicate && shouldSwapWithActiveDuplicate(target, identity)) {
+  if (
+    activeDuplicate &&
+    shouldSwapWithActiveDuplicate(target, identity, previousTargetName)
+  ) {
     return { kind: "activeDuplicate", player: activeDuplicate }
   }
 
@@ -465,11 +556,18 @@ export function migrateKillerPicksOnNameCommit<T extends FearlessPlayer>(
     targetPlayerId,
     trimmed,
     target,
+    previousTargetName,
   )
   if (!holder) return [...roster]
 
   const partnerName =
-    holder.kind === "misaligned" ? holder.player.name : displacedName
+    holder.kind === "misaligned"
+      ? holder.player.name
+      : holder.kind === "activeRelocate"
+        ? wasEmptyBeforeCommit(target, previousTargetName)
+          ? ""
+          : displacedName
+        : displacedName
 
   return swapPlayerKillerRecords(
     roster,

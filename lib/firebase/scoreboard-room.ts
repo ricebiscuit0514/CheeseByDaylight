@@ -305,8 +305,8 @@ function isKillerPickWireValue(value: unknown): boolean {
   return (
     typeof pick.killerId === "string" &&
     isKillerId(pick.killerId) &&
-    typeof pick.playerName === "string" &&
-    pick.playerName.length <= 40
+    (typeof pick.playerName === "string" || typeof pick.playerName === "number") &&
+    String(pick.playerName).length <= 40
   )
 }
 
@@ -621,8 +621,8 @@ export function isScoreboardSyncState(
 
 function normalizeBasePlayer(player: Player) {
   return {
-    id: player.id.slice(0, 80),
-    name: player.name.slice(0, 40),
+    id: String(player.id).slice(0, 80),
+    name: String(player.name ?? "").slice(0, 40),
     kills: VALID_KILLS.has(player.kills) ? player.kills : 0,
     played: player.played,
   }
