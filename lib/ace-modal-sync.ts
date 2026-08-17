@@ -400,7 +400,7 @@ export function buildSlotSpinPlan(
   }
 
   // Same spin speed both sides; randomly decide who stops first when both roll.
-  const sharedLoops = 5 + getSecureRandomInt(2)
+  const sharedLoops = 9 + getSecureRandomInt(2)
   const lateExtraLoops = 2 + getSecureRandomInt(2)
   if (!lockedTeams.thomas && !lockedTeams.ada) {
     const thomasStopsFirst = getSecureRandomInt(2) === 0
@@ -431,7 +431,10 @@ export function buildSlotSpinPlan(
   }
 }
 
+export const SLOT_REEL_PAUSE_MS = 200
 export const SLOT_REEL_OVERSHOOT_MS = 220
+export const SLOT_REEL_SETTLE_TOTAL_MS =
+  SLOT_REEL_PAUSE_MS + SLOT_REEL_OVERSHOOT_MS
 /** Extra pause after both reels have landed, before swapping back to roster. */
 export const SLOT_REEL_HOLD_MS = 1000
 export const SLOT_SPIN_BASE_DELAY_MS = 55
@@ -449,13 +452,13 @@ export function estimateSlotSpinDurationMs(
   baseDelay = 38,
 ): number {
   if (maxSteps <= 0) return 0
-  if (maxSteps === 1) return SLOT_REEL_OVERSHOOT_MS
+  if (maxSteps === 1) return SLOT_REEL_SETTLE_TOTAL_MS
   let total = 0
   // Delays are scheduled after steps 1..maxSteps-1 (last step does not schedule).
   for (let step = 1; step < maxSteps; step += 1) {
     total += getSlotStepDelayMs(maxSteps - step, baseDelay)
   }
-  return total + SLOT_REEL_OVERSHOOT_MS
+  return total + SLOT_REEL_SETTLE_TOTAL_MS
 }
 
 /** Time until both reels have finished their visual settle (no hold). */

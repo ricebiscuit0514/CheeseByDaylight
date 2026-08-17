@@ -220,7 +220,7 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
         <motion.span
           key={`${whole}-${bump}`}
           className="score-whole"
-          initial={reducedMotion ? false : { y: -28, opacity: 0, filter: "blur(10px)", scale: 0.85 }}
+          initial={reducedMotion ? false : { y: -28, x: leftWholeNudgeX, opacity: 0, filter: "blur(10px)", scale: 0.85 }}
           animate={{ y: 0, x: leftWholeNudgeX, opacity: 1, filter: "blur(0px)", scale: 1 }}
           transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         >
@@ -233,19 +233,19 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
             whole
           )}
         </motion.span>
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {hasHalf && (
             <motion.span
-              key={`half-${value}`}
+              key={`half-${value}-${bump}`}
               className="score-half"
               style={{
                 marginLeft: halfMarginLeft,
                 marginBottom: "-0.03em",
               }}
-              initial={reducedMotion ? false : { y: -20, opacity: 0, filter: "blur(8px)", scale: 0.8 }}
+              initial={reducedMotion ? false : { y: -28, opacity: 0, filter: "blur(10px)", scale: 0.85 }}
               animate={{ y: 0, opacity: 1, filter: "blur(0px)", scale: 1 }}
-              exit={{ y: 12, opacity: 0, filter: "blur(6px)", scale: 0.85, transition: { duration: 0.2 } }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ opacity: 0, scale: 0.85, transition: { duration: 0.15 } }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
               .5
             </motion.span>

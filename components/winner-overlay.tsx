@@ -233,7 +233,9 @@ export function WinnerOverlay({
                   <span className={teamColor === "thomas" ? "text-dbd-orange" : "text-dbd-blue"}>
                     {winnerName}
                   </span>
-                  <span className="text-neutral-100">팀 우승!</span>
+                  <span className="text-[0.72em] ml-2 md:ml-3 text-neutral-100 font-bold inline-block align-baseline">
+                    팀 우승!
+                  </span>
                 </span>
               </>
             )}

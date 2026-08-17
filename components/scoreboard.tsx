@@ -868,6 +868,10 @@ export function Scoreboard() {
     if (saved) {
       if (Array.isArray(saved.thomas)) setThomas(saved.thomas)
       if (Array.isArray(saved.ada)) setAda(saved.ada)
+      teamNameLinked.current = {
+        thomas: Boolean(saved.thomas?.[0]?.name?.trim()),
+        ada: Boolean(saved.ada?.[0]?.name?.trim()),
+      }
       setKillerBans(saved.killerBans)
       setFearlessEnabled(true)
       if (saved.thomasName) setThomasName(saved.thomasName)
@@ -2135,6 +2139,7 @@ export function Scoreboard() {
     if (isViewer) return
     setThomas((prev) => prev.map((player) => clearPlayerRosterField(player)))
     setAda((prev) => prev.map((player) => clearPlayerRosterField(player)))
+    teamNameLinked.current = { thomas: false, ada: false }
     setAnim({})
     setPrevKillsMap({})
     setFirstAttackerId(null)
@@ -2192,6 +2197,7 @@ export function Scoreboard() {
     setPickerContext(null)
     setThomasName("A")
     setAdaName("B")
+    teamNameLinked.current = { thomas: false, ada: false }
     setAnim({})
     setPrevKillsMap({})
     setFirstAttackerId(null)

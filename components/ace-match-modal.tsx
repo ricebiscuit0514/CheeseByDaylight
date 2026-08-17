@@ -21,6 +21,8 @@ import {
   resolveRandomSlotAceIds,
   runSlotSpinAnimation,
   SLOT_REEL_OVERSHOOT_MS,
+  SLOT_REEL_PAUSE_MS,
+  SLOT_REEL_SETTLE_TOTAL_MS,
   SLOT_SPIN_BASE_DELAY_MS,
   type AceModalSyncState,
   type AceSlotSpinPlan,
@@ -998,6 +1000,20 @@ function AceRerollButton({
   )
 }
 
+function getSlotSettleRatio(
+  spinToken: number,
+  team: "thomas" | "ada",
+  targetIdx: number,
+): number {
+  // Deterministic pseudo-random ratio in [0.15, 0.85] based on spinToken, team, and target
+  const seed =
+    ((spinToken + 1) * 2654435761 +
+      (team === "thomas" ? 1013904223 : 2147483647) +
+      targetIdx * 374761393) >>> 0
+  const normalized = (seed % 10000) / 10000
+  return 0.15 + normalized * 0.7
+}
+
 function AceSlotReel({
   team,
   players,
@@ -1023,17 +1039,23 @@ function AceSlotReel({
   const safeSteps = Math.max(0, maxSteps)
   const rows = Math.max(1, visibleRows)
   const centerOffset = (rows - 1) / 2
+  const pauseDuration = SLOT_REEL_PAUSE_MS / 1000
+  const snapDuration = SLOT_REEL_OVERSHOOT_MS / 1000
+  const settleDuration = pauseDuration + snapDuration
   const travelMs = Math.max(
     0,
-    estimateSlotSpinDurationMs(safeSteps, baseDelay) - SLOT_REEL_OVERSHOOT_MS,
+    estimateSlotSpinDurationMs(safeSteps, baseDelay) - SLOT_REEL_SETTLE_TOTAL_MS,
   )
   // Keep in sync with runSlotSpinAnimation — no artificial floor, or the
   // slower reel can still be moving when isRolling flips false.
   const travelDuration = Math.max(0.05, travelMs / 1000)
-  const snapDuration = SLOT_REEL_OVERSHOOT_MS / 1000
-  const totalDuration = travelDuration + snapDuration
-  const settlePx = Math.round(cellPx * 0.34)
+  const totalDuration = travelDuration + settleDuration
   const targetIndex = safeStart + safeSteps
+  const settleRatio = useMemo(
+    () => getSlotSettleRatio(spinToken, team, targetIndex),
+    [spinToken, team, targetIndex],
+  )
+  const settlePx = cellPx * settleRatio
   const leadIn = Math.max(players.length * 4, safeSteps)
   const startIndex = targetIndex + leadIn
   const stripLength = startIndex + rows + 4
@@ -1041,11 +1063,14 @@ function AceSlotReel({
 
   useEffect(() => {
     setLanded(false)
-    // Fire shine as the settle/clack begins, not after it fully finishes.
-    const shineAtMs = Math.max(0, travelDuration * 1000 - 30)
+    // Fire shine as the final snap begins (after pause), not during deceleration.
+    const shineAtMs = Math.max(
+      0,
+      (travelDuration + pauseDuration) * 1000 - 30,
+    )
     const timer = window.setTimeout(() => setLanded(true), shineAtMs)
     return () => window.clearTimeout(timer)
-  }, [spinToken, travelDuration])
+  }, [spinToken, travelDuration, pauseDuration])
 
   const strip = useMemo(() => {
     if (players.length === 0) return []
@@ -1066,6 +1091,9 @@ function AceSlotReel({
   const undershootY = endY - settlePx
   const peakY = settleStyle === "overshoot" ? overshootY : undershootY
 
+  const t1 = travelDuration / totalDuration
+  const t2 = (travelDuration + pauseDuration) / totalDuration
+
   return (
     <div
       className={cn(
@@ -1081,21 +1109,27 @@ function AceSlotReel({
         className="ace-modal-reel-strip"
         initial={{ y: startY }}
         animate={{
-          y: [startY, peakY, endY],
+          y: [startY, peakY, peakY, endY],
         }}
         transition={{
           duration: totalDuration,
-          times: [0, travelDuration / totalDuration, 1],
+          times: [0, t1, t2, 1],
           ease:
             settleStyle === "overshoot"
               ? [
-                  // Cruise past the winner, then snap back.
+                  // Decelerate smoothly to the halfway boundary.
                   [0.05, 0.85, 0.12, 1],
+                  // Dramatic 0.2s pause / stillness.
+                  "linear",
+                  // Snap back to the winner with mechanical clack.
                   [0.22, 1.55, 0.36, 1],
                 ]
               : [
-                  // Stop short, then 철컥! the remaining distance with overshoot.
+                  // Decelerate smoothly to the halfway boundary.
                   [0.05, 0.82, 0.12, 1],
+                  // Dramatic 0.2s pause / stillness.
+                  "linear",
+                  // Snap forward to the winner with mechanical clack.
                   [0.2, 1.7, 0.32, 1],
                 ],
         }}

@@ -82,10 +82,22 @@ function isPermissionDenied(error: unknown) {
 }
 
 function isTransientFirebaseError(error: unknown) {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String(error.code).toLowerCase()
+      : ""
   const message = toErrorMessage(error).toLowerCase()
   return (
+    code.includes("client_offline") ||
+    code.includes("database_closed") ||
     message.includes("database is closing") ||
-    message.includes("connection is closing")
+    message.includes("connection is closing") ||
+    message.includes("closing") ||
+    message.includes("closed") ||
+    message.includes("hidden") ||
+    message.includes("client is offline") ||
+    message.includes("offline") ||
+    message.includes("network")
   )
 }
 
@@ -94,20 +106,24 @@ async function prepareSyncDatabase(
 ): Promise<Database> {
   const database =
     databaseRef.current ?? (await getAnonymousUser()).database
-  goOnline(database)
+  try {
+    goOnline(database)
+  } catch {
+    // ignore
+  }
   return database
 }
 
 async function withTransientRetry<T>(operation: () => Promise<T>): Promise<T> {
   let lastError: unknown
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       return await operation()
     } catch (error) {
       lastError = error
-      if (!isTransientFirebaseError(error) || attempt === 3) break
+      if (!isTransientFirebaseError(error) || attempt === 4) break
       await new Promise((resolve) =>
-        window.setTimeout(resolve, 120 * (attempt + 1)),
+        window.setTimeout(resolve, 150 * (attempt + 1)),
       )
     }
   }
@@ -706,10 +722,30 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       }
     }
 
+    const onVisibilityOrFocus = () => {
+      if (
+        document.visibilityState === "visible" &&
+        databaseRef.current &&
+        !wasSuperseded &&
+        !disposed
+      ) {
+        try {
+          goOnline(databaseRef.current)
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityOrFocus)
+    window.addEventListener("focus", onVisibilityOrFocus)
+
     void connect()
 
     return () => {
       disposed = true
+      document.removeEventListener("visibilitychange", onVisibilityOrFocus)
+      window.removeEventListener("focus", onVisibilityOrFocus)
       clearViewerPendingExpire?.()
       clearViewerPendingHostDisconnect?.()
       unsubscribeRoom?.()
@@ -807,6 +843,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
         })
         setRoomExpiresAt(expiresAt)
       } catch (error) {
+        if (isTransientFirebaseError(error)) return
         setTerminalStatus("error")
         setErrorMessage(toErrorMessage(error))
       }
@@ -852,6 +889,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
         })
         setRoomExpiresAt(expiresAt)
       } catch (error) {
+        if (isTransientFirebaseError(error)) return
         setTerminalStatus("error")
         setErrorMessage(toErrorMessage(error))
       }
@@ -915,6 +953,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
         })
         setRoomExpiresAt(expiresAt)
       } catch (error) {
+        if (isTransientFirebaseError(error)) return
         setTerminalStatus("error")
         setErrorMessage(toErrorMessage(error))
       }

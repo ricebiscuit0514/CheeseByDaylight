@@ -222,7 +222,7 @@ export function ScoreboardSyncPanel({
             "fixed bottom-36 left-4 right-4 z-50 rounded-md border bg-black/95 px-3.5 py-2.5 text-center text-sm backdrop-blur-md hover:brightness-125 sm:absolute sm:bottom-auto sm:left-auto sm:right-full sm:top-1/2 sm:mr-3 sm:w-max sm:-translate-y-1/2 sm:whitespace-nowrap sm:px-3.5 sm:py-2",
             CHZZK_GREEN_GUIDE,
           )}
-          style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
+          style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
         >
           진행자의 점수판과 연동하여 같은 화면을 보며 플레이하세요!
         </button>
@@ -266,20 +266,32 @@ export function ScoreboardSyncPanel({
               </p>
               <StatusLine status={status} />
             </div>
-            <p className="mt-1 text-xs leading-relaxed text-neutral-300">
+            <p
+              className="mt-1 text-xs leading-relaxed text-neutral-300"
+              style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
+            >
               진행자를 맡으실 경우, 시작하기 버튼을 누른 뒤, 주소를 복사하세요.
             </p>
-            <p className="mt-1.5 text-xs leading-relaxed text-amber-300/90">
-              이 주소는 함께 경기하는 스트리머에게만 공유해 주세요.
+            <p
+              className="mt-1.5 text-xs leading-relaxed text-amber-300/90"
+              style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
+            >
+              주소는 함께 경기하는 스트리머에게만 공유해 주세요.
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-neutral-400">
+            <p
+              className="mt-1 text-xs leading-relaxed text-neutral-400"
+              style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
+            >
               상대 스트리머가 주소로 접속하면 같은 점수판을 볼 수 있으며, 점수
               조작은 제한됩니다.
             </p>
           </div>
 
           {errorMessage && (
-            <p className="rounded border border-red-900/80 bg-red-950/30 px-3 py-2 text-xs leading-relaxed text-red-300">
+            <p
+              className="rounded border border-red-900/80 bg-red-950/30 px-3 py-2 text-xs leading-relaxed text-red-300"
+              style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
+            >
               {errorMessage}
             </p>
           )}
@@ -381,7 +393,10 @@ export function ScoreboardSyncPanel({
 function StatusLine({ status }: { status: ScoreboardRoomStatus }) {
   const copy = STATUS_COPY[status]
   return (
-    <div className="flex shrink-0 items-center gap-1.5 text-[11px]">
+    <div
+      className="flex shrink-0 items-center gap-1.5 text-[11px]"
+      style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
+    >
       <span className="text-neutral-500">연결 상태:</span>
       <span className={cn("size-2 rounded-full", copy.dot)} aria-hidden />
       <span className={copy.text}>{copy.label}</span>
@@ -404,7 +419,12 @@ function ConfirmRow({
 }) {
   return (
     <div className="rounded border border-neutral-700 bg-neutral-950/90 p-2">
-      <p className="text-[11px] text-neutral-300">{message}</p>
+      <p
+        className="text-[11px] text-neutral-300"
+        style={{ fontFamily: "var(--font-s-core)", fontWeight: 500 }}
+      >
+        {message}
+      </p>
       <div className="mt-2 flex justify-end gap-2">
         <button
           type="button"
