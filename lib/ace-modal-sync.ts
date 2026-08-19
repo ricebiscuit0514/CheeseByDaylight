@@ -400,7 +400,7 @@ export function buildSlotSpinPlan(
   }
 
   // Same spin speed both sides; randomly decide who stops first when both roll.
-  const sharedLoops = 9 + getSecureRandomInt(2)
+  const sharedLoops = 13 + getSecureRandomInt(2)
   const lateExtraLoops = 2 + getSecureRandomInt(2)
   if (!lockedTeams.thomas && !lockedTeams.ada) {
     const thomasStopsFirst = getSecureRandomInt(2) === 0
