@@ -26,7 +26,7 @@ import { HoldButton } from "@/components/hold-button"
 import { KillerPicker, type KillerPickerContext } from "@/components/killer-picker"
 import { KillerPickSlots } from "@/components/killer-pick-slots"
 import { MAX_KILLS, PlayerRow, type Player } from "@/components/player-row"
-import { AppVersionCorner } from "@/components/app-version"
+import { AppVersion } from "@/components/app-version"
 import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
 import { ZoomCompensated } from "@/components/zoom-compensated"
 import { UtilityUiToggle } from "@/components/utility-ui-toggle"
@@ -2313,8 +2313,6 @@ export function Scoreboard() {
         if (removeMode) setRemoveMode(null)
       }}
     >
-      {!utilityUiHidden && <AppVersionCorner />}
-
       <AuctionOrderModal
         open={showAuctionModal}
         thomasPlayerName={auctionDraftThomas}
@@ -3492,6 +3490,14 @@ export function Scoreboard() {
                 </div>
               </div>
             )}
+            <div className="pointer-events-none absolute top-full right-0 flex justify-end pt-1 select-none">
+              <AppVersion className="text-[10px] text-neutral-500/80 sm:text-[11px] tracking-wider whitespace-nowrap" />
+            </div>
+          </div>
+        )}
+        {isViewer && (
+          <div className="pointer-events-none absolute top-full right-0 flex justify-end pt-1 select-none">
+            <AppVersion className="text-[10px] text-neutral-500/80 sm:text-[11px] tracking-wider whitespace-nowrap" />
           </div>
         )}
       </ZoomCompensated>

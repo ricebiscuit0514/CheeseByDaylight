@@ -7,7 +7,7 @@ import { PlayerRow, type Player } from "@/components/player-row"
 import { KillerPickSlots } from "@/components/killer-pick-slots"
 import { KillerPicker, type KillerPickerContext } from "@/components/killer-picker"
 import { ScoreboardSyncPanel } from "@/components/scoreboard-sync-panel"
-import { AppVersionCorner } from "@/components/app-version"
+import { AppVersion } from "@/components/app-version"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
 import type { FivePlayerSyncState } from "@/lib/firebase/scoreboard-room"
 import { MODE_SWITCH_SESSION_KEY, VIEWER_SESSION_KEY, loadRoomSession, normalizeFivePlayerState } from "@/lib/firebase/scoreboard-room"
@@ -667,8 +667,6 @@ export function FivePlayerMode() {
         if (isEditingPinball) setIsEditingPinball(false)
       }}
     >
-      {!utilityUiHidden && <AppVersionCorner />}
-
       <div className="relative mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-3 pb-12 md:px-6 md:py-4 md:pb-12">
         
         {/* Title Header matching DBD font & style */}
@@ -1329,9 +1327,17 @@ export function FivePlayerMode() {
               </div>
             </div>
           )}
+            <div className="pointer-events-none absolute top-full right-0 flex justify-end pt-1 select-none">
+              <AppVersion className="text-[10px] text-neutral-500/80 sm:text-[11px] tracking-wider whitespace-nowrap" />
             </div>
-          )}
-        </ZoomCompensated>
+          </div>
+        )}
+        {isViewer && (
+          <div className="pointer-events-none absolute top-full right-0 flex justify-end pt-1 select-none">
+            <AppVersion className="text-[10px] text-neutral-500/80 sm:text-[11px] tracking-wider whitespace-nowrap" />
+          </div>
+        )}
+      </ZoomCompensated>
         )}
 
         {utilityUiHidden && <SyncStatusCompactLabel role={sync.role} />}
