@@ -1005,13 +1005,13 @@ function getSlotSettleRatio(
   team: "thomas" | "ada",
   targetIdx: number,
 ): number {
-  // Deterministic pseudo-random ratio in [0.15, 0.85] based on spinToken, team, and target
+  // Deterministic pseudo-random ratio in [0.28, 0.72] based on spinToken, team, and target
   const seed =
     ((spinToken + 1) * 2654435761 +
       (team === "thomas" ? 1013904223 : 2147483647) +
       targetIdx * 374761393) >>> 0
   const normalized = (seed % 10000) / 10000
-  return 0.15 + normalized * 0.7
+  return 0.28 + normalized * 0.44
 }
 
 function AceSlotReel({
