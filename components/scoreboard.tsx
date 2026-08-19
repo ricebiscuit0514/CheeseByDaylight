@@ -39,6 +39,7 @@ import {
   isPlayerEnteredOutOfOrder,
   getFirstOutOfOrderPlayerId,
   autoLineupRosterOnScore,
+  autoLineupRosterOnCancel,
   DRAG_HINT_SEEN_4V4_KEY,
 } from "@/lib/scoreboard-order-hint"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
@@ -1517,13 +1518,18 @@ export function Scoreboard() {
 
   function handleCancel(team: Team, playerId: string) {
     if (isViewer) return
-    // 같은 스코어를 다시 눌러 취소 — kills를 0으로 되돌리고 played를 false로 해제
-    const setTeam = team === "thomas" ? setThomas : setAda
-    setTeam((prev) =>
-      prev.map((p) =>
-        p.id === playerId ? { ...p, kills: 0, played: false } : p,
-      ),
-    )
+    // 같은 스코어를 다시 눌러 취소 — kills를 0으로 되돌리고 played를 false로 해제하며 남은 출전자를 위로 당김
+    if (isAceMatchMode) {
+      const setTeam = team === "thomas" ? setThomas : setAda
+      setTeam((prev) =>
+        prev.map((p) =>
+          p.id === playerId ? { ...p, kills: 0, played: false } : p,
+        ),
+      )
+    } else {
+      const setTeam = team === "thomas" ? setThomas : setAda
+      setTeam((prev) => autoLineupRosterOnCancel(prev, playerId))
+    }
     setAnim((a) => ({ ...a, [playerId]: 0 }))
     setPrevKillsMap((prev) => { const next = { ...prev }; delete next[playerId]; return next })
 
@@ -1540,10 +1546,30 @@ export function Scoreboard() {
         setFirstAttackerId(null)
       }
     } else {
-      const otherPlayedInThomas = thomas.some((p) => p.id !== playerId && p.played)
-      const otherPlayedInAda = ada.some((p) => p.id !== playerId && p.played)
-      if (!otherPlayedInThomas && !otherPlayedInAda) {
+      const nextTeamRoster = autoLineupRosterOnCancel(team === "thomas" ? thomas : ada, playerId)
+      const nextThomas = team === "thomas" ? nextTeamRoster : thomas
+      const nextAda = team === "ada" ? nextTeamRoster : ada
+
+      const thomasPlayed = nextThomas.filter((p) => p.played)
+      const adaPlayed = nextAda.filter((p) => p.played)
+
+      if (thomasPlayed.length === 0 && adaPlayed.length === 0) {
         setFirstAttackerId(null)
+      } else if (firstAttackerId === playerId) {
+        // 취소된 선수가 선공 선수였던 경우, 남아있는 출전자에게 선공 승계
+        if (team === "thomas") {
+          if (thomasPlayed.length > 0) {
+            setFirstAttackerId(thomasPlayed[0].id)
+          } else if (adaPlayed.length > 0) {
+            setFirstAttackerId(adaPlayed[0].id)
+          }
+        } else {
+          if (adaPlayed.length > 0) {
+            setFirstAttackerId(adaPlayed[0].id)
+          } else if (thomasPlayed.length > 0) {
+            setFirstAttackerId(thomasPlayed[0].id)
+          }
+        }
       }
     }
   }
@@ -1834,7 +1860,7 @@ export function Scoreboard() {
           player={p}
           team={team}
           active={active}
-          isSelgong={selgong && !p.played}
+          isSelgong={selgong && !p.played && !hasAnyScore}
           isGoldSkull={isAceMatchMode}
           aceBadge={aceWinnersMap[p.id] ?? null}
           tabIndex={tabIdx}

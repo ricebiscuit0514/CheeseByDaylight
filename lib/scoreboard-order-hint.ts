@@ -77,3 +77,27 @@ export function autoLineupRosterOnScore<T extends { id: string; played: boolean 
   return next
 }
 
+/**
+ * Automatically packs played players continuously at the top when a score is cancelled.
+ * Sets the cancelled player's kills to 0 and played to false.
+ * If there are remaining played players, they are pulled to the top preserving relative order,
+ * followed by unplayed players preserving their relative order.
+ */
+export function autoLineupRosterOnCancel<T extends { id: string; played: boolean; kills?: number }>(
+  roster: readonly T[],
+  cancelledPlayerId: string,
+): T[] {
+  const currentIndex = roster.findIndex((p) => p.id === cancelledPlayerId)
+  if (currentIndex === -1) return [...roster]
+
+  const updated = roster.map((p, idx) =>
+    idx === currentIndex ? { ...p, kills: 0, played: false } : p,
+  )
+
+  const playedPlayers = updated.filter((p) => p.played)
+  const unplayedPlayers = updated.filter((p) => !p.played)
+
+  return [...playedPlayers, ...unplayedPlayers]
+}
+
+

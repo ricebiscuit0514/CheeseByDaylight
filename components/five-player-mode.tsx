@@ -21,7 +21,10 @@ import {
   applyFivePlayerNameCommit,
   clearPlayerRosterField,
 } from "@/lib/roster-name-commit"
-import { autoLineupRosterOnScore } from "@/lib/scoreboard-order-hint"
+import {
+  autoLineupRosterOnScore,
+  autoLineupRosterOnCancel,
+} from "@/lib/scoreboard-order-hint"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { ZoomCompensated } from "@/components/zoom-compensated"
@@ -319,9 +322,7 @@ export function FivePlayerMode() {
   }
 
   const handleCancel = (id: string) => {
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, kills: 0, played: false } : p))
-    )
+    setPlayers((prev) => autoLineupRosterOnCancel(prev, id))
     setAnim((a) => ({ ...a, [id]: 0 }))
     setPrevKillsMap((prev) => {
       const next = { ...prev }
