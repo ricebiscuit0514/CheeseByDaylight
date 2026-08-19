@@ -2628,7 +2628,6 @@ export function Scoreboard() {
                     <span className={`cold-team-name ${aceMatchWarning.team === "thomas" ? "cold-team-thomas" : "cold-team-ada"}`}>
                       {aceMatchWarning.name}
                     </span>{" "}
-                    팀{" "}
                     {"이번 경기에서 "}
                     <span className="cold-kill-count">{aceMatchWarning.killText}</span>
                     {aceMatchWarning.suffix}
