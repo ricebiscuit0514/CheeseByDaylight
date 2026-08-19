@@ -69,7 +69,10 @@ function Skull({ fill, previewFill, team, animId, animOrder, animate, disabled, 
         onHover(getHalf(event.currentTarget, event.clientX))
       }}
       onPointerLeave={clearTooltip}
-      onClick={(event) => onPick(getHalf(event.currentTarget, event.clientX))}
+      onClick={(event) => {
+        clearTooltip()
+        onPick(getHalf(event.currentTarget, event.clientX))
+      }}
       className="skull-slot"
     >
       <span className="skull-slot-visual">
@@ -336,6 +339,12 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
   useEffect(() => { setMounted(true) }, [])
   const reducedMotion = mounted ? reducedMotionRaw : false
   const [hover, setHover] = useState<{ index: number; half: boolean } | null>(null)
+
+  useEffect(() => {
+    if (!player.played) {
+      setHover(null)
+    }
+  }, [player.played])
   const nameInputRef = useRef<HTMLInputElement>(null)
   const nameAtFocusRef = useRef(player.name)
   useEffect(() => {
@@ -394,6 +403,7 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
     const preview = previewKills === null ? 0 : fillFor(pos, previewKills)
     const isNew = animId > 0 && fill > 0 && (pos + (fill === 0.5 ? 0.5 : 1)) > prevKills
     return <Skull key={i} team={team} fill={fill} previewFill={preview === fill ? 0 : preview} animId={animId} animOrder={pos} animate={isNew} disabled={interactionsDisabled} hoverPreview={hover?.index === i && previewKills !== null ? formatKillPreview(previewKills) : null} onHover={(half) => setHover({ index: i, half: allowHalf && pos === 3 && half })} onPick={(half) => {
+      setHover(null)
       const selected = calcScore(pos, half)
       if (player.kills === selected && player.played) {
         onCancel()
@@ -439,7 +449,15 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
       )}
     />
   )
-  const skullGroup = <div className="skull-group" onMouseLeave={() => setHover(null)}>{skulls}</div>
+  const skullGroup = (
+    <div
+      className="skull-group"
+      onPointerLeave={() => setHover(null)}
+      onMouseLeave={() => setHover(null)}
+    >
+      {skulls}
+    </div>
+  )
 
   return (
     <div className={cn(
@@ -512,13 +530,39 @@ export function PlayerRow({ player, team, active, isSelgong = false, aceBadge, i
                   <div className="min-w-0 flex-1 pointer-events-none" aria-hidden="true" />
                 </div>
               </div>
-              <NoKillButton team={team} played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
+              <NoKillButton
+                team={team}
+                played={player.played}
+                kills={player.kills}
+                disabled={interactionsDisabled}
+                onZero={() => {
+                  setHover(null)
+                  onZeroKill()
+                }}
+                onCancel={() => {
+                  setHover(null)
+                  onCancel()
+                }}
+              />
               {skullGroup}
             </>
           ) : (
             <>
               {skullGroup}
-              <NoKillButton team={team} played={player.played} kills={player.kills} disabled={interactionsDisabled} onZero={onZeroKill} onCancel={onCancel} />
+              <NoKillButton
+                team={team}
+                played={player.played}
+                kills={player.kills}
+                disabled={interactionsDisabled}
+                onZero={() => {
+                  setHover(null)
+                  onZeroKill()
+                }}
+                onCancel={() => {
+                  setHover(null)
+                  onCancel()
+                }}
+              />
               <div className="player-plate-trailing flex min-w-0 flex-1 items-center gap-[inherit]">
                 <div className="flex min-w-0 flex-1 items-center justify-end overflow-hidden gap-[inherit]">
                   <div className="min-w-0 flex-1 pointer-events-none" aria-hidden="true" />
