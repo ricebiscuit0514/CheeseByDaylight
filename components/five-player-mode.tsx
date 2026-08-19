@@ -21,6 +21,7 @@ import {
   applyFivePlayerNameCommit,
   clearPlayerRosterField,
 } from "@/lib/roster-name-commit"
+import { autoLineupRosterOnScore } from "@/lib/scoreboard-order-hint"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
 import { ViewerLinkExpiredNotice } from "@/components/viewer-link-expired-notice"
 import { ZoomCompensated } from "@/components/zoom-compensated"
@@ -189,6 +190,7 @@ export function FivePlayerMode() {
               ? parsed.givingConfig
               : DEFAULT_GIVING,
             killerBans: Array.isArray(parsed.killerBans) ? parsed.killerBans : [],
+            pickerUi: createInitialPickerUi(),
           })
           setPlayers(normalized.players)
           setReceivingConfig(normalized.receivingConfig)
@@ -295,24 +297,24 @@ export function FivePlayerMode() {
 
   // Player handlers
   const handleScore = (id: string, newKills: number) => {
+    const current = players.find((p) => p.id === id)
+    if (current) {
+      setPrevKillsMap((prevMap) => ({ ...prevMap, [id]: current.kills }))
+      setAnim((prevAnim) => ({ ...prevAnim, [id]: (prevAnim[id] ?? 0) + 1 }))
+    }
     setPlayers((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p
-        setPrevKillsMap((prevMap) => ({ ...prevMap, [id]: p.kills }))
-        setAnim((prevAnim) => ({ ...prevAnim, [id]: (prevAnim[id] ?? 0) + 1 }))
-        return { ...p, kills: newKills, played: newKills > 0 }
-      })
+      autoLineupRosterOnScore(prev, id, { kills: newKills, played: true }),
     )
   }
 
   const handleZeroKill = (id: string) => {
+    const current = players.find((p) => p.id === id)
+    if (current) {
+      setPrevKillsMap((prevMap) => ({ ...prevMap, [id]: current.kills }))
+      setAnim((prevAnim) => ({ ...prevAnim, [id]: (prevAnim[id] ?? 0) + 1 }))
+    }
     setPlayers((prev) =>
-      prev.map((p) => {
-        if (p.id !== id) return p
-        setPrevKillsMap((prevMap) => ({ ...prevMap, [id]: p.kills }))
-        setAnim((prevAnim) => ({ ...prevAnim, [id]: (prevAnim[id] ?? 0) + 1 }))
-        return { ...p, kills: 0, played: true }
-      })
+      autoLineupRosterOnScore(prev, id, { kills: 0, played: true }),
     )
   }
 

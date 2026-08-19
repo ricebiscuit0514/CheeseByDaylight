@@ -226,7 +226,7 @@ type WireAceState = {
   setupSlotRolling?: boolean
   setupSlotFinished?: boolean
   setupSlotExcludedIds?: Record<string, true>
-  setupSlotLockedTeams?: Record<"thomas" | "ada", true>
+  setupSlotLockedTeams?: Partial<Record<"thomas" | "ada", true>>
   setupSlotSpinToken?: number
   setupSlotSpinPlan?: AceSlotSpinPlan
   setupSpinTeam?: AceSpinTeam
@@ -806,12 +806,12 @@ function toWireFourVFourState(state: FourVFourSyncState): FourVFourWireState {
     ada: normalized.ada.length > 0 ? normalized.ada.map(toWirePlayer) : null,
     thomasCount: normalized.thomas.length,
     adaCount: normalized.ada.length,
+    fearlessEnabled: true,
     ace: toWireAce(normalized.ace),
   }
 
   const killerBansWire = killerBansToWire(normalized.killerBans)
   if (killerBansWire) wire.killerBans = killerBansWire
-  wire.fearlessEnabled = true
   if (normalized.firstAttackerId) {
     wire.firstAttackerId = normalized.firstAttackerId
   }

@@ -38,6 +38,7 @@ import { X } from "lucide-react"
 import {
   isPlayerEnteredOutOfOrder,
   getFirstOutOfOrderPlayerId,
+  autoLineupRosterOnScore,
   DRAG_HINT_SEEN_4V4_KEY,
 } from "@/lib/scoreboard-order-hint"
 import { useScoreboardRoom } from "@/hooks/use-scoreboard-room"
@@ -1480,18 +1481,28 @@ export function Scoreboard() {
     const setTeam = team === "thomas" ? setThomas : setAda
     const current = roster.find((p) => p.id === playerId)?.kills ?? 0
 
-    setTeam((prev) =>
-      prev.map((p) =>
-        p.id === playerId ? { ...p, kills: newKills, played: true } : p,
-      ),
-    )
+    if (isAceMatchMode) {
+      setTeam((prev) =>
+        prev.map((p) =>
+          p.id === playerId ? { ...p, kills: newKills, played: true } : p,
+        ),
+      )
+    } else {
+      setTeam((prev) =>
+        autoLineupRosterOnScore(prev, playerId, { kills: newKills, played: true }),
+      )
+    }
 
     if (animate && newKills !== current) {
       // 점수를 다시 선택하면 기존 값과 관계없이 첫 해골부터 전체 애니메이션을 재생한다.
       setPrevKillsMap((prev) => ({ ...prev, [playerId]: 0 }))
       setAnim((a) => ({ ...a, [playerId]: (a[playerId] ?? 0) + 1 }))
     }
-    setFirstAttackerId((prev) => prev ?? playerId)
+    if (!hasAnyScore) {
+      setFirstAttackerId(playerId)
+    } else {
+      setFirstAttackerId((prev) => prev ?? playerId)
+    }
   }
 
   function handleScore(team: Team, playerId: string, newKills: number) {

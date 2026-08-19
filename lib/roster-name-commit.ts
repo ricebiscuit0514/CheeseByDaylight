@@ -36,7 +36,7 @@ export function applyFourVFourNameCommit<T extends FearlessPlayer>(
   targetPlayerId: string,
   committedName: string,
   previousTargetName: string,
-): { thomas: T[]; ada: T[] } {
+): { thomas: (T & { killerPicks?: import("./fearless").KillerPick[] })[]; ada: (T & { killerPicks?: import("./fearless").KillerPick[] })[] } {
   const cleanName = committedName.trim()
   const thomasIds = new Set(thomas.map((player) => player.id))
   const migrated = migrateKillerPicksOnNameCommit(
@@ -60,7 +60,7 @@ export function applyFivePlayerNameCommit<T extends FearlessPlayer>(
   targetPlayerId: string,
   committedName: string,
   previousTargetName: string,
-): T[] {
+): (T & { killerPicks?: import("./fearless").KillerPick[] })[] {
   const cleanName = committedName.trim()
   const migrated = migrateKillerPicksOnNameCommit(
     players,
