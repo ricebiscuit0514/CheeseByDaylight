@@ -484,7 +484,9 @@
     "id": "judgement",
     "englishName": "Judgement",
     "koreanName": "심판",
-    "aliases": [],
+    "aliases": [
+      "빛구"
+    ],
     "sortOrder": 44,
     "bigPortrait": "/portraits/big/judgement.webp",
     "smallPortrait": "/portraits/small/judgement_s.webp"
