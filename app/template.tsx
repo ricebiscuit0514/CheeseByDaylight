@@ -1,10 +1,18 @@
 "use client"
 
+import { useEffect } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { usePathname } from "next/navigation"
 
 export default function Template({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--arena-overlay-opacity",
+      pathname === "/" ? "0.85" : "0.90"
+    )
+  }, [pathname])
 
   // Determine direction based on route
   const is1v4 = pathname === "/1v4"

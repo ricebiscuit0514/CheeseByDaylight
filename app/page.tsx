@@ -107,10 +107,6 @@ export default function LandingPage() {
         ))}
       </AnimatePresence>
 
-      {/* DBD Scratch & Fog Atmosphere */}
-      <div className="arena-fog opacity-35 pointer-events-none" aria-hidden="true" />
-      <div className="arena-scratches opacity-25 pointer-events-none" aria-hidden="true" />
-
       {/* Main Center Content Box */}
       <div className="relative z-10 flex flex-col items-center justify-center space-y-6 md:space-y-8 max-w-2xl w-full">
         
