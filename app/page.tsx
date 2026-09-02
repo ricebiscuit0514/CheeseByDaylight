@@ -111,27 +111,6 @@ export default function LandingPage() {
       <div className="arena-fog opacity-35 pointer-events-none" aria-hidden="true" />
       <div className="arena-scratches opacity-25 pointer-events-none" aria-hidden="true" />
 
-      {/* Landing feature art — fluid width; reserves center zone so overlap starts later */}
-      <div
-        className="landing-fearless-art pointer-events-none absolute inset-y-0 right-0 z-[5] flex items-center justify-end pe-3 sm:pe-8 md:pe-12 lg:pe-16 xl:pe-24 -translate-y-4 sm:-translate-y-6 md:-translate-y-8 lg:-translate-y-10"
-        aria-hidden="true"
-      >
-        <div className="pointer-events-auto relative landing-fearless-art-frame transition-transform duration-300 hover:scale-105">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[58%] -z-10 h-full w-[88%] -translate-x-[40%] -translate-y-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.92)_0%,rgba(0,0,0,0.78)_45%,transparent_68%)] blur-[18px]"
-          />
-          <Image
-            src="/images/Fearlesslandingart.webp"
-            alt=""
-            width={720}
-            height={900}
-            className="landing-fearless-art-image relative h-auto w-full object-contain object-right [filter:drop-shadow(0_18px_36px_rgba(0,0,0,0.92))_drop-shadow(0_0_24px_rgba(0,0,0,0.75))]"
-            priority
-          />
-        </div>
-      </div>
-
       {/* Main Center Content Box */}
       <div className="relative z-10 flex flex-col items-center justify-center space-y-6 md:space-y-8 max-w-2xl w-full">
         
@@ -150,33 +129,14 @@ export default function LandingPage() {
 
         {/* Mode Selection Buttons */}
         <div className="flex flex-col items-center space-y-4 w-full">
-          <div className="relative flex w-full items-center justify-center">
-            <aside
-              className="mb-2 w-full max-w-64 text-center sm:absolute sm:right-[calc(50%+9.5rem)] sm:mb-0 sm:w-max sm:max-w-[17.5rem] sm:text-right md:right-[calc(50%+10.5rem)]"
-              aria-label="4대4 모드 안내"
-            >
-              <p
-                className="text-[14px] leading-snug text-dbd-yellow sm:text-[16px] drop-shadow-[0_0_10px_rgba(234,179,8,0.35)]"
-                style={{ fontFamily: "var(--font-s-core)", fontWeight: 700 }}
-              >
-                에이스 결정전 기능이 개선되었습니다
-              </p>
-              <p
-                className="mt-1 text-[12px] leading-snug text-neutral-200/90 sm:text-[14px]"
-                style={{ fontFamily: "var(--font-s-core)", fontWeight: 400 }}
-              >
-                맞밸런스 추첨 기능이 추가되었습니다
-              </p>
-            </aside>
-            <button
-              type="button"
-              onClick={() => handleSelectMode("4v4")}
-              className="w-56 sm:w-64 md:w-72 py-3 px-6 bg-black/60 hover:bg-black/85 border border-white/40 hover:border-white text-white rounded-none font-bold text-base sm:text-lg tracking-wider shadow-2xl backdrop-blur-md transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center"
-              style={{ fontFamily: "var(--font-godo)" }}
-            >
-              4 vs 4 모드
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => handleSelectMode("4v4")}
+            className="w-56 sm:w-64 md:w-72 py-3 px-6 bg-black/60 hover:bg-black/85 border border-white/40 hover:border-white text-white rounded-none font-bold text-base sm:text-lg tracking-wider shadow-2xl backdrop-blur-md transition-all duration-200 hover:scale-[1.03] active:scale-95 cursor-pointer flex items-center justify-center"
+            style={{ fontFamily: "var(--font-godo)" }}
+          >
+            4 vs 4 모드
+          </button>
 
           {/* 5-Player Mode Button */}
           <button
