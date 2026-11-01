@@ -1430,18 +1430,8 @@ input[type="number"] {
   transform: translate3d(0, 0, 0) scale(1.05);
 }
 .fearless-picker-cell-frame-pop {
-  animation: fearless-cell-pop .28s cubic-bezier(.34, 1.45, .64, 1);
-}
-.fearless-picker-cell.is-selected .fearless-picker-cell-frame-pop {
-  animation: fearless-cell-pop-selected .28s cubic-bezier(.34, 1.45, .64, 1);
-}
-.fearless-picker-cell:hover .fearless-picker-cell-frame-pop,
-.fearless-picker-cell:focus-visible .fearless-picker-cell-frame-pop {
-  animation: fearless-cell-pop-hover .28s cubic-bezier(.34, 1.45, .64, 1);
-}
-.fearless-picker-cell.is-selected:hover .fearless-picker-cell-frame-pop,
-.fearless-picker-cell.is-selected:focus-visible .fearless-picker-cell-frame-pop {
-  animation: fearless-cell-pop-selected .28s cubic-bezier(.34, 1.45, .64, 1);
+  /* Keep the click pulse independent of hover/selection transform transitions. */
+  animation: fearless-cell-pop .28s cubic-bezier(.22, 1, .36, 1);
 }
 .fearless-picker-portrait {
   position: absolute;
@@ -1837,19 +1827,9 @@ input[type="number"] {
 }
 
 @keyframes fearless-cell-pop {
-  0% { transform: translate3d(0, 0, 0) scale(1); }
-  45% { transform: translate3d(0, 0, 0) scale(1.04); }
-  100% { transform: translate3d(0, 0, 0) scale(1); }
-}
-@keyframes fearless-cell-pop-hover {
-  0% { transform: translate3d(0, 0, 0) scale(1.05); }
-  45% { transform: translate3d(0, 0, 0) scale(1.08); }
-  100% { transform: translate3d(0, 0, 0) scale(1.05); }
-}
-@keyframes fearless-cell-pop-selected {
-  0% { transform: translate3d(0, 0, 0) scale(1.06); }
-  45% { transform: translate3d(0, 0, 0) scale(1.09); }
-  100% { transform: translate3d(0, 0, 0) scale(1.06); }
+  0% { scale: 1; }
+  45% { scale: 1.03; }
+  100% { scale: 1; }
 }
 @keyframes fearless-glow-pick {
   0% { opacity: 0; filter: brightness(1); }

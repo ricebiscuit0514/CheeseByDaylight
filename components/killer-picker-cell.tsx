@@ -66,11 +66,7 @@ function KillerPickerCellComponent({
   )
 
   const handlePopEnd = useCallback((event: React.AnimationEvent<HTMLSpanElement>) => {
-    if (
-      event.animationName === "fearless-cell-pop" ||
-      event.animationName === "fearless-cell-pop-hover" ||
-      event.animationName === "fearless-cell-pop-selected"
-    ) {
+    if (event.animationName === "fearless-cell-pop") {
       event.currentTarget.classList.remove("fearless-picker-cell-frame-pop")
     }
   }, [])
