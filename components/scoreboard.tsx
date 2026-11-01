@@ -60,6 +60,7 @@ import {
   type ViewerSessionEndReason,
 } from "@/lib/viewer-session-notice"
 import { buildScoreAnimationPatch } from "@/lib/player-score-animation"
+import { SKULL_IMPACT_AT, SKULL_STAGGER } from "@/lib/skull-animation"
 import {
   appendAceRoundLogEntry,
   buildAceRoundLogKey,
@@ -111,7 +112,9 @@ const INITIAL_ADA: Player[] = [
   { id: "ada-3", name: "", kills: 0, played: false },
   { id: "ada-4", name: "", kills: 0, played: false },
 ]
-const SCORE_BEAT_MS = 355
+const SCORE_BEAT_MS = SKULL_STAGGER * 1000
+// The digit fades in from transparent/blurred, so start it just before impact.
+const SCORE_FIRST_BEAT_MS = SKULL_IMPACT_AT * 1000 - 40
 const SCORE_BEAT_DOWN_MS = 40  // 점수 감소 시 빠르게 주르륵
 const MAX_PLAYERS_PER_TEAM = 4
 const LS_KEY = "dbd-scoreboard-v1"
@@ -347,28 +350,37 @@ function resolveShouldShowAceProceedDock(
   return cold.status === "gameover" && cold.winnerName === "tie"
 }
 
-/** Counts step-by-step (+1 or -1) while preserving decimal offset if starting with .5.
- *  Increases at SCORE_BEAT_MS; decreases rapidly at SCORE_BEAT_DOWN_MS. */
+/** Counts up on skull impacts; counts down rapidly when correcting or cancelling. */
 function useCountUp(target: number) {
   const [display, setDisplay] = useState(target)
+  const displayRef = useRef(target)
 
   useEffect(() => {
-    if (display === target) return
+    if (displayRef.current === target) return
 
-    const decreasing = display > target
-    const step = decreasing ? SCORE_BEAT_DOWN_MS : SCORE_BEAT_MS
+    let timer: number
+    const advance = () => {
+      const current = displayRef.current
+      const next = current < target
+        ? Math.min(current + 1, target)
+        : Math.max(current - 1, target)
+      displayRef.current = next
+      setDisplay(next)
 
-    const id = window.setTimeout(() => {
-      setDisplay((current) => {
-        if (current < target) {
-          return current + 1 <= target ? current + 1 : target
-        }
-        return current - 1 >= target ? current - 1 : target
-      })
-    }, step)
+      if (next !== target) {
+        timer = window.setTimeout(
+          advance,
+          next > target ? SCORE_BEAT_DOWN_MS : SCORE_BEAT_MS,
+        )
+      }
+    }
 
-    return () => window.clearTimeout(id)
-  }, [display, target])
+    timer = window.setTimeout(
+      advance,
+      displayRef.current > target ? SCORE_BEAT_DOWN_MS : SCORE_FIRST_BEAT_MS,
+    )
+    return () => window.clearTimeout(timer)
+  }, [target])
 
   return display
 }
