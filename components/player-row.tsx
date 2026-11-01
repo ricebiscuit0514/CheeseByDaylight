@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { motion, useReducedMotion } from "motion/react"
 import { cn } from "@/lib/utils"
+import { SKULL_DURATION, SKULL_IMPACT_AT, SKULL_STAGGER } from "@/lib/skull-animation"
 
 export const SKULLS_PER_PLAYER = 4
 export const MAX_KILLS = 4
@@ -22,9 +23,6 @@ export type Player = {
 }
 type Team = "thomas" | "ada"
 const SKULL_URL = "/images/skull.webp"
-const SKULL_STAGGER = 0.42
-const SKULL_DURATION = 0.68
-const SKULL_IMPACT_AT = 0.32
 const CHARGE_DURATION = 0.55
 
 function formatKillPreview(kills: number) {
@@ -105,7 +103,7 @@ function Skull({ fill, previewFill, team, animId, animOrder, animate, disabled, 
           transition={{
             duration: SKULL_DURATION,
             delay: animate && !reducedMotion ? animOrder * SKULL_STAGGER : 0,
-            times: [0, 0.24, 0.47, 0.65, 0.82, 1],
+            times: [0, 0.24, SKULL_IMPACT_AT / SKULL_DURATION, 0.65, 0.82, 1],
             ease: [0.12, 0.82, 0.18, 1],
           }}
         >

@@ -9,7 +9,7 @@ const EXPECTED_HEADERS = [
   'aliases',
   'sort_order',
 ]
-const EXPECTED_KILLER_COUNT = 44
+const EXPECTED_KILLER_COUNT = 45
 const ASCII_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url))

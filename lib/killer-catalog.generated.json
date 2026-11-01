@@ -1,14 +1,12 @@
 [
   {
-    "id": "judgement",
-    "englishName": "Judgement",
-    "koreanName": "심판",
-    "aliases": [
-      "빛구"
-    ],
+    "id": "terrifier",
+    "englishName": "Terrifier",
+    "koreanName": "테리파이어",
+    "aliases": [],
     "sortOrder": 1,
-    "bigPortrait": "/portraits/big/judgement.webp",
-    "smallPortrait": "/portraits/small/judgement_s.webp"
+    "bigPortrait": "/portraits/big/terrifier.webp",
+    "smallPortrait": "/portraits/small/terrifier_s.webp"
   },
   {
     "id": "slasher",
@@ -255,6 +253,17 @@
     "smallPortrait": "/portraits/small/clown_s.webp"
   },
   {
+    "id": "judgement",
+    "englishName": "Judgement",
+    "koreanName": "심판",
+    "aliases": [
+      "빛구"
+    ],
+    "sortOrder": 24,
+    "bigPortrait": "/portraits/big/judgement.webp",
+    "smallPortrait": "/portraits/small/judgement_s.webp"
+  },
+  {
     "id": "knight",
     "englishName": "Knight",
     "koreanName": "기사",
@@ -262,7 +271,7 @@
       "나이트",
       "삼총사"
     ],
-    "sortOrder": 24,
+    "sortOrder": 25,
     "bigPortrait": "/portraits/big/knight.webp",
     "smallPortrait": "/portraits/small/knight_s.webp"
   },
@@ -273,7 +282,7 @@
     "aliases": [
       "에일리언"
     ],
-    "sortOrder": 25,
+    "sortOrder": 26,
     "bigPortrait": "/portraits/big/xenomorph.webp",
     "smallPortrait": "/portraits/small/xenomorph_s.webp"
   },
@@ -284,7 +293,7 @@
     "aliases": [
       "처키"
     ],
-    "sortOrder": 26,
+    "sortOrder": 27,
     "bigPortrait": "/portraits/big/good-guy.webp",
     "smallPortrait": "/portraits/small/good-guy_s.webp"
   },
@@ -295,7 +304,7 @@
     "aliases": [
       "미존"
     ],
-    "sortOrder": 27,
+    "sortOrder": 28,
     "bigPortrait": "/portraits/big/unknown.webp",
     "smallPortrait": "/portraits/small/unknown_s.webp"
   },
@@ -306,7 +315,7 @@
     "aliases": [
       "개장수"
     ],
-    "sortOrder": 28,
+    "sortOrder": 29,
     "bigPortrait": "/portraits/big/houndmaster.webp",
     "smallPortrait": "/portraits/small/houndmaster_s.webp"
   },
@@ -317,7 +326,7 @@
     "aliases": [
       "프레디"
     ],
-    "sortOrder": 29,
+    "sortOrder": 30,
     "bigPortrait": "/portraits/big/animatronic.webp",
     "smallPortrait": "/portraits/small/animatronic_s.webp"
   },
@@ -329,7 +338,7 @@
       "사다코",
       "링"
     ],
-    "sortOrder": 30,
+    "sortOrder": 31,
     "bigPortrait": "/portraits/big/onryo.webp",
     "smallPortrait": "/portraits/small/onryo_s.webp"
   },
@@ -340,7 +349,7 @@
     "aliases": [
       "삼각두"
     ],
-    "sortOrder": 31,
+    "sortOrder": 32,
     "bigPortrait": "/portraits/big/executioner.webp",
     "smallPortrait": "/portraits/small/executioner_s.webp"
   },
@@ -351,7 +360,7 @@
     "aliases": [
       "당구"
     ],
-    "sortOrder": 32,
+    "sortOrder": 33,
     "bigPortrait": "/portraits/big/blight.webp",
     "smallPortrait": "/portraits/small/blight_s.webp"
   },
@@ -363,7 +372,7 @@
       "학지운",
       "학구"
     ],
-    "sortOrder": 33,
+    "sortOrder": 34,
     "bigPortrait": "/portraits/big/trickster.webp",
     "smallPortrait": "/portraits/small/trickster_s.webp"
   },
@@ -375,7 +384,7 @@
       "웩구",
       "토쟁이"
     ],
-    "sortOrder": 34,
+    "sortOrder": 35,
     "bigPortrait": "/portraits/big/plague.webp",
     "smallPortrait": "/portraits/small/plague_s.webp"
   },
@@ -386,7 +395,7 @@
     "aliases": [
       "순구"
     ],
-    "sortOrder": 35,
+    "sortOrder": 36,
     "bigPortrait": "/portraits/big/nurse.webp",
     "smallPortrait": "/portraits/small/nurse_s.webp"
   },
@@ -398,7 +407,7 @@
       "왜구",
       "령구"
     ],
-    "sortOrder": 36,
+    "sortOrder": 37,
     "bigPortrait": "/portraits/big/spirit.webp",
     "smallPortrait": "/portraits/small/spirit_s.webp"
   },
@@ -409,7 +418,7 @@
     "aliases": [
       "몽구"
     ],
-    "sortOrder": 37,
+    "sortOrder": 38,
     "bigPortrait": "/portraits/big/nightmare.webp",
     "smallPortrait": "/portraits/small/nightmare_s.webp"
   },
@@ -421,7 +430,7 @@
       "고페",
       "스크림"
     ],
-    "sortOrder": 38,
+    "sortOrder": 39,
     "bigPortrait": "/portraits/big/ghost-face.webp",
     "smallPortrait": "/portraits/small/ghost-face_s.webp"
   },
@@ -433,7 +442,7 @@
       "마늘이",
       "꽃구"
     ],
-    "sortOrder": 39,
+    "sortOrder": 40,
     "bigPortrait": "/portraits/big/demogorgon.webp",
     "smallPortrait": "/portraits/small/demogorgon_s.webp"
   },
@@ -445,7 +454,7 @@
       "핀헤드",
       "큐브"
     ],
-    "sortOrder": 40,
+    "sortOrder": 41,
     "bigPortrait": "/portraits/big/cenobite.webp",
     "smallPortrait": "/portraits/small/cenobite_s.webp"
   },
@@ -458,7 +467,7 @@
       "드론",
       "해상"
     ],
-    "sortOrder": 41,
+    "sortOrder": 42,
     "bigPortrait": "/portraits/big/skull-merchant.webp",
     "smallPortrait": "/portraits/small/skull-merchant_s.webp"
   },
@@ -467,7 +476,7 @@
     "englishName": "Krasue",
     "koreanName": "끄라스",
     "aliases": [],
-    "sortOrder": 42,
+    "sortOrder": 43,
     "bigPortrait": "/portraits/big/krasue.webp",
     "smallPortrait": "/portraits/small/krasue_s.webp"
   },
@@ -476,7 +485,7 @@
     "englishName": "Artist",
     "koreanName": "예술가",
     "aliases": [],
-    "sortOrder": 43,
+    "sortOrder": 44,
     "bigPortrait": "/portraits/big/artist.webp",
     "smallPortrait": "/portraits/small/artist_s.webp"
   },
@@ -487,7 +496,7 @@
     "aliases": [
       "망구"
     ],
-    "sortOrder": 44,
+    "sortOrder": 45,
     "bigPortrait": "/portraits/big/hag.webp",
     "smallPortrait": "/portraits/small/hag_s.webp"
   }
