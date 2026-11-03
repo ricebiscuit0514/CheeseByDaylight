@@ -73,6 +73,7 @@ export function FivePlayerMode() {
   const [players, setPlayers] = useState<Player[]>(createInitialPlayers)
   const [receivingConfig, setReceivingConfig] = useState<number[]>(DEFAULT_RECEIVING)
   const [givingConfig, setGivingConfig] = useState<number[]>(DEFAULT_GIVING)
+  const [isEditingPinball, setIsEditingPinball] = useState(false)
   
   // Modals & Confirm Prompts State
   const [showGuide, setShowGuide] = useState(false)
@@ -162,8 +163,6 @@ export function FivePlayerMode() {
     try {
       if (sessionStorage.getItem(MODE_SWITCH_SESSION_KEY)) {
         sessionStorage.removeItem(MODE_SWITCH_SESSION_KEY)
-        setIsLoaded(true)
-        return
       }
     } catch {
       // ignore
@@ -175,6 +174,7 @@ export function FivePlayerMode() {
       return
     }
 
+    // Restore the mode's save before autosave runs while Firebase reconnects.
     const saved = localStorage.getItem("dbd-5p-state-v2")
     if (saved) {
       try {
@@ -632,7 +632,6 @@ export function FivePlayerMode() {
     .join(", ")
 
   const [copiedType, setCopiedType] = useState<"receiving" | "giving" | null>(null)
-  const [isEditingPinball, setIsEditingPinball] = useState(false)
 
   const handleCopy = (text: string, type: "receiving" | "giving") => {
     try {

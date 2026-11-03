@@ -4,7 +4,6 @@ import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app"
 import {
   browserLocalPersistence,
   getAuth,
-  onAuthStateChanged,
   setPersistence,
   signInAnonymously,
   type Auth,
@@ -106,35 +105,14 @@ export async function getFirebaseClient(): Promise<FirebaseClient> {
   return clientPromise
 }
 
-const AUTH_RESTORE_TIMEOUT_MS = 3_000
-
-function waitForRestoredAuthUser(auth: Auth): Promise<User | null> {
-  if (auth.currentUser) return Promise.resolve(auth.currentUser)
-
-  return new Promise((resolve) => {
-    const timeoutId = window.setTimeout(() => {
-      unsubscribe()
-      resolve(auth.currentUser)
-    }, AUTH_RESTORE_TIMEOUT_MS)
-
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) return
-      window.clearTimeout(timeoutId)
-      unsubscribe()
-      resolve(user)
-    })
-  })
-}
-
 export async function getAnonymousUser(): Promise<{
   user: User
   database: Database
 }> {
   const { auth, database } = await getFirebaseClient()
+  // Wait for persisted auth to settle, including a confirmed signed-out state.
+  await auth.authStateReady()
   if (auth.currentUser) return { user: auth.currentUser, database }
-
-  const restoredUser = await waitForRestoredAuthUser(auth)
-  if (restoredUser) return { user: restoredUser, database }
 
   const credential = await signInAnonymously(auth)
   return { user: credential.user, database }
