@@ -158,7 +158,6 @@ function ScoreNumber({ value, side, lit, close, bump = 0, isGameOver = false }: 
       )}
       <div className="score-sanctum-inner">
       {!hideFlare && <span className="score-energy" aria-hidden="true" />}
-      <span className="score-scratch" aria-hidden="true" />
       {/* 3. Continuous Ember Particles Stream: 박빙/유리 시 파티클 지속 분사, 불리한 팀은 소멸 */}
       <AnimatePresence>
         {!reducedMotion && lit && (

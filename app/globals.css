@@ -361,8 +361,6 @@
   0%, 100% { opacity: 0.96; transform: scaleX(1.0); filter: saturate(1.15) brightness(1.0); }
   50%      { opacity: 1.00; transform: scaleX(1.03); filter: saturate(1.18) brightness(1.03); }
 }
-.score-scratch { position: absolute; inset: 12% 4%; z-index: -1; opacity: .2; background: repeating-linear-gradient(104deg, transparent 0 18px, color-mix(in oklch, var(--foreground), transparent 80%) 19px, transparent 20px 32px); mask-image: linear-gradient(to left, black, transparent); }
-.score-sanctum-right .score-scratch { transform: scaleX(-1); }
 .score-caption { position: absolute; top: 1.8rem; right: 1.25rem; color: color-mix(in oklch, var(--team), var(--foreground) 25%); font-size: .65rem; font-weight: 900; letter-spacing: .26em; }
 .score-sanctum-right .score-caption { right: auto; left: 1.25rem; }
 .score-value-wrap { display: flex; align-items: flex-end; justify-content: flex-end; height: 100%; padding-right: 3rem; font-family: var(--font-aldrich); font-style: italic; font-weight: 700; line-height: .75; text-shadow: 0 4px 0 color-mix(in oklch, var(--background), transparent 5%), 0 0 32px color-mix(in oklch, var(--team), transparent 75%); }

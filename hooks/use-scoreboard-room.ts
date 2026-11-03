@@ -15,7 +15,6 @@ import {
   clearInviteTokenFromUrl,
   parseInviteTokenFromHash,
   createScoreboardRoom,
-  createDefaultScoreboardState,
   deleteScoreboardRoom,
   generateRoomToken,
   hydrateHostRoomAfterModeSwitch,
@@ -35,6 +34,7 @@ import {
   type ScoreboardRoom,
 } from "@/lib/firebase/scoreboard-room"
 import { scheduleScoreboardPublish } from "@/lib/scoreboard-publish"
+import { prepareScoreboardModeSwitch } from "@/lib/scoreboard-mode-state"
 import { claimSingleFirebaseTab } from "@/lib/firebase/single-tab"
 import { markViewerHostDisconnected, markViewerLinkExpired } from "@/lib/viewer-session-notice"
 
@@ -927,10 +927,15 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       setTerminalStatus(null)
       setErrorMessage(null)
       try {
+        const targetState = prepareScoreboardModeSwitch(
+          localStorage,
+          stateRef.current,
+          targetMode,
+        )
         const expiresAt = await publishScoreboardWithRetry(
           databaseRef,
           token,
-          createDefaultScoreboardState(targetMode),
+          targetState,
         )
         saveRoomSession(localStorage, HOST_SESSION_KEY, {
           token,

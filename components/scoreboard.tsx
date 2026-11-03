@@ -865,8 +865,6 @@ export function Scoreboard() {
     try {
       if (sessionStorage.getItem(MODE_SWITCH_SESSION_KEY)) {
         sessionStorage.removeItem(MODE_SWITCH_SESSION_KEY)
-        setIsLoaded(true)
-        return
       }
     } catch {
       // ignore
@@ -879,6 +877,7 @@ export function Scoreboard() {
       return
     }
 
+    // Restore the mode's save before autosave runs while Firebase reconnects.
     const saved = loadFromStorage()
     if (saved) {
       if (Array.isArray(saved.thomas)) setThomas(saved.thomas)

@@ -29,10 +29,11 @@ export function scheduleScoreboardPublish({
     state.pickerUi.feedbackToken !== previous.pickerUi.feedbackToken
 
   const snapshot = JSON.stringify(state)
-  if (snapshot === lastPublished.current || !shouldPublish(snapshot)) return
+  // A restored snapshot must release the hydration guard even if already sent.
+  if (!shouldPublish(snapshot) || snapshot === lastPublished.current) return
 
   const send = () => {
-    if (snapshot === lastPublished.current || !shouldPublish(snapshot)) return
+    if (!shouldPublish(snapshot) || snapshot === lastPublished.current) return
     void publish(state, snapshot)
   }
 

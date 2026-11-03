@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type { Player } from "../components/player-row"
 import {
   createDefaultScoreboardState,
+  fromWireState,
+  toWireState,
   type ScoreboardGameMode,
   type ScoreboardSyncState,
 } from "../lib/firebase/scoreboard-room"
@@ -21,7 +24,7 @@ function createPublisher(gameMode: ScoreboardGameMode = "4v4") {
   const initial = createDefaultScoreboardState(gameMode)
   const previousState = { current: initial as ScoreboardSyncState | null }
   const lastPublished = { current: JSON.stringify(initial) }
-  const shouldPublish = vi.fn(() => true)
+  const shouldPublish = vi.fn<(snapshot: string) => boolean>().mockReturnValue(true)
   const publish = vi.fn(async (state: ScoreboardSyncState) => {
     lastPublished.current = JSON.stringify(state)
   })
@@ -160,6 +163,54 @@ describe("scoreboard state delivery", () => {
     await vi.advanceTimersByTimeAsync(500)
     expect(sender.publish).not.toHaveBeenCalled()
   })
+
+  it.each(["4v4", "5p"] as const)(
+    "resumes score and killer delivery after switching into %s",
+    async (mode) => {
+      const sender = createPublisher(mode)
+      const restored = fromWireState(toWireState(sender.initial))
+      if (!restored) throw new Error("Expected restored scoreboard state")
+      sender.previousState.current = null
+      sender.lastPublished.current = JSON.stringify(restored)
+      let hydrationSnapshot: string | null = sender.lastPublished.current
+      sender.shouldPublish.mockImplementation((snapshot) => {
+        if (!hydrationSnapshot) return true
+        if (snapshot !== hydrationSnapshot) return false
+        hydrationSnapshot = null
+        return true
+      })
+
+      sender.update(restored)
+      expect(sender.publish).not.toHaveBeenCalled()
+
+      const scorePlayer = (player: Player) =>
+        ({ ...player, kills: 3, played: true })
+      const scored: ScoreboardSyncState = restored.mode === "4v4"
+        ? { ...restored, thomas: restored.thomas.map((player, index) => index === 0 ? scorePlayer(player) : player) }
+        : { ...restored, players: restored.players.map((player, index) => index === 0 ? scorePlayer(player) : player) }
+      sender.update(scored)
+      await vi.advanceTimersByTimeAsync(120)
+      expect(sender.publish).toHaveBeenCalledExactlyOnceWith(scored, JSON.stringify(scored))
+
+      const pickPlayer = (player: Player) => ({
+        ...player,
+        killerPicks: [{ killerId: "nurse", playerName: player.name }],
+      })
+      const picked: ScoreboardSyncState = scored.mode === "4v4"
+        ? { ...scored, thomas: scored.thomas.map((player, index) => index === 0 ? pickPlayer(player) : player) }
+        : { ...scored, players: scored.players.map((player, index) => index === 0 ? pickPlayer(player) : player) }
+      picked.pickerUi = { ...picked.pickerUi, selectionSeq: 1, feedbackToken: 123 }
+      sender.update(picked)
+      expect(sender.publish).toHaveBeenLastCalledWith(picked, JSON.stringify(picked))
+      await vi.advanceTimersByTimeAsync(500)
+      expect(sender.publish).toHaveBeenCalledTimes(2)
+
+      const received = fromWireState(toWireState(picked))
+      if (!received) throw new Error("Expected received scoreboard state")
+      const player = received.mode === "4v4" ? received.thomas[0] : received.players[0]
+      expect(player).toMatchObject({ kills: 3, played: true, killerPicks: [{ killerId: "nurse" }] })
+    },
+  )
 
   it("cancels a pending send when sharing stops or the effect unmounts", async () => {
     const sender = createPublisher()
