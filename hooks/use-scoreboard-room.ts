@@ -32,9 +32,9 @@ import {
   writeScoreboardState,
   type ScoreboardGameMode,
   type ScoreboardSyncState,
-  type FourVFourSyncState,
   type ScoreboardRoom,
 } from "@/lib/firebase/scoreboard-room"
+import { scheduleScoreboardPublish } from "@/lib/scoreboard-publish"
 import { claimSingleFirebaseTab } from "@/lib/firebase/single-tab"
 import { markViewerHostDisconnected, markViewerLinkExpired } from "@/lib/viewer-session-notice"
 
@@ -174,12 +174,7 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
   const remoteStateRef = useRef(onRemoteState)
   const shouldCreateRef = useRef(false)
   const lastPublishedRef = useRef("")
-  const prevSyncedFirstAttackerIdRef = useRef<string | null | undefined>(
-    undefined,
-  )
-  const prevSyncedPickerUiRef = useRef<
-    Pick<FourVFourSyncState["pickerUi"], "selectionSeq" | "feedbackToken"> | undefined
-  >(undefined)
+  const previousPublishStateRef = useRef<ScoreboardSyncState | null>(null)
   const databaseRef = useRef<Database | null>(null)
   const tokenRef = useRef<string | null>(null)
   const hostHydrateGuardRef = useRef<string | null>(null)
@@ -828,153 +823,33 @@ export function useScoreboardRoom<T extends ScoreboardSyncState>({
       return
     }
 
-    const serialized = JSON.stringify(state)
-    if (serialized === lastPublishedRef.current) return
-    if (!shouldPublishState(serialized)) return
-
-    const timeout = window.setTimeout(async () => {
-      try {
-        const expiresAt = await publishScoreboardWithRetry(databaseRef, token, state)
-        lastPublishedRef.current = serialized
-        saveRoomSession(localStorage, HOST_SESSION_KEY, {
-          token,
-          expiresAt,
-          gameMode,
-        })
-        setRoomExpiresAt(expiresAt)
-      } catch (error) {
-        if (isTransientFirebaseError(error)) return
-        setTerminalStatus("error")
-        setErrorMessage(toErrorMessage(error))
-      }
-    }, 120)
-
-    return () => window.clearTimeout(timeout)
+    return scheduleScoreboardPublish({
+      state,
+      previousState: previousPublishStateRef,
+      lastPublished: lastPublishedRef,
+      shouldPublish: shouldPublishState,
+      publish: async (currentState, snapshot) => {
+        try {
+          const expiresAt = await publishScoreboardWithRetry(
+            databaseRef,
+            token,
+            currentState,
+          )
+          lastPublishedRef.current = snapshot
+          saveRoomSession(localStorage, HOST_SESSION_KEY, {
+            token,
+            expiresAt,
+            gameMode,
+          })
+          setRoomExpiresAt(expiresAt)
+        } catch (error) {
+          if (isTransientFirebaseError(error)) return
+          setTerminalStatus("error")
+          setErrorMessage(toErrorMessage(error))
+        }
+      },
+    })
   }, [busy, enabled, gameMode, role, roomReady, shouldPublishState, state, terminalStatus, token])
-
-  // 선공 결정(firstAttackerId)은 시청자 UI에 바로 반영되어야 하므로 디바운스 없이 즉시 동기화한다.
-  useEffect(() => {
-    if (gameMode !== "4v4" || state.mode !== "4v4") return
-    if (
-      !enabled ||
-      role !== "host" ||
-      !token ||
-      !roomReady ||
-      terminalStatus ||
-      busy
-    ) {
-      return
-    }
-
-    const next = (state as FourVFourSyncState).firstAttackerId ?? null
-    const prev = prevSyncedFirstAttackerIdRef.current
-    prevSyncedFirstAttackerIdRef.current = next
-    if (prev === undefined || prev === next) return
-
-    void (async () => {
-      try {
-        const currentState = stateRef.current
-        const serialized = JSON.stringify(currentState)
-        if (!shouldPublishState(serialized)) return
-        const expiresAt = await publishScoreboardWithRetry(
-          databaseRef,
-          token,
-          currentState,
-        )
-        lastPublishedRef.current = serialized
-        saveRoomSession(localStorage, HOST_SESSION_KEY, {
-          token,
-          expiresAt,
-          gameMode,
-        })
-        setRoomExpiresAt(expiresAt)
-      } catch (error) {
-        if (isTransientFirebaseError(error)) return
-        setTerminalStatus("error")
-        setErrorMessage(toErrorMessage(error))
-      }
-    })()
-  }, [
-    busy,
-    enabled,
-    gameMode,
-    role,
-    roomReady,
-    state.mode,
-    state.mode === "4v4" ? state.firstAttackerId : null,
-    terminalStatus,
-    token,
-    shouldPublishState,
-  ])
-
-  // 피어리스 picker 하이라이트/피드백은 관전자 화면에 즉시 반영되어야 한다.
-  useEffect(() => {
-    if (state.mode !== "4v4" && state.mode !== "5p") return
-    if (
-      !enabled ||
-      role !== "host" ||
-      !token ||
-      !roomReady ||
-      terminalStatus ||
-      busy
-    ) {
-      return
-    }
-
-    const next = state.pickerUi
-    const prev = prevSyncedPickerUiRef.current
-    prevSyncedPickerUiRef.current = {
-      selectionSeq: next.selectionSeq,
-      feedbackToken: next.feedbackToken,
-    }
-    if (
-      prev &&
-      prev.selectionSeq === next.selectionSeq &&
-      prev.feedbackToken === next.feedbackToken
-    ) {
-      return
-    }
-
-    void (async () => {
-      try {
-        const currentState = stateRef.current
-        const serialized = JSON.stringify(currentState)
-        if (!shouldPublishState(serialized)) return
-        const expiresAt = await publishScoreboardWithRetry(
-          databaseRef,
-          token,
-          currentState,
-        )
-        lastPublishedRef.current = serialized
-        saveRoomSession(localStorage, HOST_SESSION_KEY, {
-          token,
-          expiresAt,
-          gameMode,
-        })
-        setRoomExpiresAt(expiresAt)
-      } catch (error) {
-        if (isTransientFirebaseError(error)) return
-        setTerminalStatus("error")
-        setErrorMessage(toErrorMessage(error))
-      }
-    })()
-  }, [
-    busy,
-    enabled,
-    gameMode,
-    role,
-    roomReady,
-    state.mode,
-    state.mode === "4v4" || state.mode === "5p"
-      ? state.pickerUi.selectionSeq
-      : 0,
-    state.mode === "4v4" || state.mode === "5p"
-      ? state.pickerUi.feedbackToken
-      : 0,
-    terminalStatus,
-    token,
-    shouldPublishState,
-  ])
 
   useEffect(() => {
     if (
